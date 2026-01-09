@@ -26,7 +26,7 @@ public class UserController {
     private UserService userService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('user:create')")
+    @PreAuthorize("hasAuthority('system:user:add')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "创建用户", description = "创建新用户，需要管理员权限")
     public Result<UserResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
@@ -36,7 +36,7 @@ public class UserController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('user:read')")
+    @PreAuthorize("hasAuthority('system:user:query')")
     @RateLimit(limit = 50, timeout = 60)
     @Operation(summary = "获取用户列表", description = "分页查询用户列表，支持排序和筛选")
     public Result<UserListResponse> getUserList(
@@ -61,7 +61,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('user:read')")
+    @PreAuthorize("hasAuthority('system:user:query')")
     @Operation(summary = "获取单个用户", description = "根据用户ID查询用户详情")
     public Result<UserResponse> getUserById(
             @Parameter(description = "用户ID") @PathVariable Long id) {
@@ -71,7 +71,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('user:update')")
+    @PreAuthorize("hasAuthority('system:user:edit')")
     @Operation(summary = "更新用户", description = "全量更新用户信息，需要管理员权限")
     public Result<UserResponse> updateUser(
             @Parameter(description = "用户ID") @PathVariable Long id,
@@ -82,7 +82,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasAuthority('user:update')")
+    @PreAuthorize("hasAuthority('system:user:edit')")
     @RateLimit(limit = 20, timeout = 60)
     @Operation(summary = "部分更新用户", description = "部分更新用户信息，需要管理员权限")
     public Result<UserResponse> patchUser(
@@ -94,7 +94,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('user:delete')")
+    @PreAuthorize("hasAuthority('system:user:delete')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "删除用户", description = "逻辑删除用户，需要管理员权限")
     public Result<Void> deleteUser(
