@@ -34,7 +34,7 @@ public class BankAccountController {
 
     @Operation(summary = "创建银行账户")
     @PostMapping
-    public Result<Map<String, Object>> createBankAccount(@Valid @RequestBody BankAccountCreateRequest request) {
+    public Result<Map<String, Object>> createBankAccount(@RequestBody BankAccountCreateRequest request) {
         Long accountId = bankAccountService.createBankAccount(request);
 
         Map<String, Object> data = new HashMap<>();
