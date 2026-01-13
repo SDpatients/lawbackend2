@@ -15,7 +15,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/case-search")
+@RequestMapping("/case-search")
 @Tag(name = "案件搜索", description = "案件搜索相关接口")
 public class CaseSearchController {
 

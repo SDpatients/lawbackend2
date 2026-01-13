@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.service;
 
 import com.lawbackend2.lawbackend2.dto.AdministratorCreateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorStaffCreateRequest;
+import com.lawbackend2.lawbackend2.dto.AdministratorStaffUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.Administrator;
 import com.lawbackend2.lawbackend2.entity.AdministratorStaff;
@@ -16,7 +17,11 @@ public interface AdministratorService {
 
     List<Administrator> getAdministratorList(Integer pageNum, Integer pageSize, Long caseId);
 
+    List<Administrator> getAdministratorList(Integer pageNum, Integer pageSize, Long caseId, String administratorName);
+
     Long getAdministratorCount(Long caseId);
+
+    Long getAdministratorCount(Long caseId, String administratorName);
 
     Administrator updateAdministrator(Long administratorId, AdministratorUpdateRequest request);
 
@@ -27,4 +32,8 @@ public interface AdministratorService {
     List<AdministratorStaff> getAdministratorStaffList(Long administratorId);
 
     AdministratorStaff getAdministratorStaffById(Long staffId);
+
+    AdministratorStaff updateAdministratorStaff(Long staffId, AdministratorStaffUpdateRequest request);
+
+    void deleteAdministratorStaff(Long staffId);
 }

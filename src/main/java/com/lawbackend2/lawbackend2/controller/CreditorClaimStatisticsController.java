@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/creditor-claim-statistics")
+@RequestMapping("/creditor-claim-statistics")
 @Tag(name = "债权申报统计", description = "债权申报统计相关接口")
 public class CreditorClaimStatisticsController {
 

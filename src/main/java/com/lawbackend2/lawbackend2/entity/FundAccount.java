@@ -5,11 +5,8 @@ import lombok.EqualsAndHashCode;
 
 import javax.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-/**
- * 资金账户实体类
- * 用于管理案件相关的资金账户信息
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
@@ -20,35 +17,57 @@ import java.math.BigDecimal;
 })
 public class FundAccount extends BaseEntity {
 
-    /** 案件ID */
+    @Column(name = "account_id")
+    private Long accountId;
+
     @Column(name = "case_id")
     private Long caseId;
 
-    /** 案件名称 */
     @Column(name = "case_name", length = 200)
     private String caseName;
 
-    /** 账户名称 */
     @Column(name = "account_name", length = 100)
     private String accountName;
 
-    /** 账户类型 */
     @Column(name = "account_type", length = 50)
     private String accountType;
 
-    /** 初始余额，默认为0 */
+    @Column(name = "account_purpose", length = 50)
+    private String accountPurpose;
+
+    @Column(name = "account_permission", length = 50)
+    private String accountPermission;
+
+    @Column(name = "is_frozen")
+    private Boolean isFrozen = false;
+
+    @Column(name = "freeze_date")
+    private LocalDateTime freezeDate;
+
+    @Column(name = "freeze_reason", columnDefinition = "TEXT")
+    private String freezeReason;
+
+    @Column(name = "unfreeze_date")
+    private LocalDateTime unfreezeDate;
+
     @Column(name = "initial_balance", precision = 18, scale = 2)
     private BigDecimal initialBalance = BigDecimal.ZERO;
 
-    /** 当前余额，默认为0 */
     @Column(name = "current_balance", precision = 18, scale = 2)
     private BigDecimal currentBalance = BigDecimal.ZERO;
 
-    /** 银行名称 */
+    @Column(name = "account_balance_limit", precision = 18, scale = 2)
+    private BigDecimal accountBalanceLimit;
+
     @Column(name = "bank_name", length = 100)
     private String bankName;
 
-    /** 银行账号 */
     @Column(name = "bank_account", length = 50)
     private String bankAccount;
+
+    @Column(name = "opening_date")
+    private LocalDateTime openingDate;
+
+    @Column(name = "closing_date")
+    private LocalDateTime closingDate;
 }

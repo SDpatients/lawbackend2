@@ -15,4 +15,19 @@ public interface WorkTeamMemberRepository extends JpaRepository<WorkTeamMember, 
            "AND wtm.teamId = :teamId " +
            "AND wtm.isActive = 1")
     List<WorkTeamMember> findByTeamId(@Param("teamId") Long teamId);
+
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
+           "AND wtm.id = :memberId " +
+           "AND wtm.isActive = 1")
+    WorkTeamMember findMemberById(@Param("memberId") Long memberId);
+
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
+           "AND wtm.userId = :userId " +
+           "AND wtm.isActive = 1")
+    List<WorkTeamMember> findByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
+           "AND wtm.caseId = :caseId " +
+           "AND wtm.isActive = 1")
+    List<WorkTeamMember> findByCaseId(@Param("caseId") Long caseId);
 }

@@ -26,6 +26,8 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     List<Todo> findByUserIdAndDeadlineBefore(Long userId, LocalDateTime deadline);
 
+    List<Todo> findByUserIdAndStatusOrderByCompletedTimeDesc(Long userId, String status);
+
     @Query("SELECT t FROM Todo t WHERE " +
            "t.userId = :userId AND " +
            "(:type IS NULL OR t.type = :type) AND " +

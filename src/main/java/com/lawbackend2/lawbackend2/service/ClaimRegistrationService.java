@@ -1,0 +1,28 @@
+package com.lawbackend2.lawbackend2.service;
+
+import com.lawbackend2.lawbackend2.dto.ClaimDetailResponse;
+import com.lawbackend2.lawbackend2.dto.ClaimRegistrationCreateRequest;
+import com.lawbackend2.lawbackend2.dto.ClaimRegistrationUpdateRequest;
+import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
+
+import java.util.List;
+
+public interface ClaimRegistrationService {
+    ClaimRegistration createClaim(ClaimRegistrationCreateRequest request, Long userId);
+
+    ClaimRegistration getClaimById(Long claimId);
+
+    ClaimDetailResponse getClaimDetailById(Long claimId);
+
+    List<ClaimRegistration> getClaimList(Integer pageNum, Integer pageSize, Long caseId, String registrationStatus);
+
+    Long getClaimCount(Long caseId, String registrationStatus);
+
+    ClaimRegistration updateClaim(Long claimId, ClaimRegistrationUpdateRequest request);
+
+    void deleteClaim(Long claimId);
+
+    void updateRegistrationStatus(Long claimId, String status, Long userId);
+
+    void receiveMaterial(Long claimId, String receiver, String completeness, Long userId);
+}

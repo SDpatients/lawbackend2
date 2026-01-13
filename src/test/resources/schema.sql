@@ -402,12 +402,14 @@ CREATE TABLE IF NOT EXISTS tb_administrator_staff (
 );
 
 -- AnnouncementViewRecord table
-CREATE TABLE IF NOT EXISTS tb_announcement_view_record (
+CREATE TABLE IF NOT EXISTS tb_case_announcement_view (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   announcement_id BIGINT,
-  user_id BIGINT,
-  user_name VARCHAR(100),
+  case_id BIGINT,
+  viewer_id BIGINT,
+  viewer_name VARCHAR(100),
   view_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ip_address VARCHAR(50),
   status VARCHAR(20) DEFAULT 'ACTIVE',
   is_deleted BOOLEAN DEFAULT FALSE,
   create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

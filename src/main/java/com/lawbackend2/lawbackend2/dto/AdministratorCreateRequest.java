@@ -8,6 +8,9 @@ import javax.validation.constraints.NotNull;
 @Data
 public class AdministratorCreateRequest {
 
+    @NotBlank(message = "管理人名称不能为空")
+    private String administratorName;
+
     @NotNull(message = "案件ID不能为空")
     private Long caseId;
 
@@ -15,6 +18,8 @@ public class AdministratorCreateRequest {
     private String administratorType;
 
     private Long responsiblePersonId;
+
+    private String responsiblePerson;
 
     private String contactPhone;
 

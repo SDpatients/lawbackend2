@@ -15,7 +15,7 @@ import javax.validation.Valid;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/case-statistics")
+@RequestMapping("/case-statistics")
 @Tag(name = "案件统计", description = "案件统计相关接口")
 public class CaseStatisticsController {
 

@@ -1,0 +1,178 @@
+CREATE TABLE `tb_administrator` (
+
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '管理人ID',
+
+  `case_id` bigint DEFAULT NULL COMMENT '案件ID',
+
+  `administrator_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '管理人类型',
+
+  `responsible_person_id` bigint DEFAULT NULL COMMENT '负责人ID',
+
+  `contact_phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '联系电话',
+
+  `contact_email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '联系邮箱',
+
+  `office_address` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '办公地址',
+
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'ACTIVE' COMMENT '状态: ACTIVE-激活, INACTIVE-停用, DELETED-删除',
+
+  `is_deleted` tinyint(1) DEFAULT '0' COMMENT '是否删除: 0-否, 1-是',
+
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+
+  `create_user_id` bigint DEFAULT NULL COMMENT '创建者ID',
+
+  `update_user_id` bigint DEFAULT NULL COMMENT '修改者ID',
+
+  PRIMARY KEY (`id`),
+
+  KEY `idx_case_id` (`case_id`),
+
+  KEY `idx_responsible_person_id` (`responsible_person_id`),
+
+  KEY `idx_status` (`status`),
+
+  KEY `idx_create_time` (`create_time`),
+
+  CONSTRAINT `fk_administrator_case` FOREIGN KEY (`case_id`) REFERENCES `tb_bankrupt_case` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+
+  CONSTRAINT `fk_administrator_responsible_person` FOREIGN KEY (`responsible_person_id`) REFERENCES `tb_administrator_staff` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理人信息表';
+
+
+
+
+CREATE TABLE `tb_administrator_staff` (
+
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '员工ID',
+
+  `administrator_id` bigint DEFAULT NULL COMMENT '所属管理人ID',
+
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '姓名',
+
+  `staff_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '人员类型',
+
+  `id_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '身份证号',
+
+  `lawyer_license_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '律师执业证号',
+
+  `contact_phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '联系电话',
+
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '电子邮箱',
+
+  `responsibility` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '职责',
+
+  `appointment_date` date DEFAULT NULL COMMENT '任命日期',
+
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'ACTIVE' COMMENT '状态: ACTIVE-激活, INACTIVE-停用, DELETED-删除',
+
+  `is_deleted` tinyint(1) DEFAULT '0' COMMENT '是否删除: 0-否, 1-是',
+
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+
+  `create_user_id` bigint DEFAULT NULL COMMENT '创建者ID',
+
+  `update_user_id` bigint DEFAULT NULL COMMENT '修改者ID',
+
+  PRIMARY KEY (`id`),
+
+  KEY `idx_administrator_id` (`administrator_id`),
+
+  KEY `idx_name` (`name`),
+
+  KEY `idx_staff_type` (`staff_type`),
+
+  KEY `idx_status` (`status`),
+
+  KEY `idx_create_time` (`create_time`),
+
+  CONSTRAINT `fk_administrator_staff_administrator` FOREIGN KEY (`administrator_id`) REFERENCES `tb_administrator` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='员工信息表';
+
+
+
+
+CREATE TABLE `tb_user` (
+
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+
+  `username` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '用户账号',
+
+  `password` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '用户密码',
+
+  `real_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL COMMENT '用户姓名',
+
+  `mobile` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '手机号',
+
+  `email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '邮箱',
+
+  `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '电话',
+
+  `is_valid` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT '1' COMMENT '是否有效',
+
+  `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT 'ACTIVE' COMMENT '用户状态: ACTIVE-正常, INACTIVE-禁用, LOCKED-锁定, DELETED-删除',
+
+  `login_type` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT '1' COMMENT '登录类型',
+
+  `bind_device` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '绑定设备',
+
+  `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时间',
+
+  `last_login_ip` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '最后登录IP',
+
+  `login_count` int DEFAULT '0' COMMENT '登录次数',
+
+  `pwd_error_count` int DEFAULT '0' COMMENT '密码错误次数',
+
+  `pwd_error_time` datetime DEFAULT NULL COMMENT '密码错误时间',
+
+  `pwd_expire_time` datetime DEFAULT NULL COMMENT '密码过期时间',
+
+  `is_deleted` tinyint(1) DEFAULT '0' COMMENT '是否删除: 0-否, 1-是',
+
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+
+  `create_user_id` bigint DEFAULT NULL COMMENT '创建者ID',
+
+  `update_user_id` bigint DEFAULT NULL COMMENT '修改者ID',
+
+  PRIMARY KEY (`id`),
+
+  UNIQUE KEY `uk_username` (`username`),
+
+  UNIQUE KEY `uk_mobile` (`mobile`),
+
+  UNIQUE KEY `uk_email` (`email`),
+
+  KEY `idx_status` (`status`),
+
+  KEY `idx_create_time` (`create_time`)
+
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='用户表';
+
+
+
+
+
+ALTER TABLE `tb_administrator_staff`
+ADD COLUMN `user_id` bigint DEFAULT NULL COMMENT '关联的用户ID（系统登录账号）',
+ADD CONSTRAINT `fk_staff_user` FOREIGN KEY (`user_id`) REFERENCES `tb_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE `tb_administrator`
+ADD COLUMN `administrator_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '管理人名称（机构或团队名称）' AFTER `id`;
+
+
+修改：ALTER TABLE `tb_administrator_staff`
+ADD COLUMN `user_id` bigint DEFAULT NULL COMMENT '关联的用户ID（系统登录账号）',
+ADD CONSTRAINT `fk_staff_user` FOREIGN KEY (`user_id`) REFERENCES `tb_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE `tb_administrator`
+ADD COLUMN `administrator_name` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '管理人名称（机构或团队名称）' AFTER `id`;

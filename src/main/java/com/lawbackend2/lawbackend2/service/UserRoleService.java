@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.service;
 
+import com.lawbackend2.lawbackend2.dto.response.UserWithRolesResponse;
 import java.util.List;
 
 public interface UserRoleService {
@@ -11,4 +12,6 @@ public interface UserRoleService {
     void removeRolesFromUser(Long userId, List<Long> roleIds);
 
     void clearUserRoles(Long userId);
+
+    List<UserWithRolesResponse> getUserRoleList();
 }

@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.AdministratorCreateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorStaffCreateRequest;
+import com.lawbackend2.lawbackend2.dto.AdministratorStaffUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.Administrator;
 import com.lawbackend2.lawbackend2.entity.AdministratorStaff;
@@ -51,10 +52,18 @@ public class AdministratorController {
     public Result<PageResult<Administrator>> getAdministratorList(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "案件ID") @RequestParam(required = false) Long caseId) {
+            @Parameter(description = "案件ID") @RequestParam(required = false) Long caseId,
+            @Parameter(description = "管理人名称（模糊查询）") @RequestParam(required = false) String administratorName) {
 
-        List<Administrator> list = administratorService.getAdministratorList(pageNum, pageSize, caseId);
-        Long total = administratorService.getAdministratorCount(caseId);
+        List<Administrator> list;
+        Long total;
+        if (administratorName != null && !administratorName.trim().isEmpty()) {
+            list = administratorService.getAdministratorList(pageNum, pageSize, caseId, administratorName);
+            total = administratorService.getAdministratorCount(caseId, administratorName);
+        } else {
+            list = administratorService.getAdministratorList(pageNum, pageSize, caseId);
+            total = administratorService.getAdministratorCount(caseId);
+        }
 
         return Result.success(PageResult.of(total, list));
     }
@@ -117,6 +126,27 @@ public class AdministratorController {
     public Result<Void> deleteAdministrator(@Parameter(description = "管理人ID") @PathVariable Long administratorId) {
         administratorService.deleteAdministrator(administratorId);
         log.info("删除管理人信息成功, ID: {}", administratorId);
+        return Result.success();
+    }
+
+    @Operation(summary = "删除管理人员工信息")
+    @DeleteMapping("/{administratorId}/staff/{staffId}")
+    public Result<Void> deleteAdministratorStaff(
+            @Parameter(description = "管理人ID") @PathVariable Long administratorId,
+            @Parameter(description = "员工ID") @PathVariable Long staffId) {
+        administratorService.deleteAdministratorStaff(staffId);
+        log.info("删除管理人员工信息成功, ID: {}", staffId);
+        return Result.success();
+    }
+
+    @Operation(summary = "更新管理人员工信息")
+    @PutMapping("/{administratorId}/staff/{staffId}")
+    public Result<Void> updateAdministratorStaff(
+            @Parameter(description = "管理人ID") @PathVariable Long administratorId,
+            @Parameter(description = "员工ID") @PathVariable Long staffId,
+            @Valid @RequestBody AdministratorStaffUpdateRequest request) {
+        administratorService.updateAdministratorStaff(staffId, request);
+        log.info("更新管理人员工信息成功, ID: {}", staffId);
         return Result.success();
     }
 

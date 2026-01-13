@@ -43,7 +43,6 @@ server:
   port: 8080
   servlet:
     context-path: /api/v1
-
 jwt:
   secret: lawbackend2-secret-key-for-jwt-token-generation-and-verification-must-be-at-least-256-bits
   access-token-expiration: 180000000

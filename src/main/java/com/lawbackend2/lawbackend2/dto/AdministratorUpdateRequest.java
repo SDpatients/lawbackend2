@@ -7,6 +7,12 @@ import javax.validation.constraints.Pattern;
 @Data
 public class AdministratorUpdateRequest {
 
+    private String administratorName;
+
+    private Long responsiblePersonId;
+
+    private String responsiblePerson;
+
     private String contactPhone;
 
     private String contactEmail;

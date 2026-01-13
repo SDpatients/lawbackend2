@@ -6,7 +6,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
 
 @Data
 @NoArgsConstructor
@@ -20,6 +19,5 @@ public class UserLoginRequest {
     @NotBlank(message = "密码不能为空")
     private String password;
 
-    @Size(min = 4, max = 6, message = "验证码长度不正确")
     private String smsCode;
 }

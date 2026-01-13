@@ -11,6 +11,9 @@ import javax.persistence.*;
 @Table(name = "tb_administrator")
 public class Administrator extends BaseEntity {
 
+    @Column(name = "administrator_name", length = 200, nullable = false)
+    private String administratorName;
+
     @Column(name = "case_id")
     private Long caseId;
 
@@ -19,6 +22,9 @@ public class Administrator extends BaseEntity {
 
     @Column(name = "responsible_person_id")
     private Long responsiblePersonId;
+
+    @Column(name = "responsible_person", length = 200)
+    private String responsiblePerson;
 
     @Column(name = "contact_phone", length = 50)
     private String contactPhone;

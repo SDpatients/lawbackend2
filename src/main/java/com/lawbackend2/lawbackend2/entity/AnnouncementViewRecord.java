@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
-@Table(name = "tb_announcement_view_record")
+@Table(name = "tb_case_announcement_view")
 public class AnnouncementViewRecord extends BaseEntity {
     @Column(name = "announcement_id")
     private Long announcementId;

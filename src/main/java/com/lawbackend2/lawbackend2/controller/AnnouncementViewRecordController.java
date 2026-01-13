@@ -16,7 +16,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/announcement-view-record")
+@RequestMapping("/announcement-view-record")
 @Tag(name = "公告查看记录", description = "公告查看记录相关接口")
 public class AnnouncementViewRecordController {
 

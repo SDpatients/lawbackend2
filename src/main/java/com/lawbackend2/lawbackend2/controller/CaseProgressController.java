@@ -17,7 +17,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/case-progress")
+@RequestMapping("/case-progress")
 @Tag(name = "案件进度管理", description = "案件进度管理相关接口")
 public class CaseProgressController {
 

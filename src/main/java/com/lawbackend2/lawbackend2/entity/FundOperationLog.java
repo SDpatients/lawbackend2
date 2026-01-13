@@ -6,9 +6,6 @@ import lombok.EqualsAndHashCode;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
-/**
- * 资金操作日志实体类
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
@@ -22,31 +19,51 @@ import java.time.LocalDateTime;
 })
 public class FundOperationLog extends BaseEntity {
 
-    /** 案件ID */
     @Column(name = "case_id")
     private Long caseId;
 
-    /** 操作类型 */
     @Column(name = "operation_type", length = 50)
     private String operationType;
 
-    /** 操作内容 */
-    @Column(name = "operation_content", columnDefinition = "TEXT")
+    @Column(name = "operation_content", length = 1000)
     private String operationContent;
 
-    /** 操作人ID */
+    @Column(name = "operation_result", length = 20)
+    private String operationResult;
+
+    @Column(name = "data_before", columnDefinition = "TEXT")
+    private String dataBefore;
+
+    @Column(name = "data_after", columnDefinition = "TEXT")
+    private String dataAfter;
+
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
+    @Column(name = "related_business_type", length = 50)
+    private String relatedBusinessType;
+
+    @Column(name = "related_business_id")
+    private Long relatedBusinessId;
+
+    @Column(name = "is_audited")
+    private Boolean isAudited = false;
+
+    @Column(name = "audit_date")
+    private LocalDateTime auditDate;
+
+    @Column(name = "audit_user_id")
+    private Long auditUserId;
+
     @Column(name = "operator_id")
     private Long operatorId;
 
-    /** 操作时间 */
     @Column(name = "operation_time")
     private LocalDateTime operationTime;
 
-    /** IP地址 */
     @Column(name = "ip_address", length = 50)
     private String ipAddress;
 
-    /** 浏览器信息 */
-    @Column(name = "browser_info", length = 500)
+    @Column(name = "browser_info", length = 200)
     private String browserInfo;
 }

@@ -19,7 +19,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/notification")
+@RequestMapping("/notification")
 @Tag(name = "通知管理", description = "通知管理相关接口")
 public class NotificationController {
 
@@ -60,12 +60,12 @@ public class NotificationController {
     @GetMapping("/search")
     @Operation(summary = "搜索通知", description = "根据条件搜索用户通知")
     public ResponseEntity<ApiResponse<Page<Notification>>> searchNotifications(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
-            @Parameter(description = "通知类型") @RequestParam(required = false) String type,
-            @Parameter(description = "是否已读") @RequestParam(required = false) Boolean isRead,
-            @Parameter(description = "通知状态") @RequestParam(required = false) String status,
-            @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer pageNum,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
+            @Parameter(description = "用户ID") @RequestParam("userId") Long userId,
+            @Parameter(description = "通知类型") @RequestParam(value = "type", required = false) String type,
+            @Parameter(description = "是否已读") @RequestParam(value = "isRead", required = false) Boolean isRead,
+            @Parameter(description = "通知状态") @RequestParam(value = "status", required = false) String status,
+            @Parameter(description = "页码") @RequestParam(value = "pageNum", defaultValue = "0") Integer pageNum,
+            @Parameter(description = "每页大小") @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
         Pageable pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<Notification> notifications = notificationService.searchNotifications(userId, type, isRead, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(notifications));
@@ -122,8 +122,8 @@ public class NotificationController {
     @PutMapping("/{notificationId}/status")
     @Operation(summary = "更新通知状态", description = "更新通知的状态")
     public ResponseEntity<ApiResponse<Void>> updateNotificationStatus(
-            @Parameter(description = "通知ID") @PathVariable Long notificationId,
-            @Parameter(description = "通知状态") @RequestParam String status) {
+            @Parameter(description = "通知ID") @PathVariable("notificationId") Long notificationId,
+            @Parameter(description = "通知状态") @RequestParam("status") String status) {
         notificationService.updateNotificationStatus(notificationId, status);
         return ResponseEntity.ok(ApiResponse.success(null));
     }

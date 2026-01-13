@@ -4,11 +4,9 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import javax.persistence.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/**
- * 资金审批实体类
- */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Entity
@@ -22,35 +20,51 @@ import java.time.LocalDateTime;
 })
 public class FundApproval extends BaseEntity {
 
-    /** 流程ID */
     @Column(name = "flow_id")
     private Long flowId;
 
-    /** 案件ID */
     @Column(name = "case_id")
     private Long caseId;
 
-    /** 金额 */
     @Column(name = "amount", precision = 18, scale = 2)
-    private java.math.BigDecimal amount;
+    private BigDecimal amount;
 
-    /** 审批状态 */
     @Column(name = "approval_status", length = 20)
-    private String approvalStatus;
+    private String approvalStatus = "PENDING";
 
-    /** 审批内容 */
-    @Column(name = "approval_content", columnDefinition = "TEXT")
+    @Column(name = "approval_level")
+    private Integer approvalLevel = 1;
+
+    @Column(name = "approval_stage", length = 50)
+    private String approvalStage;
+
+    @Column(name = "approval_content", length = 500)
     private String approvalContent;
 
-    /** 审批人ID */
     @Column(name = "approver_id")
     private Long approverId;
 
-    /** 审批时间 */
     @Column(name = "approval_time")
     private LocalDateTime approvalTime;
 
-    /** 审批意见 */
     @Column(name = "approval_opinion", length = 500)
     private String approvalOpinion;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "attachments", columnDefinition = "TEXT")
+    private String attachments;
+
+    @Column(name = "is_timeout")
+    private Boolean isTimeout = false;
+
+    @Column(name = "timeout_date")
+    private LocalDateTime timeoutDate;
+
+    @Column(name = "related_business_type", length = 50)
+    private String relatedBusinessType;
+
+    @Column(name = "related_business_id")
+    private Long relatedBusinessId;
 }

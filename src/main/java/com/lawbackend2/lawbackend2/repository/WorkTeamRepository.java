@@ -21,4 +21,7 @@ public interface WorkTeamRepository extends JpaRepository<WorkTeam, Long> {
                                      @Param("teamName") String teamName,
                                      @Param("teamLeaderId") Long teamLeaderId,
                                      Pageable pageable);
+
+    @Query("SELECT wt FROM WorkTeam wt WHERE wt.isDeleted = false AND wt.id = :teamId")
+    WorkTeam findWorkTeamById(@Param("teamId") Long teamId);
 }

@@ -37,4 +37,7 @@ public class AdministratorStaff extends BaseEntity {
 
     @Column(name = "appointment_date")
     private java.time.LocalDate appointmentDate;
+
+    @Column(name = "user_id")
+    private Long userId;
 }

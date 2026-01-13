@@ -20,7 +20,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/todo")
+@RequestMapping("/todo")
 @Tag(name = "待办管理", description = "待办事项管理相关接口")
 public class TodoController {
 
@@ -77,6 +77,14 @@ public class TodoController {
     public ResponseEntity<ApiResponse<List<Todo>>> getPendingTodos(
             @Parameter(description = "用户ID") @RequestParam Long userId) {
         List<Todo> todos = todoService.getPendingTodos(userId);
+        return ResponseEntity.ok(ApiResponse.success(todos));
+    }
+
+    @GetMapping("/COMPLETED")
+    @Operation(summary = "获取已完成待办事项", description = "获取用户的所有已完成待办事项")
+    public ResponseEntity<ApiResponse<List<Todo>>> getCompletedTodos(
+            @Parameter(description = "用户ID") @RequestParam Long userId) {
+        List<Todo> todos = todoService.getCompletedTodos(userId);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 

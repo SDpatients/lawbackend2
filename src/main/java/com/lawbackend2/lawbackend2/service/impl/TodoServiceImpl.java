@@ -114,6 +114,11 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
+    public List<Todo> getCompletedTodos(Long userId) {
+        return todoRepository.findByUserIdAndStatusOrderByCompletedTimeDesc(userId, "COMPLETED");
+    }
+
+    @Override
     public List<Todo> getOverdueTodos(Long userId) {
         return todoRepository.findByUserIdAndDeadlineBefore(userId, LocalDateTime.now());
     }

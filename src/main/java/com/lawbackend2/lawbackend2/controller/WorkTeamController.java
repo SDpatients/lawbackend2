@@ -7,6 +7,9 @@ import com.lawbackend2.lawbackend2.dto.request.WorkTeamCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamMemberCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamMemberPermissionRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.WorkTeamDetailResponse;
+import com.lawbackend2.lawbackend2.dto.response.WorkTeamMemberDetailResponse;
+import com.lawbackend2.lawbackend2.dto.response.WorkTeamMemberResponse;
 import com.lawbackend2.lawbackend2.entity.WorkTeam;
 import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.entity.WorkTeamPermission;
@@ -68,6 +71,13 @@ public class WorkTeamController {
         return Result.success(workTeam);
     }
 
+    @Operation(summary = "获取工作团队详情(含成员信息)")
+    @GetMapping("/{teamId}/detail")
+    public Result<WorkTeamDetailResponse> getWorkTeamDetailWithMembers(@Parameter(description = "团队ID") @PathVariable Long teamId) {
+        WorkTeamDetailResponse response = workTeamService.getWorkTeamDetailWithMembers(teamId);
+        return Result.success(response);
+    }
+
     @Operation(summary = "更新工作团队信息")
     @PutMapping("/{teamId}")
     public Result<Void> updateWorkTeam(
@@ -101,20 +111,34 @@ public class WorkTeamController {
 
     @Operation(summary = "团队成员列表")
     @GetMapping("/{teamId}/members")
-    public Result<List<WorkTeamMember>> getWorkTeamMembers(@Parameter(description = "团队ID") @PathVariable Long teamId) {
-        List<WorkTeamMember> members = workTeamService.getWorkTeamMembers(teamId);
+    public Result<List<WorkTeamMemberResponse>> getWorkTeamMembers(@Parameter(description = "团队ID") @PathVariable Long teamId) {
+        List<WorkTeamMemberResponse> members = workTeamService.getWorkTeamMembers(teamId);
         return Result.success(members);
     }
 
+    @Operation(summary = "获取团队成员详情")
+    @GetMapping("/member/{memberId}")
+    public Result<WorkTeamMemberDetailResponse> getWorkTeamMemberDetail(@Parameter(description = "成员ID") @PathVariable Long memberId) {
+        WorkTeamMemberDetailResponse response = workTeamService.getWorkTeamMemberDetail(memberId);
+        return Result.success(response);
+    }
+
+    @Operation(summary = "删除团队成员")
+    @DeleteMapping("/member/{memberId}")
+    public Result<Void> removeWorkTeamMember(@Parameter(description = "成员ID") @PathVariable Long memberId) {
+        workTeamService.removeWorkTeamMember(memberId);
+        return Result.success();
+    }
+
     @Operation(summary = "获取团队成员权限")
-    @GetMapping("/work-team-member/{memberId}/permissions")
+    @GetMapping("/member/{memberId}/permissions")
     public Result<List<WorkTeamPermission>> getWorkTeamMemberPermissions(@Parameter(description = "成员ID") @PathVariable Long memberId) {
         List<WorkTeamPermission> permissions = workTeamService.getWorkTeamMemberPermissions(memberId);
         return Result.success(permissions);
     }
 
     @Operation(summary = "更新团队成员权限")
-    @PutMapping("/work-team-member/{memberId}/permission")
+    @PutMapping("/member/{memberId}/permission")
     public Result<Void> updateWorkTeamMemberPermission(
             @Parameter(description = "成员ID") @PathVariable Long memberId,
             @Valid @RequestBody WorkTeamMemberPermissionRequest request) {
@@ -124,12 +148,19 @@ public class WorkTeamController {
     }
 
     @Operation(summary = "分配团队成员权限")
-    @PostMapping("/work-team-member/{memberId}/permissions")
+    @PostMapping("/member/{memberId}/permissions")
     public Result<Void> assignWorkTeamMemberPermissions(
             @Parameter(description = "成员ID") @PathVariable Long memberId,
             @Valid @RequestBody AssignWorkTeamPermissionsRequest request) {
 
         workTeamService.assignPermissionsToMember(memberId, request);
+        return Result.success();
+    }
+
+    @Operation(summary = "删除团队成员权限")
+    @DeleteMapping("/permission/{permissionId}")
+    public Result<Void> removeWorkTeamMemberPermission(@Parameter(description = "权限ID") @PathVariable Long permissionId) {
+        workTeamService.removeWorkTeamMemberPermission(permissionId);
         return Result.success();
     }
 }

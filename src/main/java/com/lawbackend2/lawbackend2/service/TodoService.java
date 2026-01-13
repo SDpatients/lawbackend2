@@ -32,6 +32,8 @@ public interface TodoService {
 
     List<Todo> getPendingTodos(Long userId);
 
+    List<Todo> getCompletedTodos(Long userId);
+
     List<Todo> getOverdueTodos(Long userId);
 
     Long countPendingTodos(Long userId);

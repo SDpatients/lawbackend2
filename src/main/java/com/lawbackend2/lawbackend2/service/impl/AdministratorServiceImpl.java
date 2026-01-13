@@ -2,14 +2,17 @@ package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.dto.AdministratorCreateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorStaffCreateRequest;
+import com.lawbackend2.lawbackend2.dto.AdministratorStaffUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.Administrator;
 import com.lawbackend2.lawbackend2.entity.AdministratorStaff;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.AdministratorRepository;
 import com.lawbackend2.lawbackend2.repository.AdministratorStaffRepository;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.AdministratorService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -29,13 +32,16 @@ public class AdministratorServiceImpl implements AdministratorService {
     private final AdministratorRepository administratorRepository;
     private final AdministratorStaffRepository administratorStaffRepository;
     private final BankruptCaseRepository bankruptCaseRepository;
+    private final UserRepository userRepository;
 
     public AdministratorServiceImpl(AdministratorRepository administratorRepository,
                                      AdministratorStaffRepository administratorStaffRepository,
-                                     BankruptCaseRepository bankruptCaseRepository) {
+                                     BankruptCaseRepository bankruptCaseRepository,
+                                     UserRepository userRepository) {
         this.administratorRepository = administratorRepository;
         this.administratorStaffRepository = administratorStaffRepository;
         this.bankruptCaseRepository = bankruptCaseRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -85,6 +91,17 @@ public class AdministratorServiceImpl implements AdministratorService {
     }
 
     @Override
+    public List<Administrator> getAdministratorList(Integer pageNum, Integer pageSize, Long caseId, String administratorName) {
+        log.debug("查询管理人列表, pageNum: {}, pageSize: {}, caseId: {}, administratorName: {}", pageNum, pageSize, caseId, administratorName);
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+
+        Page<Administrator> page = administratorRepository.findByConditions(caseId, administratorName, pageable);
+
+        return page.getContent();
+    }
+
+    @Override
     public Long getAdministratorCount(Long caseId) {
         if (caseId != null) {
             return administratorRepository.findByCaseId(caseId, Pageable.unpaged()).getTotalElements();
@@ -94,12 +111,26 @@ public class AdministratorServiceImpl implements AdministratorService {
     }
 
     @Override
+    public Long getAdministratorCount(Long caseId, String administratorName) {
+        return administratorRepository.countByConditions(caseId, administratorName);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Administrator updateAdministrator(Long administratorId, AdministratorUpdateRequest request) {
         log.info("更新管理人信息, ID: {}", administratorId);
 
         Administrator administrator = getAdministratorById(administratorId);
 
+        if (request.getAdministratorName() != null) {
+            administrator.setAdministratorName(request.getAdministratorName());
+        }
+        if (request.getResponsiblePersonId() != null) {
+            administrator.setResponsiblePersonId(request.getResponsiblePersonId());
+        }
+        if (request.getResponsiblePerson() != null) {
+            administrator.setResponsiblePerson(request.getResponsiblePerson());
+        }
         if (request.getContactPhone() != null) {
             administrator.setContactPhone(request.getContactPhone());
         }
@@ -122,6 +153,11 @@ public class AdministratorServiceImpl implements AdministratorService {
 
         Administrator administrator = administratorRepository.findById(request.getAdministratorId())
                 .orElseThrow(() -> new BusinessException("管理人不存在"));
+
+        if (request.getUserId() != null) {
+            User user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new BusinessException("用户不存在"));
+        }
 
         AdministratorStaff staff = new AdministratorStaff();
         BeanUtils.copyProperties(request, staff);
@@ -155,5 +191,58 @@ public class AdministratorServiceImpl implements AdministratorService {
         }
         administratorRepository.deleteById(administratorId);
         log.info("管理人信息删除成功, ID: {}", administratorId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteAdministratorStaff(Long staffId) {
+        log.info("删除管理人员工信息, ID: {}", staffId);
+        if (!administratorStaffRepository.existsById(staffId)) {
+            throw new BusinessException("管理人员工信息不存在");
+        }
+        administratorStaffRepository.deleteById(staffId);
+        log.info("管理人员工信息删除成功, ID: {}", staffId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public AdministratorStaff updateAdministratorStaff(Long staffId, AdministratorStaffUpdateRequest request) {
+        log.info("更新管理人员工信息, ID: {}", staffId);
+
+        AdministratorStaff staff = getAdministratorStaffById(staffId);
+
+        if (request.getUserId() != null) {
+            User user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new BusinessException("用户不存在"));
+            staff.setUserId(request.getUserId());
+        }
+        if (request.getName() != null) {
+            staff.setName(request.getName());
+        }
+        if (request.getStaffType() != null) {
+            staff.setStaffType(request.getStaffType());
+        }
+        if (request.getIdNumber() != null) {
+            staff.setIdNumber(request.getIdNumber());
+        }
+        if (request.getLawyerLicenseNumber() != null) {
+            staff.setLawyerLicenseNumber(request.getLawyerLicenseNumber());
+        }
+        if (request.getContactPhone() != null) {
+            staff.setContactPhone(request.getContactPhone());
+        }
+        if (request.getEmail() != null) {
+            staff.setEmail(request.getEmail());
+        }
+        if (request.getResponsibility() != null) {
+            staff.setResponsibility(request.getResponsibility());
+        }
+        if (request.getAppointmentDate() != null) {
+            staff.setAppointmentDate(request.getAppointmentDate());
+        }
+
+        AdministratorStaff updated = administratorStaffRepository.save(staff);
+        log.info("管理人员工信息更新成功, ID: {}", updated.getId());
+        return updated;
     }
 }

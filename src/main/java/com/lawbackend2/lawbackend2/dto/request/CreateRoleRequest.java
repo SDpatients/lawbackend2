@@ -27,4 +27,6 @@ public class CreateRoleRequest {
 
     @Size(max = 20, message = "状态长度不能超过20")
     private String status;
+
+    private Integer sortOrder;
 }

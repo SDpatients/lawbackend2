@@ -6,6 +6,9 @@ import com.lawbackend2.lawbackend2.dto.request.WorkTeamCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamMemberCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamMemberPermissionRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.WorkTeamDetailResponse;
+import com.lawbackend2.lawbackend2.dto.response.WorkTeamMemberDetailResponse;
+import com.lawbackend2.lawbackend2.dto.response.WorkTeamMemberResponse;
 import com.lawbackend2.lawbackend2.entity.WorkTeam;
 import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.entity.WorkTeamPermission;
@@ -20,17 +23,25 @@ public interface WorkTeamService {
 
     WorkTeam getWorkTeamDetail(Long teamId);
 
+    WorkTeamDetailResponse getWorkTeamDetailWithMembers(Long teamId);
+
     void updateWorkTeam(Long teamId, WorkTeamUpdateRequest request);
 
     void deleteWorkTeam(Long teamId);
 
     Long addWorkTeamMember(Long teamId, WorkTeamMemberCreateRequest request);
 
-    List<WorkTeamMember> getWorkTeamMembers(Long teamId);
+    List<WorkTeamMemberResponse> getWorkTeamMembers(Long teamId);
+
+    WorkTeamMemberDetailResponse getWorkTeamMemberDetail(Long memberId);
 
     List<WorkTeamPermission> getWorkTeamMemberPermissions(Long memberId);
 
     void updateWorkTeamMemberPermission(Long memberId, WorkTeamMemberPermissionRequest request);
 
     void assignPermissionsToMember(Long memberId, AssignWorkTeamPermissionsRequest request);
+
+    void removeWorkTeamMember(Long memberId);
+
+    void removeWorkTeamMemberPermission(Long permissionId);
 }

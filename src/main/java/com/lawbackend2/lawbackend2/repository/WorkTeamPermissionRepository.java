@@ -15,4 +15,16 @@ public interface WorkTeamPermissionRepository extends JpaRepository<WorkTeamPerm
            "AND wtp.teamMemberId = :teamMemberId " +
            "AND wtp.isAllowed = 1")
     List<WorkTeamPermission> findByTeamMemberId(@Param("teamMemberId") Long teamMemberId);
+
+    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE wtp.isDeleted = false " +
+           "AND wtp.teamMemberId = :teamMemberId")
+    List<WorkTeamPermission> findAllByTeamMemberId(@Param("teamMemberId") Long teamMemberId);
+
+    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE wtp.isDeleted = false " +
+           "AND wtp.teamMemberId = :teamMemberId " +
+           "AND wtp.moduleType = :moduleType " +
+           "AND wtp.permissionType = :permissionType")
+    WorkTeamPermission findByMemberAndModuleAndPermission(@Param("teamMemberId") Long teamMemberId,
+                                                          @Param("moduleType") String moduleType,
+                                                          @Param("permissionType") String permissionType);
 }
