@@ -126,6 +126,21 @@ public class BankruptCaseController {
         return Result.success(PageResult.of(total, list));
     }
 
+    @Operation(summary = "根据用户ID查询案件列表(分页)")
+    @GetMapping("/user/{userId}/list")
+    public Result<PageResult<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse>> getUserCaseList(
+            @Parameter(description = "用户ID") @PathVariable Long userId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
+            @Parameter(description = "案号") @RequestParam(required = false) String caseNumber) {
+
+        List<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse> list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, caseNumber);
+        Long total = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
+
+        return Result.success(PageResult.of(total, list));
+    }
+
     private Long getCurrentUserId() {
         return 1L;
     }

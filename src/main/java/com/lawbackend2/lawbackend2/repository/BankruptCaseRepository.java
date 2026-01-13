@@ -104,4 +104,24 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
 
     @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName) FROM BankruptCase c WHERE (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByCaseNumber(@Param("caseNumber") String caseNumber, Pageable pageable);
+
+    Page<BankruptCase> findByCreateUserId(Long createUserId, Pageable pageable);
+
+    Page<BankruptCase> findByCreateUserIdAndCaseStatus(Long createUserId, String caseStatus, Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.createUserId = :userId AND c.caseNumber LIKE %:caseNumber%")
+    Page<BankruptCase> findByCreateUserIdAndCaseNumberLike(@Param("userId") Long userId, @Param("caseNumber") String caseNumber, Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.createUserId = :userId AND c.caseStatus = :caseStatus AND c.caseNumber LIKE %:caseNumber%")
+    Page<BankruptCase> findByCreateUserIdAndCaseStatusAndCaseNumberLike(@Param("userId") Long userId, @Param("caseStatus") String caseStatus, @Param("caseNumber") String caseNumber, Pageable pageable);
+
+    Long countByCreateUserId(Long createUserId);
+
+    Long countByCreateUserIdAndCaseStatus(Long createUserId, String caseStatus);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.createUserId = :userId AND c.caseNumber LIKE %:caseNumber%")
+    Long countByCreateUserIdAndCaseNumberLike(@Param("userId") Long userId, @Param("caseNumber") String caseNumber);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.createUserId = :userId AND c.caseStatus = :caseStatus AND c.caseNumber LIKE %:caseNumber%")
+    Long countByCreateUserIdAndCaseStatusAndCaseNumberLike(@Param("userId") Long userId, @Param("caseStatus") String caseStatus, @Param("caseNumber") String caseNumber);
 }

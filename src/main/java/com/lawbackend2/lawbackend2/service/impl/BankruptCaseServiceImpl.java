@@ -1,6 +1,7 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.dto.*;
+import com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -35,7 +37,6 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
 
         BankruptCase bankruptCase = new BankruptCase();
         BeanUtils.copyProperties(request, bankruptCase);
-        bankruptCase.setCreatorId(userId);
         bankruptCase.setCreateUserId(userId);
         bankruptCase.setUpdateUserId(userId);
         bankruptCase.setIsSimplifiedTrial(request.getIsSimplifiedTrial() != null && request.getIsSimplifiedTrial() == 1);
@@ -180,5 +181,45 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     public Long getCaseSimpleCount(String caseNumber) {
         Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result = bankruptCaseRepository.findSimpleInfoByCaseNumber(caseNumber, Pageable.unpaged());
         return result.getTotalElements();
+    }
+
+    @Override
+    public List<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber) {
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Page<BankruptCase> page;
+        
+        if (caseStatus != null && caseNumber != null && !caseNumber.isEmpty()) {
+            page = bankruptCaseRepository.findByCreateUserIdAndCaseStatusAndCaseNumberLike(userId, caseStatus, caseNumber, pageable);
+        } else if (caseStatus != null) {
+            page = bankruptCaseRepository.findByCreateUserIdAndCaseStatus(userId, caseStatus, pageable);
+        } else if (caseNumber != null && !caseNumber.isEmpty()) {
+            page = bankruptCaseRepository.findByCreateUserIdAndCaseNumberLike(userId, caseNumber, pageable);
+        } else {
+            page = bankruptCaseRepository.findByCreateUserId(userId, pageable);
+        }
+        
+        return page.getContent().stream().map(caseEntity -> UserCaseListResponse.of(
+                caseEntity.getId(),
+                caseEntity.getCaseNumber(),
+                caseEntity.getAcceptanceCourt(),
+                caseEntity.getDesignatedJudge(),
+                caseEntity.getFilingDate(),
+                caseEntity.getCaseProgress(),
+                caseEntity.getCaseStatus(),
+                caseEntity.getCreateUserId()
+        )).collect(Collectors.toList());
+    }
+
+    @Override
+    public Long getUserCaseCount(Long userId, String caseStatus, String caseNumber) {
+        if (caseStatus != null && caseNumber != null && !caseNumber.isEmpty()) {
+            return bankruptCaseRepository.countByCreateUserIdAndCaseStatusAndCaseNumberLike(userId, caseStatus, caseNumber);
+        } else if (caseStatus != null) {
+            return bankruptCaseRepository.countByCreateUserIdAndCaseStatus(userId, caseStatus);
+        } else if (caseNumber != null && !caseNumber.isEmpty()) {
+            return bankruptCaseRepository.countByCreateUserIdAndCaseNumberLike(userId, caseNumber);
+        } else {
+            return bankruptCaseRepository.countByCreateUserId(userId);
+        }
     }
 }

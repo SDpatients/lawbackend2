@@ -27,4 +27,8 @@ public interface BankruptCaseService {
     List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleList(Integer page, Integer size, String caseNumber);
 
     Long getCaseSimpleCount(String caseNumber);
+
+    List<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber);
+
+    Long getUserCaseCount(Long userId, String caseStatus, String caseNumber);
 }

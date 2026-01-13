@@ -65,21 +65,21 @@ public class WorkTeamController {
     }
 
     @Operation(summary = "获取工作团队详情")
-    @GetMapping("/{teamId}")
+    @GetMapping("/{teamId:\\d+}")
     public Result<WorkTeam> getWorkTeamDetail(@Parameter(description = "团队ID") @PathVariable Long teamId) {
         WorkTeam workTeam = workTeamService.getWorkTeamDetail(teamId);
         return Result.success(workTeam);
     }
 
     @Operation(summary = "获取工作团队详情(含成员信息)")
-    @GetMapping("/{teamId}/detail")
+    @GetMapping("/{teamId:\\d+}/detail")
     public Result<WorkTeamDetailResponse> getWorkTeamDetailWithMembers(@Parameter(description = "团队ID") @PathVariable Long teamId) {
         WorkTeamDetailResponse response = workTeamService.getWorkTeamDetailWithMembers(teamId);
         return Result.success(response);
     }
 
     @Operation(summary = "更新工作团队信息")
-    @PutMapping("/{teamId}")
+    @PutMapping("/{teamId:\\d+}")
     public Result<Void> updateWorkTeam(
             @Parameter(description = "团队ID") @PathVariable Long teamId,
             @Valid @RequestBody WorkTeamUpdateRequest request) {
@@ -89,14 +89,14 @@ public class WorkTeamController {
     }
 
     @Operation(summary = "删除工作团队")
-    @DeleteMapping("/{teamId}")
+    @DeleteMapping("/{teamId:\\d+}")
     public Result<Void> deleteWorkTeam(@Parameter(description = "团队ID") @PathVariable Long teamId) {
         workTeamService.deleteWorkTeam(teamId);
         return Result.success();
     }
 
     @Operation(summary = "添加团队成员")
-    @PostMapping("/{teamId}/member")
+    @PostMapping("/{teamId:\\d+}/member")
     public Result<Map<String, Object>> addWorkTeamMember(
             @Parameter(description = "团队ID") @PathVariable Long teamId,
             @Valid @RequestBody WorkTeamMemberCreateRequest request) {
@@ -110,35 +110,35 @@ public class WorkTeamController {
     }
 
     @Operation(summary = "团队成员列表")
-    @GetMapping("/{teamId}/members")
+    @GetMapping("/{teamId:\\d+}/members")
     public Result<List<WorkTeamMemberResponse>> getWorkTeamMembers(@Parameter(description = "团队ID") @PathVariable Long teamId) {
         List<WorkTeamMemberResponse> members = workTeamService.getWorkTeamMembers(teamId);
         return Result.success(members);
     }
 
     @Operation(summary = "获取团队成员详情")
-    @GetMapping("/member/{memberId}")
+    @GetMapping("/member/{memberId:\\d+}")
     public Result<WorkTeamMemberDetailResponse> getWorkTeamMemberDetail(@Parameter(description = "成员ID") @PathVariable Long memberId) {
         WorkTeamMemberDetailResponse response = workTeamService.getWorkTeamMemberDetail(memberId);
         return Result.success(response);
     }
 
     @Operation(summary = "删除团队成员")
-    @DeleteMapping("/member/{memberId}")
+    @DeleteMapping("/member/{memberId:\\d+}")
     public Result<Void> removeWorkTeamMember(@Parameter(description = "成员ID") @PathVariable Long memberId) {
         workTeamService.removeWorkTeamMember(memberId);
         return Result.success();
     }
 
     @Operation(summary = "获取团队成员权限")
-    @GetMapping("/member/{memberId}/permissions")
+    @GetMapping("/member/{memberId:\\d+}/permissions")
     public Result<List<WorkTeamPermission>> getWorkTeamMemberPermissions(@Parameter(description = "成员ID") @PathVariable Long memberId) {
         List<WorkTeamPermission> permissions = workTeamService.getWorkTeamMemberPermissions(memberId);
         return Result.success(permissions);
     }
 
     @Operation(summary = "更新团队成员权限")
-    @PutMapping("/member/{memberId}/permission")
+    @PutMapping("/member/{memberId:\\d+}/permission")
     public Result<Void> updateWorkTeamMemberPermission(
             @Parameter(description = "成员ID") @PathVariable Long memberId,
             @Valid @RequestBody WorkTeamMemberPermissionRequest request) {
@@ -148,7 +148,7 @@ public class WorkTeamController {
     }
 
     @Operation(summary = "分配团队成员权限")
-    @PostMapping("/member/{memberId}/permissions")
+    @PostMapping("/member/{memberId:\\d+}/permissions")
     public Result<Void> assignWorkTeamMemberPermissions(
             @Parameter(description = "成员ID") @PathVariable Long memberId,
             @Valid @RequestBody AssignWorkTeamPermissionsRequest request) {
@@ -158,7 +158,7 @@ public class WorkTeamController {
     }
 
     @Operation(summary = "删除团队成员权限")
-    @DeleteMapping("/permission/{permissionId}")
+    @DeleteMapping("/permission/{permissionId:\\d+}")
     public Result<Void> removeWorkTeamMemberPermission(@Parameter(description = "权限ID") @PathVariable Long permissionId) {
         workTeamService.removeWorkTeamMemberPermission(permissionId);
         return Result.success();

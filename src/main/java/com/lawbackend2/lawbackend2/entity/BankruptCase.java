@@ -73,9 +73,6 @@ public class BankruptCase extends BaseEntity {
     @Column(name = "undertaking_personnel", length = 255)
     private String undertakingPersonnel;
 
-    @Column(name = "creator_id")
-    private Long creatorId;
-
     @Column(name = "creator_name", length = 100)
     private String creatorName;
 
