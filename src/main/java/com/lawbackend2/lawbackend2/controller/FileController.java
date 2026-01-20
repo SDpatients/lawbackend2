@@ -43,7 +43,7 @@ public class FileController {
     public Result<FileRecord> uploadFile(
             @Parameter(description = "文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "业务类型") @RequestParam("bizType") String bizType,
-            @Parameter(description = "业务ID") @RequestParam("bizId") Long bizId) {
+            @Parameter(description = "业务ID") @RequestParam("bizId") String bizId) {
 
         FileRecord fileRecord = fileService.uploadFile(file, bizType, bizId);
         return Result.success(fileRecord);
@@ -90,7 +90,7 @@ public class FileController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "业务类型") @RequestParam(required = false) String bizType,
-            @Parameter(description = "业务ID") @RequestParam(required = false) Long bizId,
+            @Parameter(description = "业务ID") @RequestParam(required = false) String bizId,
             @Parameter(description = "状态") @RequestParam(required = false) String status) {
 
         PageResult<FileRecord> result = fileService.getFileList(pageNum, pageSize, bizType, bizId, status);
@@ -142,7 +142,7 @@ public class FileController {
     @GetMapping("/statistics")
     public Result<Map<String, Object>> getFileStatistics(
             @Parameter(description = "业务类型") @RequestParam(required = false) String bizType,
-            @Parameter(description = "业务ID") @RequestParam(required = false) Long bizId) {
+            @Parameter(description = "业务ID") @RequestParam(required = false) String bizId) {
         Map<String, Object> statistics = fileService.getFileStatistics(bizType, bizId);
         return Result.success(statistics);
     }
@@ -169,5 +169,40 @@ public class FileController {
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileRecord.getOriginalFileName() + "\"")
                 .body(resource);
+    }
+
+    @Operation(summary = "案件任务文件批量上传")
+    @PostMapping("/case-task/upload")
+    public Result<List<FileRecord>> uploadCaseTaskFiles(
+            @Parameter(description = "文件列表") @RequestParam("files") List<MultipartFile> files,
+            @Parameter(description = "案件ID") @RequestParam("caseId") Long caseId,
+            @Parameter(description = "阶段号") @RequestParam("stageNum") Integer stageNum,
+            @Parameter(description = "任务编码") @RequestParam("taskCode") String taskCode) {
+
+        List<FileRecord> fileRecords = fileService.uploadCaseTaskFiles(files, caseId, stageNum, taskCode);
+        return Result.success(fileRecords);
+    }
+
+    @Operation(summary = "获取案件任务文件列表")
+    @GetMapping("/case-task/files")
+    public Result<List<FileRecord>> getCaseTaskFiles(
+            @Parameter(description = "案件ID") @RequestParam("caseId") Long caseId,
+            @Parameter(description = "阶段号") @RequestParam("stageNum") Integer stageNum,
+            @Parameter(description = "任务编码") @RequestParam("taskCode") String taskCode) {
+
+        List<FileRecord> fileRecords = fileService.getCaseTaskFiles(caseId, stageNum, taskCode);
+        return Result.success(fileRecords);
+    }
+
+    @Operation(summary = "删除案件任务文件")
+    @DeleteMapping("/case-task/files")
+    public Result<Void> deleteCaseTaskFiles(
+            @Parameter(description = "文件ID列表") @RequestBody List<Long> fileIds,
+            @Parameter(description = "案件ID") @RequestParam("caseId") Long caseId,
+            @Parameter(description = "阶段号") @RequestParam("stageNum") Integer stageNum,
+            @Parameter(description = "任务编码") @RequestParam("taskCode") String taskCode) {
+
+        fileService.deleteCaseTaskFiles(fileIds, caseId, stageNum, taskCode);
+        return Result.success();
     }
 }

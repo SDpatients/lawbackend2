@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +37,8 @@ public class BankAccountController {
     @Operation(summary = "创建银行账户")
     @PostMapping
     public Result<Map<String, Object>> createBankAccount(@RequestBody BankAccountCreateRequest request) {
-        Long accountId = bankAccountService.createBankAccount(request);
+        Long userId = getCurrentUserId();
+        Long accountId = bankAccountService.createBankAccount(request, userId);
 
         Map<String, Object> data = new HashMap<>();
         data.put("accountId", accountId);
@@ -50,16 +53,19 @@ public class BankAccountController {
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "账户类型") @RequestParam(required = false) String accountType,
             @Parameter(description = "状态") @RequestParam(required = false) String status,
-            @Parameter(description = "账户名称(模糊查询)") @RequestParam(required = false) String accountName) {
+            @Parameter(description = "账户名称(模糊查询)") @RequestParam(required = false) String accountName,
+            @Parameter(description = "案件ID") @RequestParam(required = false) Long caseId) {
 
-        PageResult<BankAccount> result = bankAccountService.getBankAccountList(pageNum, pageSize, accountType, status, accountName);
+        Long userId = getCurrentUserId();
+        PageResult<BankAccount> result = bankAccountService.getBankAccountList(pageNum, pageSize, accountType, status, accountName, caseId, userId);
         return Result.success(result);
     }
 
     @Operation(summary = "获取银行账户详情")
     @GetMapping("/{accountId}")
     public Result<BankAccount> getBankAccountDetail(@Parameter(description = "账户ID") @PathVariable Long accountId) {
-        BankAccount bankAccount = bankAccountService.getBankAccountDetail(accountId);
+        Long userId = getCurrentUserId();
+        BankAccount bankAccount = bankAccountService.getBankAccountDetail(accountId, userId);
         return Result.success(bankAccount);
     }
 
@@ -69,7 +75,8 @@ public class BankAccountController {
             @Parameter(description = "账户ID") @PathVariable Long accountId,
             @Valid @RequestBody BankAccountUpdateRequest request) {
 
-        bankAccountService.updateBankAccount(accountId, request);
+        Long userId = getCurrentUserId();
+        bankAccountService.updateBankAccount(accountId, request, userId);
         return Result.success();
     }
 
@@ -79,7 +86,8 @@ public class BankAccountController {
             @Parameter(description = "账户ID") @PathVariable Long accountId,
             @Valid @RequestBody BankAccountPasswordRequest request) {
 
-        bankAccountService.updateBankAccountPassword(accountId, request);
+        Long userId = getCurrentUserId();
+        bankAccountService.updateBankAccountPassword(accountId, request, userId);
         return Result.success();
     }
 
@@ -89,7 +97,8 @@ public class BankAccountController {
             @Parameter(description = "账户ID") @PathVariable Long accountId,
             @Valid @RequestBody BankAccountStatusRequest request) {
 
-        bankAccountService.updateBankAccountStatus(accountId, request);
+        Long userId = getCurrentUserId();
+        bankAccountService.updateBankAccountStatus(accountId, request, userId);
         return Result.success();
     }
 
@@ -98,5 +107,13 @@ public class BankAccountController {
     public Result<Void> deleteBankAccount(@Parameter(description = "账户ID") @PathVariable Long accountId) {
         bankAccountService.deleteBankAccount(accountId);
         return Result.success();
+    }
+
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() != null) {
+            return (Long) authentication.getPrincipal();
+        }
+        throw new RuntimeException("无法获取当前用户ID");
     }
 }

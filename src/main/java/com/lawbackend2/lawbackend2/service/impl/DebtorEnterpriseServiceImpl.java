@@ -6,9 +6,14 @@ import com.lawbackend2.lawbackend2.dto.DebtorEnterpriseResponse;
 import com.lawbackend2.lawbackend2.dto.DebtorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.DebtorEnterprise;
+import com.lawbackend2.lawbackend2.entity.Role;
+import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.DebtorEnterpriseRepository;
+import com.lawbackend2.lawbackend2.repository.RoleRepository;
+import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
+import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.DebtorEnterpriseService;
 import lombok.extern.slf4j.Slf4j;
@@ -17,9 +22,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,13 +39,22 @@ public class DebtorEnterpriseServiceImpl implements DebtorEnterpriseService {
     private final DebtorEnterpriseRepository debtorEnterpriseRepository;
     private final BankruptCaseRepository bankruptCaseRepository;
     private final BankruptCaseService bankruptCaseService;
+    private final WorkTeamMemberRepository workTeamMemberRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
 
     public DebtorEnterpriseServiceImpl(DebtorEnterpriseRepository debtorEnterpriseRepository,
                                      BankruptCaseRepository bankruptCaseRepository,
-                                     BankruptCaseService bankruptCaseService) {
+                                     BankruptCaseService bankruptCaseService,
+                                     WorkTeamMemberRepository workTeamMemberRepository,
+                                     UserRoleRepository userRoleRepository,
+                                     RoleRepository roleRepository) {
         this.debtorEnterpriseRepository = debtorEnterpriseRepository;
         this.bankruptCaseRepository = bankruptCaseRepository;
         this.bankruptCaseService = bankruptCaseService;
+        this.workTeamMemberRepository = workTeamMemberRepository;
+        this.userRoleRepository = userRoleRepository;
+        this.roleRepository = roleRepository;
     }
 
     @Override
@@ -66,8 +83,10 @@ public class DebtorEnterpriseServiceImpl implements DebtorEnterpriseService {
     }
 
     @Override
-    public DebtorEnterpriseResponse getDebtorByIdWithCaseInfo(Long debtorId) {
+    public DebtorEnterpriseResponse getDebtorByIdWithCaseInfo(Long debtorId, Long userId) {
         DebtorEnterprise debtorEnterprise = getDebtorById(debtorId);
+        
+        checkPermission(debtorEnterprise, userId);
         
         DebtorEnterpriseResponse response = new DebtorEnterpriseResponse();
         BeanUtils.copyProperties(debtorEnterprise, response);
@@ -161,13 +180,15 @@ public class DebtorEnterpriseServiceImpl implements DebtorEnterpriseService {
     }
 
     @Override
-    public PageResult<DebtorEnterpriseResponse> getDebtorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String enterpriseName, String unifiedSocialCreditCode, String legalRepresentative) {
+    public PageResult<DebtorEnterpriseResponse> getDebtorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String enterpriseName, String unifiedSocialCreditCode, String legalRepresentative, Long userId) {
         log.debug("查询债务人列表（含案件信息）, pageNum: {}, pageSize: {}, caseId: {}, enterpriseName: {}, unifiedSocialCreditCode: {}, legalRepresentative: {}", 
                   pageNum, pageSize, caseId, enterpriseName, unifiedSocialCreditCode, legalRepresentative);
 
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
 
-        Page<DebtorEnterprise> page = debtorEnterpriseRepository.findByConditions(caseId, enterpriseName, unifiedSocialCreditCode, legalRepresentative, pageable);
+        Specification<DebtorEnterprise> spec = buildSpecificationWithPermission(caseId, enterpriseName, unifiedSocialCreditCode, legalRepresentative, userId);
+        Page<DebtorEnterprise> page = debtorEnterpriseRepository.findAll(spec, pageable);
+        
         List<DebtorEnterprise> debtorList = page.getContent();
         Long total = page.getTotalElements();
 
@@ -203,5 +224,67 @@ public class DebtorEnterpriseServiceImpl implements DebtorEnterpriseService {
                 .collect(Collectors.toList());
 
         return PageResult.of(total, responseList);
+    }
+
+    private Specification<DebtorEnterprise> buildSpecificationWithPermission(Long caseId, String enterpriseName, String unifiedSocialCreditCode, String legalRepresentative, Long userId) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (caseId != null) {
+                predicates.add(cb.equal(root.get("caseId"), caseId));
+            }
+
+            if (enterpriseName != null && !enterpriseName.isEmpty()) {
+                predicates.add(cb.like(root.get("enterpriseName"), "%" + enterpriseName + "%"));
+            }
+
+            if (unifiedSocialCreditCode != null && !unifiedSocialCreditCode.isEmpty()) {
+                predicates.add(cb.like(root.get("unifiedSocialCreditCode"), "%" + unifiedSocialCreditCode + "%"));
+            }
+
+            if (legalRepresentative != null && !legalRepresentative.isEmpty()) {
+                predicates.add(cb.like(root.get("legalRepresentative"), "%" + legalRepresentative + "%"));
+            }
+
+            if (!isAdminOrSuperAdmin(userId)) {
+                List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+                predicates.add(cb.or(
+                    cb.equal(root.get("createUserId"), userId),
+                    root.get("caseId").in(accessibleCaseIds)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private void checkPermission(DebtorEnterprise debtorEnterprise, Long userId) {
+        if (isAdminOrSuperAdmin(userId)) {
+            return;
+        }
+        
+        if (debtorEnterprise.getCreateUserId().equals(userId)) {
+            return;
+        }
+        
+        if (debtorEnterprise.getCaseId() != null) {
+            List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+            if (accessibleCaseIds.contains(debtorEnterprise.getCaseId())) {
+                return;
+            }
+        }
+        
+        throw new BusinessException("无权访问该债务人信息");
+    }
+
+    private boolean isAdminOrSuperAdmin(Long userId) {
+        List<Long> roleIds = userRoleRepository.findRoleIdsByUserId(userId);
+        for (Long roleId : roleIds) {
+            Role role = roleRepository.findById(roleId).orElse(null);
+            if (role != null && ("ADMIN".equals(role.getRoleCode()) || "SUPER_ADMIN".equals(role.getRoleCode()))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

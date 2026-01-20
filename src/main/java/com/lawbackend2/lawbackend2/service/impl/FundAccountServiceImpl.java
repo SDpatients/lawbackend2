@@ -28,11 +28,14 @@ public class FundAccountServiceImpl implements FundAccountService {
     }
 
     @Override
-    public Long createFundAccount(FundAccountCreateRequest request) {
+    public Long createFundAccount(FundAccountCreateRequest request, Long userId) {
         FundAccount fundAccount = new FundAccount();
         BeanUtils.copyProperties(request, fundAccount);
         fundAccount.setCurrentBalance(request.getInitialBalance());
         fundAccount.setStatus("ACTIVE");
+        fundAccount.setCreateUserId(userId);
+        fundAccount.setUpdateUserId(userId);
+        fundAccount.setAccountId(System.currentTimeMillis());
 
         FundAccount saved = fundAccountRepository.save(fundAccount);
         return saved.getId();

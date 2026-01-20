@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,7 +50,8 @@ public class DebtorEnterpriseController {
     @Operation(summary = "获取债务人详情", description = "返回债务人详细信息，包含案件案号和案件名称")
     @GetMapping("/{debtorId}")
     public Result<DebtorEnterpriseResponse> getDebtorById(@Parameter(description = "债务人ID") @PathVariable Long debtorId) {
-        DebtorEnterpriseResponse debtorEnterprise = debtorEnterpriseService.getDebtorByIdWithCaseInfo(debtorId);
+        Long userId = getCurrentUserId();
+        DebtorEnterpriseResponse debtorEnterprise = debtorEnterpriseService.getDebtorByIdWithCaseInfo(debtorId, userId);
         return Result.success(debtorEnterprise);
     }
 
@@ -62,7 +65,8 @@ public class DebtorEnterpriseController {
             @Parameter(description = "统一社会信用代码") @RequestParam(required = false) String unifiedSocialCreditCode,
             @Parameter(description = "法定代表人") @RequestParam(required = false) String legalRepresentative) {
 
-        PageResult<DebtorEnterpriseResponse> pageResult = debtorEnterpriseService.getDebtorListWithCaseInfo(pageNum, pageSize, caseId, enterpriseName, unifiedSocialCreditCode, legalRepresentative);
+        Long userId = getCurrentUserId();
+        PageResult<DebtorEnterpriseResponse> pageResult = debtorEnterpriseService.getDebtorListWithCaseInfo(pageNum, pageSize, caseId, enterpriseName, unifiedSocialCreditCode, legalRepresentative, userId);
 
         return Result.success(pageResult);
     }
@@ -87,6 +91,10 @@ public class DebtorEnterpriseController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() != null) {
+            return (Long) authentication.getPrincipal();
+        }
+        throw new RuntimeException("无法获取当前用户ID");
     }
 }

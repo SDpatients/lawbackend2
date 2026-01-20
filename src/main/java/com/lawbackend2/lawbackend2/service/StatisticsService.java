@@ -4,7 +4,14 @@ import com.lawbackend2.lawbackend2.dto.response.FundAccountStatistics;
 import com.lawbackend2.lawbackend2.dto.response.FundApprovalStatistics;
 import com.lawbackend2.lawbackend2.dto.response.FundTransactionExport;
 import com.lawbackend2.lawbackend2.dto.response.FundTransactionStatistics;
+import com.lawbackend2.lawbackend2.dto.response.TimeTrendStatistics;
 import com.lawbackend2.lawbackend2.dto.response.WorkPlanStatistics;
+import com.lawbackend2.lawbackend2.dto.response.CrossAnalysisStatistics;
+import com.lawbackend2.lawbackend2.dto.response.RankingStatistics;
+import com.lawbackend2.lawbackend2.dto.response.FundApprovalExport;
+import com.lawbackend2.lawbackend2.dto.response.FundAccountExport;
+import com.lawbackend2.lawbackend2.dto.response.WorkPlanExport;
+import org.springframework.data.domain.Pageable;
 
 public interface StatisticsService {
 
@@ -17,4 +24,28 @@ public interface StatisticsService {
     FundAccountStatistics getFundAccountStatistics(Long caseId);
 
     WorkPlanStatistics getWorkPlanStatistics(Long caseId);
+
+    TimeTrendStatistics getFundTransactionTrend(Long caseId, String period);
+
+    TimeTrendStatistics getFundApprovalTrend(Long caseId, String period);
+
+    TimeTrendStatistics getCaseTrend(String period);
+
+    CrossAnalysisStatistics getCaseCrossAnalysis();
+
+    RankingStatistics getCaseAmountRanking(Integer topN);
+
+    RankingStatistics getCreditorClaimAmountRanking(Integer topN);
+
+    FundApprovalExport exportFundApprovals(Long caseId);
+
+    FundAccountExport exportFundAccounts(Long caseId);
+
+    WorkPlanExport exportWorkPlans(Long caseId);
+
+    FundApprovalExport exportFundApprovals(Long caseId, Pageable pageable);
+
+    FundAccountExport exportFundAccounts(Long caseId, Pageable pageable);
+
+    WorkPlanExport exportWorkPlans(Long caseId, Pageable pageable);
 }

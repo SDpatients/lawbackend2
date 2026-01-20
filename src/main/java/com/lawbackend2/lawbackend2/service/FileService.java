@@ -9,11 +9,11 @@ import java.util.Map;
 
 public interface FileService {
 
-    FileRecord uploadFile(MultipartFile file, String bizType, Long bizId);
+    FileRecord uploadFile(MultipartFile file, String bizType, String bizId);
 
     FileRecord getFileInfo(Long fileId);
 
-    PageResult<FileRecord> getFileList(Integer pageNum, Integer pageSize, String bizType, Long bizId, String status);
+    PageResult<FileRecord> getFileList(Integer pageNum, Integer pageSize, String bizType, String bizId, String status);
 
     void deleteFile(Long fileId);
 
@@ -25,7 +25,13 @@ public interface FileService {
 
     void updateFilesStatus(List<Long> fileIds, String status);
 
-    Map<String, Object> getFileStatistics(String bizType, Long bizId);
+    Map<String, Object> getFileStatistics(String bizType, String bizId);
 
     FileRecord previewFile(Long fileId);
+
+    List<FileRecord> uploadCaseTaskFiles(List<MultipartFile> files, Long caseId, Integer stageNum, String taskCode);
+
+    List<FileRecord> getCaseTaskFiles(Long caseId, Integer stageNum, String taskCode);
+
+    void deleteCaseTaskFiles(List<Long> fileIds, Long caseId, Integer stageNum, String taskCode);
 }

@@ -86,4 +86,16 @@ public interface CreditorClaimRepository extends JpaRepository<CreditorClaim, Lo
 
     @Query("SELECT c.claimNature, COUNT(c) FROM CreditorClaim c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.claimNature IS NOT NULL GROUP BY c.claimNature")
     List<Object[]> countByClaimNatureGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT c.caseId, SUM(c.totalAmount) FROM CreditorClaim c WHERE c.isDeleted = false GROUP BY c.caseId ORDER BY SUM(c.totalAmount) DESC")
+    List<Object[]> sumTotalAmountByCaseIdGroup();
+
+    @Query("SELECT c.caseId, c.caseName, SUM(c.totalAmount) FROM CreditorClaim c WHERE c.isDeleted = false GROUP BY c.caseId, c.caseName ORDER BY SUM(c.totalAmount) DESC")
+    List<Object[]> sumTotalAmountByCaseIdWithNameGroup();
+
+    @Query("SELECT c.id, c.creditorName, c.totalAmount FROM CreditorClaim c WHERE c.isDeleted = false ORDER BY c.totalAmount DESC")
+    List<Object[]> findTopClaimsByAmount();
+
+    @Query("SELECT c.id, c.creditorName, c.totalAmount FROM CreditorClaim c WHERE c.isDeleted = false ORDER BY c.totalAmount DESC")
+    List<Object[]> findTopClaimsByAmount(org.springframework.data.domain.Pageable pageable);
 }

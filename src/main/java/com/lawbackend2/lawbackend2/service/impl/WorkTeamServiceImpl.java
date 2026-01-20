@@ -5,6 +5,7 @@ import com.lawbackend2.lawbackend2.dto.request.AssignWorkTeamPermissionsRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamMemberCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamMemberPermissionRequest;
+import com.lawbackend2.lawbackend2.dto.request.WorkTeamMemberUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkTeamUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.response.WorkTeamDetailResponse;
 import com.lawbackend2.lawbackend2.dto.response.WorkTeamMemberDetailResponse;
@@ -22,6 +23,7 @@ import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
 import com.lawbackend2.lawbackend2.repository.WorkTeamPermissionRepository;
 import com.lawbackend2.lawbackend2.repository.WorkTeamRepository;
 import com.lawbackend2.lawbackend2.service.WorkTeamService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,6 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -85,6 +88,7 @@ public class WorkTeamServiceImpl implements WorkTeamService {
 
     @Override
     public WorkTeamDetailResponse getWorkTeamDetailWithMembers(Long teamId) {
+        checkViewPermission(teamId);
         WorkTeam workTeam = workTeamRepository.findWorkTeamById(teamId);
         if (workTeam == null) {
             throw new BusinessException("工作团队不存在");
@@ -127,6 +131,31 @@ public class WorkTeamServiceImpl implements WorkTeamService {
     }
 
     @Override
+    public PageResult<WorkTeamDetailResponse> getWorkTeamListWithDetails(Integer pageNum, Integer pageSize, Long caseId, String status, String teamName, Long teamLeaderId) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        List<Long> accessibleTeamIds = workTeamMemberRepository.findTeamIdsByUserId(currentUserId);
+        
+        if (accessibleTeamIds.isEmpty()) {
+            PageResult<WorkTeamDetailResponse> result = new PageResult<>();
+            result.setTotal(0L);
+            result.setList(List.of());
+            return result;
+        }
+
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Page<WorkTeam> page = workTeamRepository.findByConditionsAndTeamIds(caseId, status, teamName, teamLeaderId, accessibleTeamIds, pageable);
+
+        List<WorkTeamDetailResponse> detailResponses = page.getContent().stream()
+                .map(team -> getWorkTeamDetailWithMembers(team.getId()))
+                .collect(Collectors.toList());
+
+        PageResult<WorkTeamDetailResponse> result = new PageResult<>();
+        result.setTotal(page.getTotalElements());
+        result.setList(detailResponses);
+        return result;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateWorkTeam(Long teamId, WorkTeamUpdateRequest request) {
         WorkTeam workTeam = getWorkTeamDetail(teamId);
@@ -147,6 +176,7 @@ public class WorkTeamServiceImpl implements WorkTeamService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteWorkTeam(Long teamId) {
+        checkAdminPermission(teamId);
         if (!workTeamRepository.existsById(teamId)) {
             throw new BusinessException("工作团队不存在");
         }
@@ -155,20 +185,40 @@ public class WorkTeamServiceImpl implements WorkTeamService {
 
     @Override
     public Long addWorkTeamMember(Long teamId, WorkTeamMemberCreateRequest request) {
+        checkEditPermission(teamId);
         WorkTeam workTeam = getWorkTeamDetail(teamId);
 
-        WorkTeamMember member = new WorkTeamMember();
-        BeanUtils.copyProperties(request, member);
-        member.setTeamId(teamId);
-        member.setIsActive(1);
-        member.setStatus("ACTIVE");
+        String permissionLevel = request.getPermissionLevel();
+        if ("管理".equals(permissionLevel)) {
+            permissionLevel = "ADMIN";
+        }
+        if ("查看".equals(permissionLevel)) {
+            permissionLevel = "VIEW";
+        }
 
-        WorkTeamMember saved = workTeamMemberRepository.save(member);
-        return saved.getId();
+        Long lastSavedId = null;
+        for (Long userId : request.getUserId()) {
+            WorkTeamMember member = new WorkTeamMember();
+            member.setCaseId(request.getCaseId());
+            member.setUserId(userId);
+            member.setTeamRole(request.getTeamRole());
+            member.setPermissionLevel(permissionLevel);
+            member.setTeamId(teamId);
+            member.setIsActive(1);
+            member.setStatus("ACTIVE");
+
+            WorkTeamMember saved = workTeamMemberRepository.save(member);
+            lastSavedId = saved.getId();
+
+            initializePermissionsForMember(saved.getId(), permissionLevel);
+        }
+
+        return lastSavedId;
     }
 
     @Override
     public List<WorkTeamMemberResponse> getWorkTeamMembers(Long teamId) {
+        checkViewPermission(teamId);
         List<WorkTeamMember> members = workTeamMemberRepository.findByTeamId(teamId);
         return members.stream()
                 .map(this::convertToMemberResponse)
@@ -230,6 +280,12 @@ public class WorkTeamServiceImpl implements WorkTeamService {
 
     @Override
     public List<WorkTeamPermission> getWorkTeamMemberPermissions(Long memberId) {
+        WorkTeamMember member = workTeamMemberRepository.findMemberById(memberId);
+        if (member == null) {
+            throw new BusinessException("团队成员不存在");
+        }
+        
+        checkViewPermission(member.getTeamId());
         return workTeamPermissionRepository.findByTeamMemberId(memberId);
     }
 
@@ -240,10 +296,72 @@ public class WorkTeamServiceImpl implements WorkTeamService {
 
         List<WorkTeamPermission> existingPermissions = workTeamPermissionRepository.findByTeamMemberId(memberId);
 
+        String permissionLevel = request.getPermissionLevel();
+        // 转换中文权限级别为英文
+        if ("管理".equals(permissionLevel)) {
+            permissionLevel = "ADMIN";
+        }
+        if ("查看".equals(permissionLevel)) {
+            permissionLevel = "VIEW";
+        }
+
         for (WorkTeamPermission permission : existingPermissions) {
-            permission.setIsAllowed("ADMIN".equals(request.getPermissionLevel()) ? 1 : 0);
+            permission.setIsAllowed("ADMIN".equals(permissionLevel) ? 1 : 0);
             workTeamPermissionRepository.save(permission);
         }
+
+        if (request.getTeamRole() != null) {
+            member.setTeamRole(request.getTeamRole());
+            workTeamMemberRepository.save(member);
+        }
+
+        // 更新成员的权限级别字段
+        member.setPermissionLevel(permissionLevel);
+        workTeamMemberRepository.save(member);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateWorkTeamMember(Long memberId, WorkTeamMemberUpdateRequest request) {
+        WorkTeamMember member = workTeamMemberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException("团队成员不存在"));
+        
+        checkEditPermission(member.getTeamId());
+
+        if (request.getTeamRole() != null) {
+            member.setTeamRole(request.getTeamRole());
+        }
+
+        if (request.getPermissionLevel() != null) {
+            String permissionLevel = request.getPermissionLevel();
+            if ("管理".equals(permissionLevel)) {
+                permissionLevel = "ADMIN";
+            }
+            if ("查看".equals(permissionLevel)) {
+                permissionLevel = "VIEW";
+            }
+
+            member.setPermissionLevel(permissionLevel);
+
+            List<WorkTeamPermission> existingPermissions = workTeamPermissionRepository.findByTeamMemberId(memberId);
+            for (WorkTeamPermission permission : existingPermissions) {
+                permission.setIsAllowed(calculateIsAllowedForUpdate(permissionLevel, permission.getModuleType(), permission.getPermissionType()));
+                workTeamPermissionRepository.save(permission);
+            }
+        }
+
+        workTeamMemberRepository.save(member);
+    }
+
+    private Integer calculateIsAllowedForUpdate(String permissionLevel, String moduleType, String permissionType) {
+        if ("ADMIN".equals(permissionLevel)) {
+            return 1;
+        } else if ("EDIT".equals(permissionLevel)) {
+            return "VIEW".equals(permissionType) || "EDIT".equals(permissionType) ? 1 : 0;
+        } else if ("VIEW".equals(permissionLevel)) {
+            return "VIEW".equals(permissionType) ? 1 : 0;
+        }
+        return 0;
     }
 
     @Override
@@ -268,6 +386,8 @@ public class WorkTeamServiceImpl implements WorkTeamService {
     public void removeWorkTeamMember(Long memberId) {
         WorkTeamMember member = workTeamMemberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException("团队成员不存在"));
+        
+        checkEditPermission(member.getTeamId());
         
         workTeamMemberRepository.delete(member);
     }
@@ -335,5 +455,110 @@ public class WorkTeamServiceImpl implements WorkTeamService {
                 .createUserId(permission.getCreateUserId())
                 .updateUserId(permission.getUpdateUserId())
                 .build();
+    }
+
+    private void initializePermissionsForMember(Long memberId, String permissionLevel) {
+        List<String> modules = Arrays.asList("CASE", "CREDITOR", "FUND");
+        List<String> permissionTypes = Arrays.asList("VIEW", "EDIT", "DELETE", "APPROVE");
+
+        for (String module : modules) {
+            for (String permType : permissionTypes) {
+                WorkTeamPermission permission = new WorkTeamPermission();
+                permission.setTeamMemberId(memberId);
+                permission.setModuleType(module);
+                permission.setPermissionType(permType);
+                permission.setIsAllowed(calculateIsAllowed(permissionLevel, permType));
+                permission.setStatus("ACTIVE");
+                workTeamPermissionRepository.save(permission);
+            }
+        }
+
+        List<String> announcementPermTypes = Arrays.asList("VIEW", "EDIT", "DELETE", "PUBLISH");
+        for (String permType : announcementPermTypes) {
+            WorkTeamPermission permission = new WorkTeamPermission();
+            permission.setTeamMemberId(memberId);
+            permission.setModuleType("ANNOUNCEMENT");
+            permission.setPermissionType(permType);
+            permission.setIsAllowed(calculateIsAllowedForAnnouncement(permissionLevel, permType));
+            permission.setStatus("ACTIVE");
+            workTeamPermissionRepository.save(permission);
+        }
+    }
+
+    private Integer calculateIsAllowed(String permissionLevel, String permissionType) {
+        if ("ADMIN".equals(permissionLevel)) {
+            return 1;
+        } else if ("EDIT".equals(permissionLevel)) {
+            return "VIEW".equals(permissionType) || "EDIT".equals(permissionType) ? 1 : 0;
+        } else if ("VIEW".equals(permissionLevel)) {
+            return "VIEW".equals(permissionType) ? 1 : 0;
+        }
+        return 0;
+    }
+
+    private Integer calculateIsAllowedForAnnouncement(String permissionLevel, String permissionType) {
+        if ("ADMIN".equals(permissionLevel)) {
+            return 1;
+        } else if ("EDIT".equals(permissionLevel)) {
+            return "VIEW".equals(permissionType) ? 1 : 0;
+        } else if ("VIEW".equals(permissionLevel)) {
+            return "VIEW".equals(permissionType) ? 1 : 0;
+        }
+        return 0;
+    }
+
+    @Override
+    public List<WorkTeam> getWorkTeamsByUserId(Long userId) {
+        List<Long> teamIds = workTeamMemberRepository.findTeamIdsByUserId(userId);
+        
+        if (teamIds.isEmpty()) {
+            return List.of();
+        }
+        
+        return workTeamRepository.findByIdIn(teamIds);
+    }
+
+    private void checkViewPermission(Long teamId) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        WorkTeam workTeam = workTeamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException("工作团队不存在"));
+
+        List<WorkTeamMember> members = workTeamMemberRepository.findByUserId(currentUserId);
+        boolean hasPermission = members.stream()
+                .anyMatch(member -> member.getTeamId().equals(teamId));
+
+        if (!hasPermission) {
+            throw new BusinessException("您没有权限查看该工作团队");
+        }
+    }
+
+    private void checkEditPermission(Long teamId) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        WorkTeam workTeam = workTeamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException("工作团队不存在"));
+
+        List<WorkTeamMember> members = workTeamMemberRepository.findByUserId(currentUserId);
+        boolean hasPermission = members.stream()
+                .anyMatch(member -> member.getTeamId().equals(teamId) 
+                        && ("EDIT".equals(member.getPermissionLevel()) || "ADMIN".equals(member.getPermissionLevel())));
+
+        if (!hasPermission) {
+            throw new BusinessException("您没有权限编辑该工作团队");
+        }
+    }
+
+    private void checkAdminPermission(Long teamId) {
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        WorkTeam workTeam = workTeamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException("工作团队不存在"));
+
+        List<WorkTeamMember> members = workTeamMemberRepository.findByUserId(currentUserId);
+        boolean hasPermission = members.stream()
+                .anyMatch(member -> member.getTeamId().equals(teamId) 
+                        && "ADMIN".equals(member.getPermissionLevel()));
+
+        if (!hasPermission) {
+            throw new BusinessException("您没有权限管理该工作团队");
+        }
     }
 }

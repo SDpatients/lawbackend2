@@ -33,7 +33,7 @@ public class CaseCreateRequest {
 
     private String caseProgress = "FIRST";
 
-    private LocalDateTime debtClaimDeadline;
+    private LocalDate debtClaimDeadline;
 
     private LocalDate filingDate;
 

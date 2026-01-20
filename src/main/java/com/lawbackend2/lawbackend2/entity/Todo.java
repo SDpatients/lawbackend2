@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import javax.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,6 +57,7 @@ public class Todo {
     private String status = "PENDING";
 
     @Column(name = "deadline")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
     private LocalDateTime deadline;
 
     @Column(name = "completed_time")

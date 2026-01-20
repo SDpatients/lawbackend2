@@ -45,6 +45,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        // OPTIONS请求是CORS预检请求，直接放行
+        if ("OPTIONS".equals(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String requestURI = request.getRequestURI();
 
         if (isPublicEndpoint(requestURI)) {
@@ -100,10 +106,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isPublicEndpoint(String requestURI) {
-        return requestURI.contains("/auth/") ||
+        // /auth/current-user 需要认证，所以排除在公共端点之外
+        // /auth/statistics, /auth/recent-failed, /auth/login-history 也需要认证
+        return (requestURI.contains("/auth/") && 
+                !requestURI.equals("/auth/current-user") && 
+                !requestURI.equals("/api/v1/auth/current-user") &&
+                !requestURI.equals("/auth/statistics") &&
+                !requestURI.equals("/api/v1/auth/statistics") &&
+                !requestURI.equals("/auth/recent-failed") &&
+                !requestURI.equals("/api/v1/auth/recent-failed") &&
+                !requestURI.equals("/auth/login-history") &&
+                !requestURI.equals("/api/v1/auth/login-history")) ||
                requestURI.contains("/user/register") ||
                requestURI.contains("/swagger") ||
                requestURI.contains("/api-docs") ||
-               requestURI.contains("/v3/api-docs");
+               requestURI.contains("/v3/api-docs") ||
+               requestURI.contains("/ws") ||
+               requestURI.contains("/sockjs") ||
+               requestURI.contains("/api/v1/ws") ||
+               requestURI.contains("/api/v1/sockjs");
     }
 }

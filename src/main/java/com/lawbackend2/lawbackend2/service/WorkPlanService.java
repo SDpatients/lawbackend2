@@ -8,15 +8,15 @@ import com.lawbackend2.lawbackend2.entity.WorkPlan;
 
 public interface WorkPlanService {
 
-    Long createWorkPlan(WorkPlanCreateRequest request);
+    Long createWorkPlan(WorkPlanCreateRequest request, Long userId);
 
-    PageResult<WorkPlan> getWorkPlanList(Integer pageNum, Integer pageSize, Long caseId, String planType, String executionStatus, String status);
+    PageResult<WorkPlan> getWorkPlanList(Integer pageNum, Integer pageSize, Long caseId, String planType, String executionStatus, String status, Long userId);
 
-    WorkPlan getWorkPlanDetail(Long planId);
+    WorkPlan getWorkPlanDetail(Long planId, Long userId);
 
-    void updateWorkPlan(Long planId, WorkPlanUpdateRequest request);
+    void updateWorkPlan(Long planId, WorkPlanUpdateRequest request, Long userId);
 
-    void updateWorkPlanStatus(Long planId, WorkPlanStatusRequest request);
+    void updateWorkPlanStatus(Long planId, WorkPlanStatusRequest request, Long userId);
 
     void deleteWorkPlan(Long planId);
 }

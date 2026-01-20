@@ -14,7 +14,7 @@ public interface DebtorEnterpriseService {
 
     DebtorEnterprise getDebtorById(Long debtorId);
 
-    DebtorEnterpriseResponse getDebtorByIdWithCaseInfo(Long debtorId);
+    DebtorEnterpriseResponse getDebtorByIdWithCaseInfo(Long debtorId, Long userId);
 
     List<DebtorEnterprise> getDebtorList(Integer pageNum, Integer pageSize, Long caseId, String enterpriseName);
 
@@ -24,5 +24,5 @@ public interface DebtorEnterpriseService {
 
     void deleteDebtor(Long debtorId);
 
-    PageResult<DebtorEnterpriseResponse> getDebtorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String enterpriseName, String unifiedSocialCreditCode, String legalRepresentative);
+    PageResult<DebtorEnterpriseResponse> getDebtorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String enterpriseName, String unifiedSocialCreditCode, String legalRepresentative, Long userId);
 }

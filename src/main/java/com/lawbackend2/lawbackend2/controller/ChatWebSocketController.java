@@ -9,6 +9,7 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
@@ -24,8 +25,8 @@ public class ChatWebSocketController {
     }
 
     @MessageMapping("/chat/send")
-    public void sendMessage(Authentication authentication, SendMessageRequest request) {
-        Long senderId = getUserIdFromAuthentication(authentication);
+    public void sendMessage(Authentication authentication, StompHeaderAccessor accessor, SendMessageRequest request) {
+        Long senderId = getUserId(authentication, accessor);
         log.info("收到WebSocket消息发送请求, 发送者: {}, 接收者: {}, 类型: {}", senderId, request.getReceiverId(), request.getMessageType());
 
         try {
@@ -37,8 +38,8 @@ public class ChatWebSocketController {
     }
 
     @MessageMapping("/chat/read/{messageId}")
-    public void markMessageAsRead(Authentication authentication, @DestinationVariable Long messageId) {
-        Long userId = getUserIdFromAuthentication(authentication);
+    public void markMessageAsRead(Authentication authentication, StompHeaderAccessor accessor, @DestinationVariable Long messageId) {
+        Long userId = getUserId(authentication, accessor);
         log.info("收到WebSocket消息已读请求, 用户: {}, 消息ID: {}", userId, messageId);
 
         try {
@@ -50,8 +51,8 @@ public class ChatWebSocketController {
     }
 
     @MessageMapping("/chat/recall/{messageId}")
-    public void recallMessage(Authentication authentication, @DestinationVariable Long messageId) {
-        Long userId = getUserIdFromAuthentication(authentication);
+    public void recallMessage(Authentication authentication, StompHeaderAccessor accessor, @DestinationVariable Long messageId) {
+        Long userId = getUserId(authentication, accessor);
         log.info("收到WebSocket消息撤回请求, 用户: {}, 消息ID: {}", userId, messageId);
 
         try {
@@ -64,16 +65,58 @@ public class ChatWebSocketController {
 
     @MessageMapping("/chat/typing/{conversationId}")
     @SendTo("/topic/chat/typing")
-    public String sendTypingStatus(Authentication authentication, @DestinationVariable Long conversationId) {
-        Long userId = getUserIdFromAuthentication(authentication);
+    public String sendTypingStatus(Authentication authentication, StompHeaderAccessor accessor, @DestinationVariable Long conversationId) {
+        Long userId = getUserId(authentication, accessor);
         log.info("用户 {} 在会话 {} 中正在输入", userId, conversationId);
         return userId + ":" + conversationId;
     }
 
-    private Long getUserIdFromAuthentication(Authentication authentication) {
-        if (authentication == null || authentication.getPrincipal() == null) {
-            throw new RuntimeException("用户未登录");
+    private Long getUserId(Authentication authentication, StompHeaderAccessor accessor) {
+        // 首先尝试从Authentication中获取
+        if (authentication != null && authentication.getPrincipal() != null) {
+            try {
+                String principal = authentication.getPrincipal().toString();
+                return Long.valueOf(principal);
+            } catch (NumberFormatException e) {
+                log.error("无法解析用户ID: {}", authentication.getPrincipal());
+            }
         }
-        return Long.valueOf(authentication.getPrincipal().toString());
+        
+        // 如果Authentication中没有，尝试从StompHeaderAccessor中获取
+        if (accessor != null && accessor.getUser() != null) {
+            try {
+                String principal = accessor.getUser().getName();
+                return Long.valueOf(principal);
+            } catch (NumberFormatException e) {
+                log.error("无法解析用户ID: {}", accessor.getUser().getName());
+            }
+        }
+        
+        // 如果StompHeaderAccessor中没有，尝试从session attributes中获取
+        if (accessor != null && accessor.getSessionAttributes() != null) {
+            Object userId = accessor.getSessionAttributes().get("userId");
+            if (userId != null) {
+                try {
+                    return Long.valueOf(userId.toString());
+                } catch (NumberFormatException e) {
+                    log.error("无法解析用户ID: {}", userId);
+                }
+            }
+        }
+        
+        throw new RuntimeException("用户未登录，请提供有效的JWT Token");
+    }
+    
+    private Long getUserIdFromAuthentication(Authentication authentication) {
+        if (authentication != null && authentication.getPrincipal() != null) {
+            try {
+                String principal = authentication.getPrincipal().toString();
+                return Long.valueOf(principal);
+            } catch (NumberFormatException e) {
+                log.error("无法解析用户ID: {}", authentication.getPrincipal());
+                throw new RuntimeException("用户ID格式错误");
+            }
+        }
+        throw new RuntimeException("用户未登录，请提供有效的JWT Token");
     }
 }

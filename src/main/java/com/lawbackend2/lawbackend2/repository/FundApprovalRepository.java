@@ -23,4 +23,16 @@ public interface FundApprovalRepository extends JpaRepository<FundApproval, Long
                                         Pageable pageable);
 
     List<FundApproval> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+
+    @Query("SELECT fa FROM FundApproval fa WHERE fa.isDeleted = false AND fa.caseId = :caseId AND fa.createTime BETWEEN :startDate AND :endDate")
+    List<FundApproval> findByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
+
+    @Query("SELECT COUNT(fa) FROM FundApproval fa WHERE fa.isDeleted = false AND fa.caseId = :caseId AND fa.createTime BETWEEN :startDate AND :endDate")
+    Long countByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
+
+    @Query("SELECT SUM(fa.amount) FROM FundApproval fa WHERE fa.isDeleted = false AND fa.caseId = :caseId AND fa.createTime BETWEEN :startDate AND :endDate")
+    java.math.BigDecimal sumAmountByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") java.time.LocalDateTime startDate, @Param("endDate") java.time.LocalDateTime endDate);
+
+    @Query("SELECT fa FROM FundApproval fa WHERE fa.isDeleted = false AND fa.caseId = :caseId")
+    Page<FundApproval> findByCaseIdAndIsDeletedWithPage(@Param("caseId") Long caseId, Pageable pageable);
 }

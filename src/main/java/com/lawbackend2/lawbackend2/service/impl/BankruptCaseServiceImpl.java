@@ -5,6 +5,7 @@ import com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
+import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -15,7 +16,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -23,9 +26,12 @@ import java.util.stream.Collectors;
 public class BankruptCaseServiceImpl implements BankruptCaseService {
 
     private final BankruptCaseRepository bankruptCaseRepository;
+    private final WorkTeamMemberRepository workTeamMemberRepository;
 
-    public BankruptCaseServiceImpl(BankruptCaseRepository bankruptCaseRepository) {
+    public BankruptCaseServiceImpl(BankruptCaseRepository bankruptCaseRepository, 
+                                 WorkTeamMemberRepository workTeamMemberRepository) {
         this.bankruptCaseRepository = bankruptCaseRepository;
+        this.workTeamMemberRepository = workTeamMemberRepository;
     }
 
     @Override
@@ -36,7 +42,14 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         }
 
         BankruptCase bankruptCase = new BankruptCase();
-        BeanUtils.copyProperties(request, bankruptCase);
+        // 先复制不包含debtClaimDeadline的属性
+        BeanUtils.copyProperties(request, bankruptCase, "debtClaimDeadline");
+        
+        // 单独处理debtClaimDeadline字段，将LocalDate转换为LocalDateTime
+        if (request.getDebtClaimDeadline() != null) {
+            bankruptCase.setDebtClaimDeadline(request.getDebtClaimDeadline().atStartOfDay());
+        }
+        
         bankruptCase.setCreateUserId(userId);
         bankruptCase.setUpdateUserId(userId);
         bankruptCase.setIsSimplifiedTrial(request.getIsSimplifiedTrial() != null && request.getIsSimplifiedTrial() == 1);
@@ -111,7 +124,8 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             bankruptCase.setAcceptanceCourt(request.getAcceptanceCourt());
         }
         if (request.getDebtClaimDeadline() != null) {
-            bankruptCase.setDebtClaimDeadline(request.getDebtClaimDeadline());
+            // 将LocalDate转换为LocalDateTime（00:00:00）
+            bankruptCase.setDebtClaimDeadline(request.getDebtClaimDeadline().atStartOfDay());
         }
 
         return bankruptCaseRepository.save(bankruptCase);
@@ -171,55 +185,145 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     }
 
     @Override
-    public List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleList(Integer page, Integer size, String caseNumber) {
+    public List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleList(Long userId, Integer page, Integer size, String caseNumber) {
+        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+        List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+        
+        // 2. 查询用户创建的所有案件ID
+        List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
+        List<Long> createdCaseIds = createdCases.stream()
+                .map(BankruptCase::getId)
+                .collect(Collectors.toList());
+        
+        // 3. 合并并去重所有案件ID
+        Set<Long> allCaseIdsSet = participatedCaseIds.stream()
+                .collect(Collectors.toSet());
+        allCaseIdsSet.addAll(createdCaseIds);
+        
+        List<Long> allCaseIds = new ArrayList<>(allCaseIdsSet);
+        
+        if (allCaseIds.isEmpty()) {
+            return List.of();
+        }
+        
+        // 4. 根据案件ID列表和案号条件查询案件简单信息，支持分页
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createTime"));
-        Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result = bankruptCaseRepository.findSimpleInfoByCaseNumber(caseNumber, pageable);
+        Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result;
+        
+        if (caseNumber != null && !caseNumber.isEmpty()) {
+            result = bankruptCaseRepository.findSimpleInfoByIdInAndCaseNumberLike(allCaseIds, caseNumber, pageable);
+        } else {
+            result = bankruptCaseRepository.findSimpleInfoByIdIn(allCaseIds, pageable);
+        }
+        
         return result.getContent();
     }
 
     @Override
-    public Long getCaseSimpleCount(String caseNumber) {
-        Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result = bankruptCaseRepository.findSimpleInfoByCaseNumber(caseNumber, Pageable.unpaged());
+    public Long getCaseSimpleCount(Long userId, String caseNumber) {
+        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+        List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+        
+        // 2. 查询用户创建的所有案件ID
+        List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
+        List<Long> createdCaseIds = createdCases.stream()
+                .map(BankruptCase::getId)
+                .collect(Collectors.toList());
+        
+        // 3. 合并并去重所有案件ID
+        Set<Long> allCaseIdsSet = participatedCaseIds.stream()
+                .collect(Collectors.toSet());
+        allCaseIdsSet.addAll(createdCaseIds);
+        
+        List<Long> allCaseIds = new ArrayList<>(allCaseIdsSet);
+        
+        if (allCaseIds.isEmpty()) {
+            return 0L;
+        }
+        
+        // 4. 根据案件ID列表和案号条件查询案件简单信息总数
+        Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result;
+        
+        if (caseNumber != null && !caseNumber.isEmpty()) {
+            result = bankruptCaseRepository.findSimpleInfoByIdInAndCaseNumberLike(allCaseIds, caseNumber, Pageable.unpaged());
+        } else {
+            result = bankruptCaseRepository.findSimpleInfoByIdIn(allCaseIds, Pageable.unpaged());
+        }
+        
         return result.getTotalElements();
     }
 
     @Override
-    public List<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber) {
+    public List<BankruptCase> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber) {
+        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+        List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+        
+        // 2. 查询用户创建的所有案件ID
+        List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
+        List<Long> createdCaseIds = createdCases.stream()
+                .map(BankruptCase::getId)
+                .collect(Collectors.toList());
+        
+        // 3. 合并并去重所有案件ID
+        Set<Long> allCaseIdsSet = participatedCaseIds.stream()
+                .collect(Collectors.toSet());
+        allCaseIdsSet.addAll(createdCaseIds);
+        
+        List<Long> allCaseIds = new ArrayList<>(allCaseIdsSet);
+        
+        if (allCaseIds.isEmpty()) {
+            return List.of();
+        }
+        
+        // 4. 根据案件ID列表和其他条件查询案件详情，支持分页
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<BankruptCase> page;
         
         if (caseStatus != null && caseNumber != null && !caseNumber.isEmpty()) {
-            page = bankruptCaseRepository.findByCreateUserIdAndCaseStatusAndCaseNumberLike(userId, caseStatus, caseNumber, pageable);
+            page = bankruptCaseRepository.findByIdInAndCaseStatusAndCaseNumberLike(allCaseIds, caseStatus, caseNumber, pageable);
         } else if (caseStatus != null) {
-            page = bankruptCaseRepository.findByCreateUserIdAndCaseStatus(userId, caseStatus, pageable);
+            page = bankruptCaseRepository.findByIdInAndCaseStatus(allCaseIds, caseStatus, pageable);
         } else if (caseNumber != null && !caseNumber.isEmpty()) {
-            page = bankruptCaseRepository.findByCreateUserIdAndCaseNumberLike(userId, caseNumber, pageable);
+            page = bankruptCaseRepository.findByIdInAndCaseNumberLike(allCaseIds, caseNumber, pageable);
         } else {
-            page = bankruptCaseRepository.findByCreateUserId(userId, pageable);
+            page = bankruptCaseRepository.findByIdIn(allCaseIds, pageable);
         }
         
-        return page.getContent().stream().map(caseEntity -> UserCaseListResponse.of(
-                caseEntity.getId(),
-                caseEntity.getCaseNumber(),
-                caseEntity.getAcceptanceCourt(),
-                caseEntity.getDesignatedJudge(),
-                caseEntity.getFilingDate(),
-                caseEntity.getCaseProgress(),
-                caseEntity.getCaseStatus(),
-                caseEntity.getCreateUserId()
-        )).collect(Collectors.toList());
+        // 5. 直接返回BankruptCase对象列表，包含案件所有信息
+        return page.getContent();
     }
 
     @Override
     public Long getUserCaseCount(Long userId, String caseStatus, String caseNumber) {
+        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+        List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+        
+        // 2. 查询用户创建的所有案件ID
+        List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
+        List<Long> createdCaseIds = createdCases.stream()
+                .map(BankruptCase::getId)
+                .collect(Collectors.toList());
+        
+        // 3. 合并并去重所有案件ID
+        Set<Long> allCaseIdsSet = participatedCaseIds.stream()
+                .collect(Collectors.toSet());
+        allCaseIdsSet.addAll(createdCaseIds);
+        
+        List<Long> allCaseIds = new ArrayList<>(allCaseIdsSet);
+        
+        if (allCaseIds.isEmpty()) {
+            return 0L;
+        }
+        
+        // 4. 根据案件ID列表和其他条件查询案件数量
         if (caseStatus != null && caseNumber != null && !caseNumber.isEmpty()) {
-            return bankruptCaseRepository.countByCreateUserIdAndCaseStatusAndCaseNumberLike(userId, caseStatus, caseNumber);
+            return bankruptCaseRepository.countByIdInAndCaseStatusAndCaseNumberLike(allCaseIds, caseStatus, caseNumber);
         } else if (caseStatus != null) {
-            return bankruptCaseRepository.countByCreateUserIdAndCaseStatus(userId, caseStatus);
+            return bankruptCaseRepository.countByIdInAndCaseStatus(allCaseIds, caseStatus);
         } else if (caseNumber != null && !caseNumber.isEmpty()) {
-            return bankruptCaseRepository.countByCreateUserIdAndCaseNumberLike(userId, caseNumber);
+            return bankruptCaseRepository.countByIdInAndCaseNumberLike(allCaseIds, caseNumber);
         } else {
-            return bankruptCaseRepository.countByCreateUserId(userId);
+            return bankruptCaseRepository.countByIdIn(allCaseIds);
         }
     }
 }

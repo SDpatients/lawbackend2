@@ -3,7 +3,6 @@ package com.lawbackend2.lawbackend2.dto;
 import lombok.Data;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Data
 public class CaseUpdateRequest {
@@ -23,5 +22,5 @@ public class CaseUpdateRequest {
 
     private String acceptanceCourt;
 
-    private LocalDateTime debtClaimDeadline;
+    private LocalDate debtClaimDeadline;
 }

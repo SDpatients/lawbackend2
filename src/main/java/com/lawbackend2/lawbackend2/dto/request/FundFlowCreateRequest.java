@@ -18,8 +18,9 @@ public class FundFlowCreateRequest {
     @NotBlank(message = "案件名称不能为空")
     private String caseName;
 
-    @NotNull(message = "资金账户ID不能为空")
     private Long fundAccountId;
+
+    private Long accountId;
 
     @NotBlank(message = "流水类型不能为空")
     @Pattern(regexp = "^(INCOME|EXPENSE)$", message = "流水类型不正确")
@@ -38,7 +39,6 @@ public class FundFlowCreateRequest {
     @NotNull(message = "交易日期不能为空")
     private LocalDateTime transactionDate;
 
-    @NotBlank(message = "交易描述不能为空")
     private String description;
 
     private String relatedDocument;

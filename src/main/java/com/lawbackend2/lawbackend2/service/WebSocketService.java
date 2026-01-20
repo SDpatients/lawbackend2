@@ -9,4 +9,18 @@ public interface WebSocketService {
     void broadcastNotification(WebSocketMessage message);
 
     void sendTodoUpdate(Long userId, WebSocketMessage message);
+    
+    void sendChatMessage(Long senderId, Long receiverId, WebSocketMessage message);
+    
+    void sendConversationMessage(Long conversationId, WebSocketMessage message);
+    
+    void sendTypingStatus(Long conversationId, WebSocketMessage message);
+    
+    void addUserToOnline(String sessionId, Long userId);
+    
+    void removeUserFromOnline(String sessionId);
+    
+    boolean isUserOnline(Long userId);
+    
+    int getOnlineUserCount();
 }

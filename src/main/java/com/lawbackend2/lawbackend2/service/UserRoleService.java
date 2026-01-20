@@ -14,4 +14,6 @@ public interface UserRoleService {
     void clearUserRoles(Long userId);
 
     List<UserWithRolesResponse> getUserRoleList();
+
+    List<String> getUserRoleCodes(Long userId);
 }

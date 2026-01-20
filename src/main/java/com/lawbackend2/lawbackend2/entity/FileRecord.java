@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "tb_file_record", indexes = {
     @Index(name = "idx_biz_type", columnList = "biz_type"),
     @Index(name = "idx_biz_id", columnList = "biz_id"),
+    @Index(name = "idx_biz_type_biz_id", columnList = "biz_type,biz_id"),
     @Index(name = "idx_file_status", columnList = "file_status"),
     @Index(name = "idx_status", columnList = "status"),
     @Index(name = "idx_upload_time", columnList = "upload_time"),
@@ -45,7 +46,7 @@ public class FileRecord extends BaseEntity {
     private String bizType;
 
     @Column(name = "biz_id")
-    private Long bizId;
+    private String bizId;
 
     @Column(name = "upload_time")
     private LocalDateTime uploadTime;
@@ -55,4 +56,10 @@ public class FileRecord extends BaseEntity {
 
     @Column(name = "file_status")
     private Integer fileStatus = 1;
+
+    @Column(name = "delete_time")
+    private LocalDateTime deleteTime;
+
+    @Column(name = "delete_user_id")
+    private Long deleteUserId;
 }

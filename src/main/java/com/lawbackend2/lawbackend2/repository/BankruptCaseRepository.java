@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -105,6 +106,12 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
     @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName) FROM BankruptCase c WHERE (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByCaseNumber(@Param("caseNumber") String caseNumber, Pageable pageable);
 
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName) FROM BankruptCase c WHERE c.id IN :caseIds")
+    Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByIdIn(@Param("caseIds") List<Long> caseIds, Pageable pageable);
+
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName) FROM BankruptCase c WHERE c.id IN :caseIds AND (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
+    Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByIdInAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, @Param("caseNumber") String caseNumber, Pageable pageable);
+
     Page<BankruptCase> findByCreateUserId(Long createUserId, Pageable pageable);
 
     Page<BankruptCase> findByCreateUserIdAndCaseStatus(Long createUserId, String caseStatus, Pageable pageable);
@@ -124,4 +131,57 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
 
     @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.createUserId = :userId AND c.caseStatus = :caseStatus AND c.caseNumber LIKE %:caseNumber%")
     Long countByCreateUserIdAndCaseStatusAndCaseNumberLike(@Param("userId") Long userId, @Param("caseStatus") String caseStatus, @Param("caseNumber") String caseNumber);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds")
+    Page<BankruptCase> findByIdIn(@Param("caseIds") List<Long> caseIds, Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus")
+    Page<BankruptCase> findByIdInAndCaseStatus(@Param("caseIds") List<Long> caseIds, 
+                                             @Param("caseStatus") String caseStatus, 
+                                             Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseNumber LIKE %:caseNumber%")
+    Page<BankruptCase> findByIdInAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
+                                                 @Param("caseNumber") String caseNumber, 
+                                                 Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseNumber LIKE %:caseNumber%")
+    Page<BankruptCase> findByIdInAndCaseStatusAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
+                                                              @Param("caseStatus") String caseStatus, 
+                                                              @Param("caseNumber") String caseNumber, 
+                                                              Pageable pageable);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds")
+    Long countByIdIn(@Param("caseIds") List<Long> caseIds);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus")
+    Long countByIdInAndCaseStatus(@Param("caseIds") List<Long> caseIds, 
+                                @Param("caseStatus") String caseStatus);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseNumber LIKE %:caseNumber%")
+    Long countByIdInAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
+                                    @Param("caseNumber") String caseNumber);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseNumber LIKE %:caseNumber%")
+    Long countByIdInAndCaseStatusAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
+                                                 @Param("caseStatus") String caseStatus, 
+                                                 @Param("caseNumber") String caseNumber);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createTime BETWEEN :startDate AND :endDate")
+    Long countByCreateTimeBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND YEAR(c.createTime) = :year AND MONTH(c.createTime) = :month")
+    Long countByYearAndMonth(@Param("year") int year, @Param("month") int month);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND YEAR(c.createTime) = :year AND QUARTER(c.createTime) = :quarter")
+    Long countByYearAndQuarter(@Param("year") int year, @Param("quarter") int quarter);
+
+    @Query("SELECT c.caseStatus, c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false GROUP BY c.caseStatus, c.caseProgress")
+    List<Object[]> countByStatusAndProgressGroup();
+
+    @Query("SELECT c.caseStatus, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false GROUP BY c.caseStatus")
+    List<Object[]> countByStatusGroup();
+
+    @Query("SELECT c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false GROUP BY c.caseProgress")
+    List<Object[]> countByProgressGroup();
 }

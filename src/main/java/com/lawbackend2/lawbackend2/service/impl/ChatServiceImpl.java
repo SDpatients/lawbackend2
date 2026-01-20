@@ -101,7 +101,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public PageResult<ChatMessageResponse> getConversationMessages(Long conversationId, Integer pageNum, Integer pageSize) {
-        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.ASC, "createTime"));
         Page<ChatMessage> messagePage = chatMessageRepository.findByConversationIdAndIsDeletedAndIsRecalledOrderByCreateTimeDesc(
                 conversationId, false, false, pageable);
 
@@ -174,7 +174,12 @@ public class ChatServiceImpl implements ChatService {
                 .timestamp(System.currentTimeMillis())
                 .build();
 
-        webSocketService.sendNotificationToUser(receiverId, wsMessage);
+        log.info("准备通过WebSocket发送消息，发送者: {}, 接收者: {}, WebSocket消息: {}", 
+                senderId, receiverId, wsMessage);
+        
+        webSocketService.sendChatMessage(senderId, receiverId, wsMessage);
+        
+        log.info("WebSocket消息发送完成");
 
         return response;
     }

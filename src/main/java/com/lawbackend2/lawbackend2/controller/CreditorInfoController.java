@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,7 +49,8 @@ public class CreditorInfoController {
     @Operation(summary = "获取债权人详情", description = "返回债权人详细信息，包含案件案号和案件名称")
     @GetMapping("/{creditorId}")
     public Result<CreditorInfoResponse> getCreditorById(@Parameter(description = "债权人ID") @PathVariable Long creditorId) {
-        CreditorInfoResponse creditorInfo = creditorInfoService.getCreditorByIdWithCaseInfo(creditorId);
+        Long userId = getCurrentUserId();
+        CreditorInfoResponse creditorInfo = creditorInfoService.getCreditorByIdWithCaseInfo(creditorId, userId);
         return Result.success(creditorInfo);
     }
 
@@ -62,7 +65,8 @@ public class CreditorInfoController {
             @Parameter(description = "身份证号，模糊查询", example = "110101") @RequestParam(required = false) String idNumber,
             @Parameter(description = "法定代表人，模糊查询", example = "李四") @RequestParam(required = false) String legalRepresentative) {
 
-        PageResult<CreditorInfoResponse> pageResult = creditorInfoService.getCreditorListWithCaseInfo(pageNum, pageSize, caseId, creditorType, creditorName, idNumber, legalRepresentative);
+        Long userId = getCurrentUserId();
+        PageResult<CreditorInfoResponse> pageResult = creditorInfoService.getCreditorListWithCaseInfo(pageNum, pageSize, caseId, creditorType, creditorName, idNumber, legalRepresentative, userId);
 
         return Result.success(pageResult);
     }
@@ -85,6 +89,10 @@ public class CreditorInfoController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() != null) {
+            return (Long) authentication.getPrincipal();
+        }
+        throw new RuntimeException("无法获取当前用户ID");
     }
 }

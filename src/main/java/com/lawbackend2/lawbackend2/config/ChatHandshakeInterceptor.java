@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.security.Principal;
 import java.util.Map;
 
 @Slf4j
@@ -31,19 +32,33 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler, Map<String, Object> attributes) throws Exception {
         if (request instanceof ServletServerHttpRequest) {
             ServletServerHttpRequest servletRequest = (ServletServerHttpRequest) request;
+            String requestURI = servletRequest.getServletRequest().getRequestURI();
+            
+            log.info("WebSocket握手请求 - URI: {}", requestURI);
+
             String token = extractToken(servletRequest);
 
-            if (StringUtils.hasText(token) && jwtTokenUtil.validateToken(token)) {
-                Long userId = jwtTokenUtil.getUserIdFromToken(token);
-                String username = jwtTokenUtil.getUsernameFromToken(token);
+            if (StringUtils.hasText(token)) {
+                try {
+                    if (jwtTokenUtil.validateToken(token)) {
+                        Long userId = jwtTokenUtil.getUserIdFromToken(token);
+                        String username = jwtTokenUtil.getUsernameFromToken(token);
 
-                attributes.put("userId", userId);
-                attributes.put("username", username);
-
-                log.info("WebSocket握手成功 - 用户ID: {}, 用户名: {}", userId, username);
-                return true;
+                        attributes.put("userId", userId);
+                        attributes.put("username", username);
+                        
+                        log.info("WebSocket握手成功 - 用户ID: {}, 用户名: {}", userId, username);
+                        return true;
+                    } else {
+                        log.warn("WebSocket握手失败 - Token验证失败");
+                        return false;
+                    }
+                } catch (Exception e) {
+                    log.error("Token验证异常", e);
+                    return false;
+                }
             } else {
-                log.warn("WebSocket握手失败 - Token验证失败");
+                log.warn("WebSocket握手 - 未提供Token，拒绝连接");
                 return false;
             }
         }
@@ -62,6 +77,15 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
 
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(tokenPrefix + " ")) {
             return bearerToken.substring(tokenPrefix.length() + 1);
+        }
+
+        String tokenParam = request.getServletRequest().getParameter("token");
+        if (StringUtils.hasText(tokenParam)) {
+            log.debug("从query参数中提取Token");
+            if (tokenParam.startsWith(tokenPrefix + " ")) {
+                return tokenParam.substring(tokenPrefix.length() + 1);
+            }
+            return tokenParam;
         }
 
         return null;

@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public FileRecord uploadFile(MultipartFile file, String bizType, Long bizId) {
+    public FileRecord uploadFile(MultipartFile file, String bizType, String bizId) {
         if (file.isEmpty()) {
             throw new BusinessException("文件不能为空");
         }
@@ -93,7 +94,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public PageResult<FileRecord> getFileList(Integer pageNum, Integer pageSize, String bizType, Long bizId, String status) {
+    public PageResult<FileRecord> getFileList(Integer pageNum, Integer pageSize, String bizType, String bizId, String status) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "uploadTime"));
         Page<FileRecord> page = fileRecordRepository.findByConditions(bizType, bizId, status, pageable);
 
@@ -199,7 +200,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public Map<String, Object> getFileStatistics(String bizType, Long bizId) {
+    public Map<String, Object> getFileStatistics(String bizType, String bizId) {
         Map<String, Object> statistics = new HashMap<>();
 
         List<FileRecord> allFiles;
@@ -257,5 +258,60 @@ public class FileServiceImpl implements FileService {
             return fileName.substring(lastDotIndex + 1);
         }
         return "";
+    }
+
+    @Override
+    public List<FileRecord> uploadCaseTaskFiles(List<MultipartFile> files, Long caseId, Integer stageNum, String taskCode) {
+        if (files == null || files.isEmpty()) {
+            throw new BusinessException("文件列表不能为空");
+        }
+
+        if (caseId == null || stageNum == null || taskCode == null || taskCode.trim().isEmpty()) {
+            throw new BusinessException("案件ID、阶段号和任务编码不能为空");
+        }
+
+        String bizId = caseId + "_" + stageNum + "_" + taskCode;
+        List<FileRecord> uploadedFiles = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            FileRecord fileRecord = uploadFile(file, "CASE_TASK", bizId);
+            uploadedFiles.add(fileRecord);
+        }
+
+        return uploadedFiles;
+    }
+
+    @Override
+    public List<FileRecord> getCaseTaskFiles(Long caseId, Integer stageNum, String taskCode) {
+        if (caseId == null || stageNum == null || taskCode == null || taskCode.trim().isEmpty()) {
+            throw new BusinessException("案件ID、阶段号和任务编码不能为空");
+        }
+
+        String bizId = caseId + "_" + stageNum + "_" + taskCode;
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "uploadTime"));
+        Page<FileRecord> page = fileRecordRepository.findByConditions("CASE_TASK", bizId, null, pageable);
+
+        return page.getContent();
+    }
+
+    @Override
+    public void deleteCaseTaskFiles(List<Long> fileIds, Long caseId, Integer stageNum, String taskCode) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            throw new BusinessException("文件ID列表不能为空");
+        }
+
+        if (caseId == null || stageNum == null || taskCode == null || taskCode.trim().isEmpty()) {
+            throw new BusinessException("案件ID、阶段号和任务编码不能为空");
+        }
+
+        String bizId = caseId + "_" + stageNum + "_" + taskCode;
+
+        for (Long fileId : fileIds) {
+            FileRecord fileRecord = getFileInfo(fileId);
+            if (!"CASE_TASK".equals(fileRecord.getBizType()) || !bizId.equals(fileRecord.getBizId())) {
+                throw new BusinessException("文件不属于指定的案件任务");
+            }
+            deleteFile(fileId);
+        }
     }
 }

@@ -13,7 +13,7 @@ public interface CreditorInfoService {
 
     CreditorInfo getCreditorById(Long creditorId);
 
-    CreditorInfoResponse getCreditorByIdWithCaseInfo(Long creditorId);
+    CreditorInfoResponse getCreditorByIdWithCaseInfo(Long creditorId, Long userId);
 
     List<CreditorInfo> getCreditorList(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative);
 
@@ -23,5 +23,5 @@ public interface CreditorInfoService {
 
     void deleteCreditor(Long creditorId);
 
-    PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative);
+    PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, Long userId);
 }

@@ -6,8 +6,13 @@ import com.lawbackend2.lawbackend2.dto.CreditorInfoResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.CreditorInfo;
+import com.lawbackend2.lawbackend2.entity.Role;
+import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.CreditorInfoRepository;
+import com.lawbackend2.lawbackend2.repository.RoleRepository;
+import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
+import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.CreditorInfoService;
 import lombok.extern.slf4j.Slf4j;
@@ -33,10 +38,16 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
 
     private final CreditorInfoRepository creditorInfoRepository;
     private final BankruptCaseService bankruptCaseService;
+    private final WorkTeamMemberRepository workTeamMemberRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
 
-    public CreditorInfoServiceImpl(CreditorInfoRepository creditorInfoRepository, BankruptCaseService bankruptCaseService) {
+    public CreditorInfoServiceImpl(CreditorInfoRepository creditorInfoRepository, BankruptCaseService bankruptCaseService, WorkTeamMemberRepository workTeamMemberRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository) {
         this.creditorInfoRepository = creditorInfoRepository;
         this.bankruptCaseService = bankruptCaseService;
+        this.workTeamMemberRepository = workTeamMemberRepository;
+        this.userRoleRepository = userRoleRepository;
+        this.roleRepository = roleRepository;
     }
 
     @Override
@@ -57,8 +68,10 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     }
 
     @Override
-    public CreditorInfoResponse getCreditorByIdWithCaseInfo(Long creditorId) {
+    public CreditorInfoResponse getCreditorByIdWithCaseInfo(Long creditorId, Long userId) {
         CreditorInfo creditorInfo = getCreditorById(creditorId);
+        
+        checkPermission(creditorInfo, userId);
         
         CreditorInfoResponse response = new CreditorInfoResponse();
         BeanUtils.copyProperties(creditorInfo, response);
@@ -118,6 +131,72 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         };
     }
 
+    private Specification<CreditorInfo> buildSpecificationWithPermission(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, Long userId) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (caseId != null) {
+                predicates.add(cb.equal(root.get("caseId"), caseId));
+            }
+
+            if (creditorType != null && !creditorType.trim().isEmpty()) {
+                predicates.add(cb.equal(root.get("creditorType"), creditorType));
+            }
+
+            if (creditorName != null && !creditorName.trim().isEmpty()) {
+                predicates.add(cb.like(root.get("creditorName"), "%" + creditorName + "%"));
+            }
+
+            if (idNumber != null && !idNumber.trim().isEmpty()) {
+                predicates.add(cb.like(root.get("idNumber"), "%" + idNumber + "%"));
+            }
+
+            if (legalRepresentative != null && !legalRepresentative.trim().isEmpty()) {
+                predicates.add(cb.like(root.get("legalRepresentative"), "%" + legalRepresentative + "%"));
+            }
+
+            if (!isAdminOrSuperAdmin(userId)) {
+                List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+                predicates.add(cb.or(
+                    cb.equal(root.get("createUserId"), userId),
+                    root.get("caseId").in(accessibleCaseIds)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private void checkPermission(CreditorInfo creditorInfo, Long userId) {
+        if (isAdminOrSuperAdmin(userId)) {
+            return;
+        }
+        
+        if (creditorInfo.getCreateUserId().equals(userId)) {
+            return;
+        }
+        
+        if (creditorInfo.getCaseId() != null) {
+            List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+            if (accessibleCaseIds.contains(creditorInfo.getCaseId())) {
+                return;
+            }
+        }
+        
+        throw new BusinessException("无权访问该债权人信息");
+    }
+
+    private boolean isAdminOrSuperAdmin(Long userId) {
+        List<Long> roleIds = userRoleRepository.findRoleIdsByUserId(userId);
+        for (Long roleId : roleIds) {
+            Role role = roleRepository.findById(roleId).orElse(null);
+            if (role != null && ("ADMIN".equals(role.getRoleCode()) || "SUPER_ADMIN".equals(role.getRoleCode()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CreditorInfo updateCreditor(Long creditorId, CreditorUpdateRequest request) {
@@ -161,9 +240,14 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     }
 
     @Override
-    public PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative) {
-        List<CreditorInfo> creditorList = getCreditorList(pageNum, pageSize, caseId, creditorType, creditorName, idNumber, legalRepresentative);
-        Long total = getCreditorCount(caseId, creditorType, creditorName, idNumber, legalRepresentative);
+    public PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, Long userId) {
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+
+        Specification<CreditorInfo> spec = buildSpecificationWithPermission(caseId, creditorType, creditorName, idNumber, legalRepresentative, userId);
+        Page<CreditorInfo> page = creditorInfoRepository.findAll(spec, pageable);
+        
+        List<CreditorInfo> creditorList = page.getContent();
+        Long total = page.getTotalElements();
 
         List<Long> caseIds = creditorList.stream()
                 .map(CreditorInfo::getCaseId)

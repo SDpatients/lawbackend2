@@ -3,6 +3,7 @@ package com.lawbackend2.lawbackend2.controller;
 import com.lawbackend2.lawbackend2.dto.response.ApiResponse;
 import com.lawbackend2.lawbackend2.entity.Notification;
 import com.lawbackend2.lawbackend2.service.NotificationService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -49,9 +50,9 @@ public class NotificationController {
     @GetMapping("/list")
     @Operation(summary = "获取用户通知列表", description = "分页获取用户的通知列表")
     public ResponseEntity<ApiResponse<Page<Notification>>> getUserNotifications(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
+        Long userId = SecurityUtil.getCurrentUserId();
         Pageable pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<Notification> notifications = notificationService.getUserNotifications(userId, pageable);
         return ResponseEntity.ok(ApiResponse.success(notifications));
@@ -60,12 +61,12 @@ public class NotificationController {
     @GetMapping("/search")
     @Operation(summary = "搜索通知", description = "根据条件搜索用户通知")
     public ResponseEntity<ApiResponse<Page<Notification>>> searchNotifications(
-            @Parameter(description = "用户ID") @RequestParam("userId") Long userId,
             @Parameter(description = "通知类型") @RequestParam(value = "type", required = false) String type,
             @Parameter(description = "是否已读") @RequestParam(value = "isRead", required = false) Boolean isRead,
             @Parameter(description = "通知状态") @RequestParam(value = "status", required = false) String status,
             @Parameter(description = "页码") @RequestParam(value = "pageNum", defaultValue = "0") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
+        Long userId = SecurityUtil.getCurrentUserId();
         Pageable pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<Notification> notifications = notificationService.searchNotifications(userId, type, isRead, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(notifications));
@@ -73,16 +74,16 @@ public class NotificationController {
 
     @GetMapping("/unread")
     @Operation(summary = "获取未读通知列表", description = "获取用户的所有未读通知")
-    public ResponseEntity<ApiResponse<List<Notification>>> getUnreadNotifications(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    public ResponseEntity<ApiResponse<List<Notification>>> getUnreadNotifications() {
+        Long userId = SecurityUtil.getCurrentUserId();
         List<Notification> notifications = notificationService.getUnreadNotifications(userId);
         return ResponseEntity.ok(ApiResponse.success(notifications));
     }
 
     @GetMapping("/count/unread")
     @Operation(summary = "获取未读通知数量", description = "统计用户的未读通知数量")
-    public ResponseEntity<ApiResponse<Long>> countUnreadNotifications(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    public ResponseEntity<ApiResponse<Long>> countUnreadNotifications() {
+        Long userId = SecurityUtil.getCurrentUserId();
         Long count = notificationService.countUnreadNotifications(userId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
@@ -97,8 +98,8 @@ public class NotificationController {
 
     @PutMapping("/read-all")
     @Operation(summary = "标记所有通知为已读", description = "将用户的所有通知标记为已读状态")
-    public ResponseEntity<ApiResponse<Void>> markAllAsRead(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    public ResponseEntity<ApiResponse<Void>> markAllAsRead() {
+        Long userId = SecurityUtil.getCurrentUserId();
         notificationService.markAllAsRead(userId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }

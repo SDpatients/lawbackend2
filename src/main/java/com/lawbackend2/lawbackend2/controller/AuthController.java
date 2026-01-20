@@ -4,12 +4,15 @@ import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.RefreshTokenRequest;
 import com.lawbackend2.lawbackend2.dto.request.UserLoginRequest;
 import com.lawbackend2.lawbackend2.dto.response.RefreshTokenResponse;
+import com.lawbackend2.lawbackend2.dto.response.UserInfoResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserLoginResponse;
 import com.lawbackend2.lawbackend2.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
@@ -57,6 +60,17 @@ public class AuthController {
     @Operation(summary = "刷新访问令牌", description = "使用刷新令牌获取新的访问令牌")
     public Result<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         RefreshTokenResponse response = userService.refreshAccessToken(request.getRefreshToken());
+        return Result.success(response);
+    }
+
+    @GetMapping("/current-user")
+    @Operation(summary = "获取当前用户信息", description = "根据JWT Token获取当前登录用户的详细信息，包括角色和权限")
+    public Result<UserInfoResponse> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = (Long) authentication.getPrincipal();
+        
+        log.info("获取当前用户信息 - 用户ID: {}", userId);
+        UserInfoResponse response = userService.getCurrentUserInfo(userId);
         return Result.success(response);
     }
 

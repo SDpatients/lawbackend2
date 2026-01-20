@@ -15,6 +15,12 @@ public class CaseAnnouncement extends BaseEntity {
     @Column(name = "case_id")
     private Long caseId;
 
+    @Column(name = "case_number", length = 100)
+    private String caseNumber;
+
+    @Column(name = "principal_officer", length = 100)
+    private String principalOfficer;
+
     @Column(name = "title", length = 200)
     private String title;
 

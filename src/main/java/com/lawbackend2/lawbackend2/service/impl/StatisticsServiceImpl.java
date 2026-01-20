@@ -4,10 +4,20 @@ import com.lawbackend2.lawbackend2.dto.response.*;
 import com.lawbackend2.lawbackend2.entity.*;
 import com.lawbackend2.lawbackend2.repository.*;
 import com.lawbackend2.lawbackend2.service.StatisticsService;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,18 +31,25 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final FundApprovalRepository fundApprovalRepository;
     private final FundAccountRepository fundAccountRepository;
     private final WorkPlanRepository workPlanRepository;
+    private final BankruptCaseRepository bankruptCaseRepository;
+    private final CreditorClaimRepository creditorClaimRepository;
 
     public StatisticsServiceImpl(FundFlowRepository fundFlowRepository,
                                  FundApprovalRepository fundApprovalRepository,
                                  FundAccountRepository fundAccountRepository,
-                                 WorkPlanRepository workPlanRepository) {
+                                 WorkPlanRepository workPlanRepository,
+                                 BankruptCaseRepository bankruptCaseRepository,
+                                 CreditorClaimRepository creditorClaimRepository) {
         this.fundFlowRepository = fundFlowRepository;
         this.fundApprovalRepository = fundApprovalRepository;
         this.fundAccountRepository = fundAccountRepository;
         this.workPlanRepository = workPlanRepository;
+        this.bankruptCaseRepository = bankruptCaseRepository;
+        this.creditorClaimRepository = creditorClaimRepository;
     }
 
     @Override
+    @Cacheable(value = "fundTransactionStatistics", key = "#caseId")
     public FundTransactionStatistics getFundTransactionStatistics(Long caseId) {
         List<FundFlow> transactions = fundFlowRepository.findByCaseIdAndIsDeleted(caseId, false);
 
@@ -102,6 +119,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @Cacheable(value = "fundApprovalStatistics", key = "#caseId")
     public FundApprovalStatistics getFundApprovalStatistics(Long caseId) {
         List<FundApproval> approvals = fundApprovalRepository.findByCaseIdAndIsDeleted(caseId, false);
 
@@ -143,6 +161,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @Cacheable(value = "fundAccountStatistics", key = "#caseId")
     public FundAccountStatistics getFundAccountStatistics(Long caseId) {
         List<FundAccount> accounts = fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false);
 
@@ -163,8 +182,13 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .mapToDouble(a -> a.getCurrentBalance() != null ? a.getCurrentBalance().doubleValue() : 0.0)
                 .sum();
 
+        double totalFrozenAmount = accounts.stream()
+                .filter(a -> a.getIsFrozen() != null && a.getIsFrozen())
+                .mapToDouble(a -> a.getCurrentBalance() != null ? a.getCurrentBalance().doubleValue() : 0.0)
+                .sum();
+
         statistics.setTotalBalance(totalBalance);
-        statistics.setTotalFrozenAmount(0.0);
+        statistics.setTotalFrozenAmount(totalFrozenAmount);
 
         Map<String, Long> byAccountType = accounts.stream()
                 .collect(Collectors.groupingBy(
@@ -177,6 +201,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @Cacheable(value = "workPlanStatistics", key = "#caseId")
     public WorkPlanStatistics getWorkPlanStatistics(Long caseId) {
         List<WorkPlan> plans = workPlanRepository.findByCaseIdAndIsDeleted(caseId, false);
 
@@ -213,5 +238,509 @@ public class StatisticsServiceImpl implements StatisticsService {
         statistics.setByPlanType(byPlanType);
 
         return statistics;
+    }
+
+    @Override
+    @Cacheable(value = "fundTransactionTrend", key = "#caseId + '_' + #period")
+    public TimeTrendStatistics getFundTransactionTrend(Long caseId, String period) {
+        List<TrendData> trendDataList = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        int periods = 12;
+
+        for (int i = periods - 1; i >= 0; i--) {
+            LocalDateTime startDate;
+            LocalDateTime endDate;
+            String periodLabel;
+
+            if ("month".equals(period)) {
+                YearMonth yearMonth = YearMonth.now().minusMonths(i);
+                startDate = yearMonth.atDay(1).atStartOfDay();
+                endDate = yearMonth.atEndOfMonth().atTime(23, 59, 59);
+                periodLabel = yearMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            } else if ("quarter".equals(period)) {
+                int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
+                int targetQuarter = currentQuarter - i;
+                int targetYear = now.getYear();
+                while (targetQuarter <= 0) {
+                    targetQuarter += 4;
+                    targetYear--;
+                }
+                startDate = LocalDate.of(targetYear, (targetQuarter - 1) * 3 + 1, 1).atStartOfDay();
+                endDate = LocalDate.of(targetYear, targetQuarter * 3, 1).plusMonths(1).minusDays(1).atTime(23, 59, 59);
+                periodLabel = targetYear + "-Q" + targetQuarter;
+            } else {
+                int targetYear = now.getYear() - i;
+                startDate = LocalDate.of(targetYear, 1, 1).atStartOfDay();
+                endDate = LocalDate.of(targetYear, 12, 31).atTime(23, 59, 59);
+                periodLabel = String.valueOf(targetYear);
+            }
+
+            Long count = fundFlowRepository.countByCaseIdAndDateRange(caseId, startDate, endDate);
+            BigDecimal amount = fundFlowRepository.sumAmountByCaseIdAndDateRange(caseId, startDate, endDate);
+            if (amount == null) {
+                amount = BigDecimal.ZERO;
+            }
+
+            LocalDateTime prevStartDate = startDate.minusDays(1);
+            LocalDateTime prevEndDate = startDate.minusMonths(1).plusDays(1);
+            Long previousCount = fundFlowRepository.countByCaseIdAndDateRange(caseId, prevStartDate, prevEndDate);
+            BigDecimal previousAmount = fundFlowRepository.sumAmountByCaseIdAndDateRange(caseId, prevStartDate, prevEndDate);
+            if (previousAmount == null) {
+                previousAmount = BigDecimal.ZERO;
+            }
+
+            Double growthRate = null;
+            if (previousCount != null && previousCount > 0) {
+                growthRate = ((double) (count - previousCount) / previousCount) * 100;
+                growthRate = Math.round(growthRate * 100.0) / 100.0;
+            }
+
+            TrendData trendData = new TrendData();
+            trendData.setPeriod(periodLabel);
+            trendData.setStartDate(startDate.toLocalDate());
+            trendData.setEndDate(endDate.toLocalDate());
+            trendData.setCount(count);
+            trendData.setAmount(amount);
+            trendData.setPreviousCount(previousCount);
+            trendData.setPreviousAmount(previousAmount);
+            trendData.setGrowthRate(growthRate);
+            trendDataList.add(trendData);
+        }
+
+        TimeTrendStatistics statistics = new TimeTrendStatistics();
+        statistics.setType("fund_transaction");
+        statistics.setTrendData(trendDataList);
+        statistics.setTotalCount(trendDataList.stream().mapToLong(TrendData::getCount).sum());
+        statistics.setTotalAmount(trendDataList.stream().map(TrendData::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        double avgGrowthRate = trendDataList.stream()
+                .filter(t -> t.getGrowthRate() != null)
+                .mapToDouble(TrendData::getGrowthRate)
+                .average()
+                .orElse(0.0);
+        statistics.setAverageGrowthRate(Math.round(avgGrowthRate * 100.0) / 100.0);
+
+        return statistics;
+    }
+
+    @Override
+    @Cacheable(value = "fundApprovalTrend", key = "#caseId + '_' + #period")
+    public TimeTrendStatistics getFundApprovalTrend(Long caseId, String period) {
+        List<TrendData> trendDataList = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        int periods = 12;
+
+        for (int i = periods - 1; i >= 0; i--) {
+            LocalDateTime startDate;
+            LocalDateTime endDate;
+            String periodLabel;
+
+            if ("month".equals(period)) {
+                YearMonth yearMonth = YearMonth.now().minusMonths(i);
+                startDate = yearMonth.atDay(1).atStartOfDay();
+                endDate = yearMonth.atEndOfMonth().atTime(23, 59, 59);
+                periodLabel = yearMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            } else if ("quarter".equals(period)) {
+                int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
+                int targetQuarter = currentQuarter - i;
+                int targetYear = now.getYear();
+                while (targetQuarter <= 0) {
+                    targetQuarter += 4;
+                    targetYear--;
+                }
+                startDate = LocalDate.of(targetYear, (targetQuarter - 1) * 3 + 1, 1).atStartOfDay();
+                endDate = LocalDate.of(targetYear, targetQuarter * 3, 1).plusMonths(1).minusDays(1).atTime(23, 59, 59);
+                periodLabel = targetYear + "-Q" + targetQuarter;
+            } else {
+                int targetYear = now.getYear() - i;
+                startDate = LocalDate.of(targetYear, 1, 1).atStartOfDay();
+                endDate = LocalDate.of(targetYear, 12, 31).atTime(23, 59, 59);
+                periodLabel = String.valueOf(targetYear);
+            }
+
+            Long count = fundApprovalRepository.countByCaseIdAndDateRange(caseId, startDate, endDate);
+            BigDecimal amount = fundApprovalRepository.sumAmountByCaseIdAndDateRange(caseId, startDate, endDate);
+            if (amount == null) {
+                amount = BigDecimal.ZERO;
+            }
+
+            LocalDateTime prevStartDate = startDate.minusDays(1);
+            LocalDateTime prevEndDate = startDate.minusMonths(1).plusDays(1);
+            Long previousCount = fundApprovalRepository.countByCaseIdAndDateRange(caseId, prevStartDate, prevEndDate);
+            BigDecimal previousAmount = fundApprovalRepository.sumAmountByCaseIdAndDateRange(caseId, prevStartDate, prevEndDate);
+            if (previousAmount == null) {
+                previousAmount = BigDecimal.ZERO;
+            }
+
+            Double growthRate = null;
+            if (previousCount != null && previousCount > 0) {
+                growthRate = ((double) (count - previousCount) / previousCount) * 100;
+                growthRate = Math.round(growthRate * 100.0) / 100.0;
+            }
+
+            TrendData trendData = new TrendData();
+            trendData.setPeriod(periodLabel);
+            trendData.setStartDate(startDate.toLocalDate());
+            trendData.setEndDate(endDate.toLocalDate());
+            trendData.setCount(count);
+            trendData.setAmount(amount);
+            trendData.setPreviousCount(previousCount);
+            trendData.setPreviousAmount(previousAmount);
+            trendData.setGrowthRate(growthRate);
+            trendDataList.add(trendData);
+        }
+
+        TimeTrendStatistics statistics = new TimeTrendStatistics();
+        statistics.setType("fund_approval");
+        statistics.setTrendData(trendDataList);
+        statistics.setTotalCount(trendDataList.stream().mapToLong(TrendData::getCount).sum());
+        statistics.setTotalAmount(trendDataList.stream().map(TrendData::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        double avgGrowthRate = trendDataList.stream()
+                .filter(t -> t.getGrowthRate() != null)
+                .mapToDouble(TrendData::getGrowthRate)
+                .average()
+                .orElse(0.0);
+        statistics.setAverageGrowthRate(Math.round(avgGrowthRate * 100.0) / 100.0);
+
+        return statistics;
+    }
+
+    @Override
+    @Cacheable(value = "caseTrend", key = "#period")
+    public TimeTrendStatistics getCaseTrend(String period) {
+        List<TrendData> trendDataList = new ArrayList<>();
+        LocalDateTime now = LocalDateTime.now();
+        int periods = 12;
+
+        for (int i = periods - 1; i >= 0; i--) {
+            LocalDateTime startDate;
+            LocalDateTime endDate;
+            String periodLabel;
+
+            if ("month".equals(period)) {
+                YearMonth yearMonth = YearMonth.now().minusMonths(i);
+                startDate = yearMonth.atDay(1).atStartOfDay();
+                endDate = yearMonth.atEndOfMonth().atTime(23, 59, 59);
+                periodLabel = yearMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            } else if ("quarter".equals(period)) {
+                int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
+                int targetQuarter = currentQuarter - i;
+                int targetYear = now.getYear();
+                while (targetQuarter <= 0) {
+                    targetQuarter += 4;
+                    targetYear--;
+                }
+                startDate = LocalDate.of(targetYear, (targetQuarter - 1) * 3 + 1, 1).atStartOfDay();
+                endDate = LocalDate.of(targetYear, targetQuarter * 3, 1).plusMonths(1).minusDays(1).atTime(23, 59, 59);
+                periodLabel = targetYear + "-Q" + targetQuarter;
+            } else {
+                int targetYear = now.getYear() - i;
+                startDate = LocalDate.of(targetYear, 1, 1).atStartOfDay();
+                endDate = LocalDate.of(targetYear, 12, 31).atTime(23, 59, 59);
+                periodLabel = String.valueOf(targetYear);
+            }
+
+            Long count = bankruptCaseRepository.countByCreateTimeBetween(startDate, endDate);
+
+            LocalDateTime prevStartDate = startDate.minusDays(1);
+            LocalDateTime prevEndDate = startDate.minusMonths(1).plusDays(1);
+            Long previousCount = bankruptCaseRepository.countByCreateTimeBetween(prevStartDate, prevEndDate);
+
+            Double growthRate = null;
+            if (previousCount != null && previousCount > 0) {
+                growthRate = ((double) (count - previousCount) / previousCount) * 100;
+                growthRate = Math.round(growthRate * 100.0) / 100.0;
+            }
+
+            TrendData trendData = new TrendData();
+            trendData.setPeriod(periodLabel);
+            trendData.setStartDate(startDate.toLocalDate());
+            trendData.setEndDate(endDate.toLocalDate());
+            trendData.setCount(count);
+            trendData.setAmount(BigDecimal.ZERO);
+            trendData.setPreviousCount(previousCount);
+            trendData.setPreviousAmount(BigDecimal.ZERO);
+            trendData.setGrowthRate(growthRate);
+            trendDataList.add(trendData);
+        }
+
+        TimeTrendStatistics statistics = new TimeTrendStatistics();
+        statistics.setType("case");
+        statistics.setTrendData(trendDataList);
+        statistics.setTotalCount(trendDataList.stream().mapToLong(TrendData::getCount).sum());
+        statistics.setTotalAmount(BigDecimal.ZERO);
+
+        double avgGrowthRate = trendDataList.stream()
+                .filter(t -> t.getGrowthRate() != null)
+                .mapToDouble(TrendData::getGrowthRate)
+                .average()
+                .orElse(0.0);
+        statistics.setAverageGrowthRate(Math.round(avgGrowthRate * 100.0) / 100.0);
+
+        return statistics;
+    }
+
+    @Override
+    @Cacheable(value = "caseCrossAnalysis")
+    public CrossAnalysisStatistics getCaseCrossAnalysis() {
+        List<Object[]> statusProgressData = bankruptCaseRepository.countByStatusAndProgressGroup();
+        List<Object[]> statusData = bankruptCaseRepository.countByStatusGroup();
+        List<Object[]> progressData = bankruptCaseRepository.countByProgressGroup();
+
+        Map<String, Map<String, Long>> crossData = new HashMap<>();
+        for (Object[] row : statusProgressData) {
+            String status = (String) row[0];
+            String progress = (String) row[1];
+            Long count = (Long) row[2];
+
+            crossData.computeIfAbsent(status, k -> new HashMap<>()).put(progress, count);
+        }
+
+        Map<String, Long> statusDistribution = new HashMap<>();
+        for (Object[] row : statusData) {
+            statusDistribution.put((String) row[0], (Long) row[1]);
+        }
+
+        Map<String, Long> progressDistribution = new HashMap<>();
+        for (Object[] row : progressData) {
+            progressDistribution.put((String) row[0], (Long) row[1]);
+        }
+
+        Long totalCount = statusDistribution.values().stream().mapToLong(Long::longValue).sum();
+
+        CrossAnalysisStatistics statistics = new CrossAnalysisStatistics();
+        statistics.setType("case_status_progress");
+        statistics.setCrossData(crossData);
+        statistics.setTotalCount(totalCount);
+        statistics.setStatusDistribution(statusDistribution);
+        statistics.setProgressDistribution(progressDistribution);
+
+        return statistics;
+    }
+
+    @Override
+    @Cacheable(value = "caseAmountRanking", key = "#topN")
+    public RankingStatistics getCaseAmountRanking(Integer topN) {
+        if (topN == null || topN <= 0) {
+            topN = 10;
+        }
+
+        List<Object[]> caseAmountData = creditorClaimRepository.sumTotalAmountByCaseIdWithNameGroup();
+        List<RankingItem> rankings = new ArrayList<>();
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (int i = 0; i < Math.min(topN, caseAmountData.size()); i++) {
+            Object[] row = caseAmountData.get(i);
+            Long caseId = (Long) row[0];
+            String caseName = (String) row[1];
+            BigDecimal amount = (BigDecimal) row[2];
+
+            if (amount == null) {
+                amount = BigDecimal.ZERO;
+            }
+
+            totalAmount = totalAmount.add(amount);
+
+            RankingItem item = new RankingItem();
+            item.setId(caseId);
+            item.setName(caseName);
+            item.setAmount(amount);
+            item.setRank(i + 1);
+            rankings.add(item);
+        }
+
+        RankingStatistics statistics = new RankingStatistics();
+        statistics.setType("case_amount");
+        statistics.setSortBy("total_amount");
+        statistics.setTopN(topN);
+        statistics.setRankings(rankings);
+        statistics.setTotalAmount(totalAmount);
+
+        return statistics;
+    }
+
+    @Override
+    @Cacheable(value = "creditorClaimAmountRanking", key = "#topN")
+    public RankingStatistics getCreditorClaimAmountRanking(Integer topN) {
+        if (topN == null || topN <= 0) {
+            topN = 10;
+        }
+
+        List<Object[]> claimAmountData = creditorClaimRepository.findTopClaimsByAmount(PageRequest.of(0, topN));
+        List<RankingItem> rankings = new ArrayList<>();
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (int i = 0; i < claimAmountData.size(); i++) {
+            Object[] row = claimAmountData.get(i);
+            Long claimId = (Long) row[0];
+            String creditorName = (String) row[1];
+            BigDecimal amount = (BigDecimal) row[2];
+
+            if (amount == null) {
+                amount = BigDecimal.ZERO;
+            }
+
+            totalAmount = totalAmount.add(amount);
+
+            RankingItem item = new RankingItem();
+            item.setId(claimId);
+            item.setName(creditorName);
+            item.setAmount(amount);
+            item.setRank(i + 1);
+            rankings.add(item);
+        }
+
+        RankingStatistics statistics = new RankingStatistics();
+        statistics.setType("creditor_claim_amount");
+        statistics.setSortBy("total_amount");
+        statistics.setTopN(topN);
+        statistics.setRankings(rankings);
+        statistics.setTotalAmount(totalAmount);
+
+        return statistics;
+    }
+
+    @Override
+    public FundApprovalExport exportFundApprovals(Long caseId) {
+        List<FundApproval> approvals = fundApprovalRepository.findByCaseIdAndIsDeleted(caseId, false);
+
+        FundApprovalExport export = new FundApprovalExport();
+        export.setFileName("fund_approvals_" + LocalDateTime.now().toString() + ".xlsx");
+        export.setTotalCount((long) approvals.size());
+
+        List<FundApprovalExportItem> items = approvals.stream()
+                .map(this::convertToApprovalExportItem)
+                .collect(Collectors.toList());
+        export.setApprovals(items);
+
+        return export;
+    }
+
+    private FundApprovalExportItem convertToApprovalExportItem(FundApproval approval) {
+        FundApprovalExportItem item = new FundApprovalExportItem();
+        item.setId(approval.getId());
+        item.setApprovalNumber(approval.getId().toString());
+        item.setApprovalType(approval.getApprovalStage());
+        item.setAmount(approval.getAmount());
+        item.setApprovalStatus(approval.getApprovalStatus());
+        item.setApproverName(approval.getApproverId() != null ? approval.getApproverId().toString() : "");
+        item.setApprovalTime(approval.getApprovalTime());
+        item.setApprovalOpinion(approval.getApprovalOpinion());
+        item.setRejectionReason(approval.getRejectionReason());
+        item.setStatus(approval.getStatus());
+        return item;
+    }
+
+    @Override
+    public FundAccountExport exportFundAccounts(Long caseId) {
+        List<FundAccount> accounts = fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false);
+
+        FundAccountExport export = new FundAccountExport();
+        export.setFileName("fund_accounts_" + LocalDateTime.now().toString() + ".xlsx");
+        export.setTotalCount((long) accounts.size());
+
+        List<FundAccountExportItem> items = accounts.stream()
+                .map(this::convertToAccountExportItem)
+                .collect(Collectors.toList());
+        export.setAccounts(items);
+
+        return export;
+    }
+
+    private FundAccountExportItem convertToAccountExportItem(FundAccount account) {
+        FundAccountExportItem item = new FundAccountExportItem();
+        item.setId(account.getId());
+        item.setAccountName(account.getAccountName());
+        item.setAccountType(account.getAccountType());
+        item.setAccountPurpose(account.getAccountPurpose());
+        item.setCurrentBalance(account.getCurrentBalance());
+        item.setInitialBalance(account.getInitialBalance());
+        item.setStatus(account.getStatus());
+        item.setIsFrozen(account.getIsFrozen());
+        item.setFreezeDate(account.getFreezeDate());
+        item.setFreezeReason(account.getFreezeReason());
+        item.setBankName(account.getBankName());
+        item.setBankAccount(account.getBankAccount());
+        item.setOpeningDate(account.getOpeningDate());
+        return item;
+    }
+
+    @Override
+    public WorkPlanExport exportWorkPlans(Long caseId) {
+        List<WorkPlan> plans = workPlanRepository.findByCaseIdAndIsDeleted(caseId, false);
+
+        WorkPlanExport export = new WorkPlanExport();
+        export.setFileName("work_plans_" + LocalDateTime.now().toString() + ".xlsx");
+        export.setTotalCount((long) plans.size());
+
+        List<WorkPlanExportItem> items = plans.stream()
+                .map(this::convertToWorkPlanExportItem)
+                .collect(Collectors.toList());
+        export.setPlans(items);
+
+        return export;
+    }
+
+    private WorkPlanExportItem convertToWorkPlanExportItem(WorkPlan plan) {
+        WorkPlanExportItem item = new WorkPlanExportItem();
+        item.setId(plan.getId());
+        item.setPlanNumber(plan.getPlanNumber());
+        item.setPlanType(plan.getPlanType());
+        item.setPlanName(plan.getPlanContent());
+        item.setExecutionStatus(plan.getExecutionStatus());
+        item.setPlannedStartDate(plan.getStartDate());
+        item.setPlannedEndDate(plan.getEndDate());
+        item.setResponsiblePerson(plan.getResponsibleUserId() != null ? plan.getResponsibleUserId().toString() : "");
+        item.setStatus(plan.getStatus());
+        return item;
+    }
+
+    @Override
+    public FundApprovalExport exportFundApprovals(Long caseId, Pageable pageable) {
+        Page<FundApproval> approvalPage = fundApprovalRepository.findByCaseIdAndIsDeletedWithPage(caseId, pageable);
+
+        FundApprovalExport export = new FundApprovalExport();
+        export.setFileName("fund_approvals_" + LocalDateTime.now().toString() + ".xlsx");
+        export.setTotalCount(approvalPage.getTotalElements());
+
+        List<FundApprovalExportItem> items = approvalPage.getContent().stream()
+                .map(this::convertToApprovalExportItem)
+                .collect(Collectors.toList());
+        export.setApprovals(items);
+
+        return export;
+    }
+
+    @Override
+    public FundAccountExport exportFundAccounts(Long caseId, Pageable pageable) {
+        Page<FundAccount> accountPage = fundAccountRepository.findByConditions(caseId, null, pageable);
+
+        FundAccountExport export = new FundAccountExport();
+        export.setFileName("fund_accounts_" + LocalDateTime.now().toString() + ".xlsx");
+        export.setTotalCount(accountPage.getTotalElements());
+
+        List<FundAccountExportItem> items = accountPage.getContent().stream()
+                .map(this::convertToAccountExportItem)
+                .collect(Collectors.toList());
+        export.setAccounts(items);
+
+        return export;
+    }
+
+    @Override
+    public WorkPlanExport exportWorkPlans(Long caseId, Pageable pageable) {
+        Page<WorkPlan> planPage = workPlanRepository.findByCaseIdAndIsDeletedWithPage(caseId, pageable);
+
+        WorkPlanExport export = new WorkPlanExport();
+        export.setFileName("work_plans_" + LocalDateTime.now().toString() + ".xlsx");
+        export.setTotalCount(planPage.getTotalElements());
+
+        List<WorkPlanExportItem> items = planPage.getContent().stream()
+                .map(this::convertToWorkPlanExportItem)
+                .collect(Collectors.toList());
+        export.setPlans(items);
+
+        return export;
     }
 }

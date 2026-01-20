@@ -16,7 +16,7 @@ public interface FileRecordRepository extends JpaRepository<FileRecord, Long> {
            "AND (:bizId IS NULL OR fr.bizId = :bizId) " +
            "AND (:status IS NULL OR fr.status = :status)")
     Page<FileRecord> findByConditions(@Param("bizType") String bizType,
-                                     @Param("bizId") Long bizId,
+                                     @Param("bizId") String bizId,
                                      @Param("status") String status,
                                      Pageable pageable);
 }

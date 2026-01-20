@@ -8,4 +8,8 @@ import java.lang.annotation.*;
 public @interface DataPermission {
 
     String value() default "createUserId";
+
+    String moduleType() default "";
+
+    String permissionType() default "";
 }

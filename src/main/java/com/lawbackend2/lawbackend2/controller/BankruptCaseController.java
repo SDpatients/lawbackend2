@@ -5,6 +5,9 @@ import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.*;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
+import com.lawbackend2.lawbackend2.service.PermissionService;
+import com.lawbackend2.lawbackend2.service.UserRoleService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,9 +28,13 @@ import java.util.Map;
 public class BankruptCaseController {
 
     private final BankruptCaseService bankruptCaseService;
+    private final PermissionService permissionService;
+    private final UserRoleService userRoleService;
 
-    public BankruptCaseController(BankruptCaseService bankruptCaseService) {
+    public BankruptCaseController(BankruptCaseService bankruptCaseService, PermissionService permissionService, UserRoleService userRoleService) {
         this.bankruptCaseService = bankruptCaseService;
+        this.permissionService = permissionService;
+        this.userRoleService = userRoleService;
     }
 
     @Operation(summary = "创建案件")
@@ -58,8 +65,22 @@ public class BankruptCaseController {
             @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
             @Parameter(description = "案件进度") @RequestParam(required = false) String caseProgress) {
 
-        List<BankruptCase> list = bankruptCaseService.getCaseList(pageNum, pageSize, caseStatus, caseProgress);
-        Long total = bankruptCaseService.getCaseCount(caseStatus, caseProgress);
+        Long userId = getCurrentUserId();
+        List<String> userPermissions = permissionService.getUserPermissions(userId);
+
+        List<BankruptCase> list;
+        Long total;
+
+        if (userPermissions.contains("case:query:all")) {
+            list = bankruptCaseService.getCaseList(pageNum, pageSize, caseStatus, caseProgress);
+            total = bankruptCaseService.getCaseCount(caseStatus, caseProgress);
+        } else if (userPermissions.contains("case:query:own")) {
+            list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, null);
+            total = bankruptCaseService.getUserCaseCount(userId, caseStatus, null);
+        } else {
+            list = List.of();
+            total = 0L;
+        }
 
         return Result.success(PageResult.of(total, list));
     }
@@ -120,23 +141,35 @@ public class BankruptCaseController {
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size,
             @Parameter(description = "案号(可选)") @RequestParam(required = false) String caseNumber) {
 
-        List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> list = bankruptCaseService.getCaseSimpleList(page, size, caseNumber);
-        Long total = bankruptCaseService.getCaseSimpleCount(caseNumber);
+        Long userId = getCurrentUserId();
+        List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> list = bankruptCaseService.getCaseSimpleList(userId, page, size, caseNumber);
+        Long total = bankruptCaseService.getCaseSimpleCount(userId, caseNumber);
 
         return Result.success(PageResult.of(total, list));
     }
 
     @Operation(summary = "根据用户ID查询案件列表(分页)")
     @GetMapping("/user/{userId}/list")
-    public Result<PageResult<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse>> getUserCaseList(
+    public Result<PageResult<BankruptCase>> getUserCaseList(
             @Parameter(description = "用户ID") @PathVariable Long userId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
             @Parameter(description = "案号") @RequestParam(required = false) String caseNumber) {
 
-        List<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse> list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, caseNumber);
-        Long total = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        List<String> roleCodes = userRoleService.getUserRoleCodes(currentUserId);
+
+        List<BankruptCase> list;
+        Long total;
+
+        if (roleCodes.contains("SUPER_ADMIN") || roleCodes.contains("ADMIN")) {
+            list = bankruptCaseService.getCaseList(pageNum, pageSize, caseStatus, null);
+            total = bankruptCaseService.getCaseCount(caseStatus, null);
+        } else {
+            list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, caseNumber);
+            total = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
+        }
 
         return Result.success(PageResult.of(total, list));
     }

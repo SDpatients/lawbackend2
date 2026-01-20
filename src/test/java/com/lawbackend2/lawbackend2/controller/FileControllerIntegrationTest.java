@@ -44,7 +44,7 @@ class FileControllerIntegrationTest {
         testFile.setFileExtension("txt");
         testFile.setMimeType("text/plain");
         testFile.setBizType("test");
-        testFile.setBizId(1L);
+        testFile.setBizId("1");
         testFile.setFileStatus(1);
         testFile.setStatus("ACTIVE");
         testFile = fileRecordRepository.save(testFile);

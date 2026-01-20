@@ -4,8 +4,10 @@ import com.lawbackend2.lawbackend2.dto.CaseAnnouncementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementPublishRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.CaseAnnouncementRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.CaseAnnouncementService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -24,9 +26,11 @@ import java.util.List;
 public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
 
     private final CaseAnnouncementRepository caseAnnouncementRepository;
+    private final UserRepository userRepository;
 
-    public CaseAnnouncementServiceImpl(CaseAnnouncementRepository caseAnnouncementRepository) {
+    public CaseAnnouncementServiceImpl(CaseAnnouncementRepository caseAnnouncementRepository, UserRepository userRepository) {
         this.caseAnnouncementRepository = caseAnnouncementRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -57,7 +61,7 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         log.debug("查询案件公告列表, pageNum: {}, pageSize: {}, caseId: {}, status: {}", 
                   pageNum, pageSize, caseId, status);
 
-        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "isTop", "createTime"));
 
         Page<CaseAnnouncement> page;
         if (caseId != null && status != null && !status.isEmpty()) {
@@ -67,7 +71,8 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         } else if (status != null && !status.isEmpty()) {
             page = caseAnnouncementRepository.findByStatus(status, pageable);
         } else {
-            page = caseAnnouncementRepository.findAll(pageable);
+            // 当没有案件ID时，只查询已发布的公告
+            page = caseAnnouncementRepository.findByStatus("PUBLISHED", pageable);
         }
 
         return page.getContent();
@@ -84,7 +89,8 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         } else if (status != null && !status.isEmpty()) {
             return caseAnnouncementRepository.findByStatus(status, pageable).getTotalElements();
         } else {
-            return caseAnnouncementRepository.count();
+            // 当没有案件ID时，只统计已发布的公告
+            return caseAnnouncementRepository.findByStatus("PUBLISHED", pageable).getTotalElements();
         }
     }
 
@@ -124,8 +130,12 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
             throw new BusinessException("只有草稿状态的公告才能发布");
         }
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("用户不存在"));
+
         announcement.setStatus("PUBLISHED");
         announcement.setPublisherId(userId);
+        announcement.setPublisherName(user.getRealName());
         announcement.setPublishTime(LocalDateTime.now());
 
         if (request.getTopExpireTime() != null) {
@@ -134,7 +144,7 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         }
 
         caseAnnouncementRepository.save(announcement);
-        log.info("公告发布成功, ID: {}", announcementId);
+        log.info("公告发布成功, ID: {}, 发布人: {}", announcementId, user.getRealName());
     }
 
     @Override
@@ -149,6 +159,20 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
 
         caseAnnouncementRepository.save(announcement);
         log.info("公告置顶成功, ID: {}", announcementId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unTopAnnouncement(Long announcementId, Long userId) {
+        log.info("取消置顶公告, ID: {}, 操作人ID: {}", announcementId, userId);
+
+        CaseAnnouncement announcement = getAnnouncementById(announcementId);
+
+        announcement.setIsTop(false);
+        announcement.setTopExpireTime(null);
+
+        caseAnnouncementRepository.save(announcement);
+        log.info("公告取消置顶成功, ID: {}", announcementId);
     }
 
     @Override

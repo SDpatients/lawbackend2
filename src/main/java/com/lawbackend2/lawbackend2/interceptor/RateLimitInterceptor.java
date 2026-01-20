@@ -24,6 +24,11 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String method = request.getMethod();
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+
         if (!(handler instanceof HandlerMethod)) {
             return true;
         }

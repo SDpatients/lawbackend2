@@ -24,4 +24,7 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
     @Query("SELECT r FROM Role r WHERE r.roleName LIKE %:keyword% OR r.roleDesc LIKE %:keyword%")
     List<Role> searchByKeyword(@Param("keyword") String keyword);
+
+    @Query("SELECT r.roleCode FROM Role r WHERE r.id IN :roleIds AND r.isDeleted = false")
+    List<String> findRoleCodesByIds(@Param("roleIds") List<Long> roleIds);
 }

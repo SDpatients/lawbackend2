@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.service;
 
 import com.lawbackend2.lawbackend2.dto.request.*;
 import com.lawbackend2.lawbackend2.dto.response.RefreshTokenResponse;
+import com.lawbackend2.lawbackend2.dto.response.UserInfoResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserListResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserLoginResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserResponse;
@@ -29,6 +30,8 @@ public interface UserService {
     UserResponse createUser(UserCreateRequest request);
 
     UserResponse getUserById(Long id);
+
+    UserInfoResponse getCurrentUserInfo(Long userId);
 
     UserListResponse getUserList(UserQueryRequest request);
 

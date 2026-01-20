@@ -14,7 +14,8 @@ import java.time.LocalDate;
     @Index(name = "idx_account_number", columnList = "account_number"),
     @Index(name = "idx_account_name", columnList = "account_name"),
     @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_create_time", columnList = "create_time")
+    @Index(name = "idx_create_time", columnList = "create_time"),
+    @Index(name = "idx_case_id", columnList = "case_id")
 })
 public class BankAccount extends BaseEntity {
 
@@ -44,4 +45,7 @@ public class BankAccount extends BaseEntity {
 
     @Column(name = "password", length = 255)
     private String password;
+
+    @Column(name = "case_id")
+    private Long caseId;
 }

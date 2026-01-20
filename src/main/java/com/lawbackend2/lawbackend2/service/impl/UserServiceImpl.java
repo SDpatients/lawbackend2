@@ -2,20 +2,27 @@ package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.dto.request.*;
 import com.lawbackend2.lawbackend2.dto.response.RefreshTokenResponse;
+import com.lawbackend2.lawbackend2.dto.response.UserInfoResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserListResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserLoginResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserResponse;
 import com.lawbackend2.lawbackend2.entity.LoginFail;
 import com.lawbackend2.lawbackend2.entity.LoginRecord;
+import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.entity.Token;
 import com.lawbackend2.lawbackend2.entity.User;
+import com.lawbackend2.lawbackend2.entity.UserRole;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.LoginFailRepository;
 import com.lawbackend2.lawbackend2.repository.LoginRecordRepository;
+import com.lawbackend2.lawbackend2.repository.RoleRepository;
 import com.lawbackend2.lawbackend2.repository.TokenRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
+import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
+import com.lawbackend2.lawbackend2.service.PermissionService;
 import com.lawbackend2.lawbackend2.service.SmsService;
 import com.lawbackend2.lawbackend2.service.TokenBlacklistService;
+import com.lawbackend2.lawbackend2.service.UserRoleService;
 import com.lawbackend2.lawbackend2.service.UserService;
 import com.lawbackend2.lawbackend2.util.JwtTokenUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +59,12 @@ public class UserServiceImpl implements UserService {
     private LoginRecordRepository loginRecordRepository;
 
     @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
     private SmsService smsService;
 
     @Autowired
@@ -62,6 +75,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
+
+    @Autowired
+    private PermissionService permissionService;
+
+    @Autowired
+    private UserRoleService userRoleService;
 
     @Value("${login.max-fail-count:5}")
     private int maxFailCount;
@@ -528,6 +547,39 @@ public class UserServiceImpl implements UserService {
         }
 
         return convertToUserResponse(user);
+    }
+
+    @Override
+    public UserInfoResponse getCurrentUserInfo(Long userId) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        User user = userOpt.get();
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        List<Long> roleIds = userRoleRepository.findRoleIdsByUserId(userId);
+        List<Role> roles = roleRepository.findAllById(roleIds);
+        List<String> roleNames = roles.stream()
+                .map(Role::getRoleName)
+                .collect(Collectors.toList());
+
+        List<String> permissions = permissionService.getUserPermissions(userId);
+
+        return UserInfoResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .realName(user.getRealName())
+                .mobile(user.getMobile())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .status(user.getStatus())
+                .roles(roleNames)
+                .permissions(permissions)
+                .build();
     }
 
     @Override

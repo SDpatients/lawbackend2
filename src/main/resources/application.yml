@@ -1,6 +1,13 @@
 spring:
   application:
     name: lawbackend2
+  main:
+    allow-circular-references: true
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
 
   datasource:
     url: jdbc:mysql://localhost:3306/law?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
@@ -27,7 +34,7 @@ spring:
     open-in-view: false
 
   redis:
-    host: localhost
+    host: 127.0.0.1
     port: 6379
     password:
     database: 0

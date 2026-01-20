@@ -7,6 +7,7 @@ import com.lawbackend2.lawbackend2.dto.CaseAnnouncementPublishRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
 import com.lawbackend2.lawbackend2.service.CaseAnnouncementService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -101,6 +102,17 @@ public class CaseAnnouncementController {
         return Result.success();
     }
 
+    @Operation(summary = "取消置顶公告")
+    @DeleteMapping("/{announcementId}/top")
+    public Result<Void> unTopAnnouncement(
+            @Parameter(description = "公告ID") @PathVariable Long announcementId) {
+
+        Long userId = getCurrentUserId();
+        caseAnnouncementService.unTopAnnouncement(announcementId, userId);
+        log.info("取消置顶公告成功, ID: {}", announcementId);
+        return Result.success();
+    }
+
     @Operation(summary = "删除案件公告")
     @DeleteMapping("/{announcementId}")
     public Result<Void> deleteAnnouncement(
@@ -112,6 +124,6 @@ public class CaseAnnouncementController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        return SecurityUtil.getCurrentUserId();
     }
 }

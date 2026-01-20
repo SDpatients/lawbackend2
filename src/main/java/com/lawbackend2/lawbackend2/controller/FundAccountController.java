@@ -35,7 +35,8 @@ public class FundAccountController {
     @Operation(summary = "创建资金账户")
     @PostMapping
     public Result<Map<String, Object>> createFundAccount(@Valid @RequestBody FundAccountCreateRequest request) {
-        Long fundAccountId = fundAccountService.createFundAccount(request);
+        Long userId = getCurrentUserId();
+        Long fundAccountId = fundAccountService.createFundAccount(request, userId);
 
         Map<String, Object> data = new HashMap<>();
         data.put("fundAccountId", fundAccountId);
@@ -97,5 +98,9 @@ public class FundAccountController {
     public Result<Void> deleteFundAccount(@Parameter(description = "资金账户ID") @PathVariable Long fundAccountId) {
         fundAccountService.deleteFundAccount(fundAccountId);
         return Result.success();
+    }
+
+    private Long getCurrentUserId() {
+        return 1L;
     }
 }

@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
@@ -95,7 +96,7 @@ public class ClaimReviewCreateRequest {
 
     private String reviewAttachments;
 
-    private String reviewStatus = "COMPLETED";
+    private String reviewStatus = "PENDING";
 
     private String remarks;
 }

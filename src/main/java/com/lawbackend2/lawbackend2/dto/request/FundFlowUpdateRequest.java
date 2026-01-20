@@ -16,8 +16,9 @@ public class FundFlowUpdateRequest {
     @NotBlank(message = "案件名称不能为空")
     private String caseName;
 
-    @NotNull(message = "资金账户ID不能为空")
     private Long fundAccountId;
+
+    private Long accountId;
 
     @NotBlank(message = "流水类型不能为空")
     private String flowType;

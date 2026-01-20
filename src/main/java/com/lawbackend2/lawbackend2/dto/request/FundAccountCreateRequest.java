@@ -4,7 +4,7 @@ import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Positive;
+import javax.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
 @Data
@@ -23,7 +23,7 @@ public class FundAccountCreateRequest {
     private String accountType;
 
     @NotNull(message = "初始余额不能为空")
-    @Positive(message = "初始余额必须大于0")
+    @PositiveOrZero(message = "初始余额必须大于等于0")
     private BigDecimal initialBalance;
 
     @NotBlank(message = "银行名称不能为空")

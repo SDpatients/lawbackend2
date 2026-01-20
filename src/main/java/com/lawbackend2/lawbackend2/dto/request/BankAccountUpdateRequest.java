@@ -16,4 +16,6 @@ public class BankAccountUpdateRequest {
     @NotNull(message = "当前余额不能为空")
     @Positive(message = "当前余额必须大于0")
     private BigDecimal currentBalance;
+
+    private Long caseId;
 }

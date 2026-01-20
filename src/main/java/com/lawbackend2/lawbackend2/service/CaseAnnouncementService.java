@@ -23,5 +23,7 @@ public interface CaseAnnouncementService {
 
     void topAnnouncement(Long announcementId, CaseAnnouncementPublishRequest request, Long userId);
 
+    void unTopAnnouncement(Long announcementId, Long userId);
+
     void deleteAnnouncement(Long announcementId);
 }

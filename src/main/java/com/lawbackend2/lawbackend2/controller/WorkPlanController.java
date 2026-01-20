@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,7 +36,8 @@ public class WorkPlanController {
     @Operation(summary = "创建工作计划")
     @PostMapping
     public Result<Map<String, Object>> createWorkPlan(@Valid @RequestBody WorkPlanCreateRequest request) {
-        Long planId = workPlanService.createWorkPlan(request);
+        Long userId = getCurrentUserId();
+        Long planId = workPlanService.createWorkPlan(request, userId);
 
         Map<String, Object> data = new HashMap<>();
         data.put("planId", planId);
@@ -52,14 +55,16 @@ public class WorkPlanController {
             @Parameter(description = "执行状态") @RequestParam(required = false) String executionStatus,
             @Parameter(description = "状态") @RequestParam(required = false) String status) {
 
-        PageResult<WorkPlan> result = workPlanService.getWorkPlanList(pageNum, pageSize, caseId, planType, executionStatus, status);
+        Long userId = getCurrentUserId();
+        PageResult<WorkPlan> result = workPlanService.getWorkPlanList(pageNum, pageSize, caseId, planType, executionStatus, status, userId);
         return Result.success(result);
     }
 
     @Operation(summary = "获取工作计划详情")
     @GetMapping("/{planId}")
     public Result<WorkPlan> getWorkPlanDetail(@Parameter(description = "计划ID") @PathVariable Long planId) {
-        WorkPlan workPlan = workPlanService.getWorkPlanDetail(planId);
+        Long userId = getCurrentUserId();
+        WorkPlan workPlan = workPlanService.getWorkPlanDetail(planId, userId);
         return Result.success(workPlan);
     }
 
@@ -69,7 +74,8 @@ public class WorkPlanController {
             @Parameter(description = "计划ID") @PathVariable Long planId,
             @Valid @RequestBody WorkPlanUpdateRequest request) {
 
-        workPlanService.updateWorkPlan(planId, request);
+        Long userId = getCurrentUserId();
+        workPlanService.updateWorkPlan(planId, request, userId);
         return Result.success();
     }
 
@@ -79,7 +85,8 @@ public class WorkPlanController {
             @Parameter(description = "计划ID") @PathVariable Long planId,
             @Valid @RequestBody WorkPlanStatusRequest request) {
 
-        workPlanService.updateWorkPlanStatus(planId, request);
+        Long userId = getCurrentUserId();
+        workPlanService.updateWorkPlanStatus(planId, request, userId);
         return Result.success();
     }
 
@@ -88,5 +95,13 @@ public class WorkPlanController {
     public Result<Void> deleteWorkPlan(@Parameter(description = "计划ID") @PathVariable Long planId) {
         workPlanService.deleteWorkPlan(planId);
         return Result.success();
+    }
+
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() != null) {
+            return (Long) authentication.getPrincipal();
+        }
+        throw new RuntimeException("无法获取当前用户ID");
     }
 }

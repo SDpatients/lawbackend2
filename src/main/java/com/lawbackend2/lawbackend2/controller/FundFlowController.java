@@ -44,7 +44,7 @@ public class FundFlowController {
 
     @Operation(summary = "资金流水列表(分页)")
     @GetMapping("/list")
-    public Result<PageResult<FundFlow>> getFundFlowList(
+    public Result<PageResult<com.lawbackend2.lawbackend2.dto.response.FundFlowResponse>> getFundFlowList(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "案件ID") @RequestParam(required = false) Long caseId,
@@ -52,7 +52,7 @@ public class FundFlowController {
             @Parameter(description = "流水类型") @RequestParam(required = false) String flowType,
             @Parameter(description = "状态") @RequestParam(required = false) String status) {
 
-        PageResult<FundFlow> result = fundFlowService.getFundFlowList(pageNum, pageSize, caseId, fundAccountId, flowType, status);
+        PageResult<com.lawbackend2.lawbackend2.dto.response.FundFlowResponse> result = fundFlowService.getFundFlowList(pageNum, pageSize, caseId, fundAccountId, flowType, status);
         return Result.success(result);
     }
 

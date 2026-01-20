@@ -23,4 +23,6 @@ public class BankAccountCreateRequest {
     private LocalDate openingDate;
 
     private String password;
+
+    private Long caseId;
 }

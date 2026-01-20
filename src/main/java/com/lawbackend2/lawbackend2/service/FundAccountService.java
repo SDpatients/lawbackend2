@@ -15,9 +15,10 @@ public interface FundAccountService {
     /**
      * 创建基金账户
      * @param request 创建请求
+     * @param userId 用户ID
      * @return 基金账户ID
      */
-    Long createFundAccount(FundAccountCreateRequest request);
+    Long createFundAccount(FundAccountCreateRequest request, Long userId);
 
     /**
      * 获取基金账户列表

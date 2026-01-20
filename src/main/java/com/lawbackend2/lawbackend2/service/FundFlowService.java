@@ -10,7 +10,7 @@ public interface FundFlowService {
 
     Long createFundFlow(FundFlowCreateRequest request);
 
-    PageResult<FundFlow> getFundFlowList(Integer pageNum, Integer pageSize, Long caseId, Long fundAccountId, String flowType, String status);
+    PageResult<com.lawbackend2.lawbackend2.dto.response.FundFlowResponse> getFundFlowList(Integer pageNum, Integer pageSize, Long caseId, Long fundAccountId, String flowType, String status);
 
     FundFlow getFundFlowDetail(Long flowId);
 

@@ -24,11 +24,11 @@ public interface BankruptCaseService {
 
     BankruptCase getReviewStatus(Long caseId);
 
-    List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleList(Integer page, Integer size, String caseNumber);
+    List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleList(Long userId, Integer page, Integer size, String caseNumber);
 
-    Long getCaseSimpleCount(String caseNumber);
+    Long getCaseSimpleCount(Long userId, String caseNumber);
 
-    List<com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber);
+    List<BankruptCase> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber);
 
     Long getUserCaseCount(Long userId, String caseStatus, String caseNumber);
 }

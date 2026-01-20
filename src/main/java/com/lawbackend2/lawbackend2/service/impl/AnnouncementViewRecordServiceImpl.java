@@ -3,10 +3,13 @@ package com.lawbackend2.lawbackend2.service.impl;
 import com.lawbackend2.lawbackend2.dto.AnnouncementViewRecordCreateRequest;
 import com.lawbackend2.lawbackend2.entity.AnnouncementViewRecord;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.AnnouncementViewRecordRepository;
 import com.lawbackend2.lawbackend2.repository.CaseAnnouncementRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.AnnouncementViewRecordService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -29,6 +32,9 @@ public class AnnouncementViewRecordServiceImpl implements AnnouncementViewRecord
     @Autowired
     private CaseAnnouncementRepository announcementRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Override
     public AnnouncementViewRecord createViewRecord(AnnouncementViewRecordCreateRequest request) {
         log.info("开始创建公告查看记录，公告ID：{}", request.getAnnouncementId());
@@ -41,13 +47,27 @@ public class AnnouncementViewRecordServiceImpl implements AnnouncementViewRecord
 
             CaseAnnouncement announcement = announcementOpt.get();
 
+            Long viewerId = request.getViewerId();
+            String viewerName = request.getViewerName();
+            String viewerType = request.getViewerType();
+
+            if (viewerId == null) {
+                viewerId = SecurityUtil.getCurrentUserId();
+                Optional<User> userOpt = userRepository.findById(viewerId);
+                if (userOpt.isPresent()) {
+                    User user = userOpt.get();
+                    viewerName = user.getRealName();
+                    viewerType = "USER";
+                }
+            }
+
             AnnouncementViewRecord record = new AnnouncementViewRecord();
             record.setAnnouncementId(request.getAnnouncementId());
             record.setAnnouncementTitle(announcement.getTitle());
             record.setCaseId(announcement.getCaseId());
-            record.setViewerId(request.getViewerId());
-            record.setViewerName(request.getViewerName());
-            record.setViewerType(request.getViewerType());
+            record.setViewerId(viewerId);
+            record.setViewerName(viewerName);
+            record.setViewerType(viewerType);
             record.setViewTime(java.time.LocalDateTime.now());
             record.setIpAddress(request.getIpAddress());
             record.setUserAgent(request.getUserAgent());

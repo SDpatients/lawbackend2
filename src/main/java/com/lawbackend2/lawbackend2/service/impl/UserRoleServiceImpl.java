@@ -173,4 +173,15 @@ public class UserRoleServiceImpl implements UserRoleService {
         log.info("获取用户角色列表 - 用户数量: {}", responseList.size());
         return responseList;
     }
+
+    @Override
+    public List<String> getUserRoleCodes(Long userId) {
+        List<Long> roleIds = userRoleRepository.findRoleIdsByUserId(userId);
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+        List<String> roleCodes = roleRepository.findRoleCodesByIds(roleIds);
+        log.info("查询用户角色代码 - 用户ID: {}, 角色代码: {}", userId, roleCodes);
+        return roleCodes;
+    }
 }

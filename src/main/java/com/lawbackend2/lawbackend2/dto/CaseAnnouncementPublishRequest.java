@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
@@ -7,6 +8,5 @@ import javax.validation.constraints.NotNull;
 @Data
 public class CaseAnnouncementPublishRequest {
 
-    @NotNull(message = "置顶过期时间不能为空")
     private java.time.LocalDateTime topExpireTime;
 }

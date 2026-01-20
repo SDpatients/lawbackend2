@@ -11,6 +11,10 @@ public class CaseAnnouncementCreateRequest {
     @NotNull(message = "案件ID不能为空")
     private Long caseId;
 
+    private String caseNumber;
+
+    private String principalOfficer;
+
     @NotBlank(message = "标题不能为空")
     private String title;
 

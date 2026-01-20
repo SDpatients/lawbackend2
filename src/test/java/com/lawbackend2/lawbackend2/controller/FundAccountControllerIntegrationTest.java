@@ -38,6 +38,7 @@ class FundAccountControllerIntegrationTest {
     @BeforeEach
     void setUp() {
         testFundAccount = new FundAccount();
+        testFundAccount.setAccountId(System.currentTimeMillis());
         testFundAccount.setCaseId(1L);
         testFundAccount.setCaseName("测试案件");
         testFundAccount.setAccountName("测试资金账户");
