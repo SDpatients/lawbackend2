@@ -14,4 +14,5 @@ public interface CreditorInfoRepository extends JpaRepository<CreditorInfo, Long
     Page<CreditorInfo> findByCreditorType(String creditorType, Pageable pageable);
 
     Page<CreditorInfo> findByCaseIdAndCreditorType(Long caseId, String creditorType, Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

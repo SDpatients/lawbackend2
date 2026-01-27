@@ -42,4 +42,5 @@ public interface WorkTeamRepository extends JpaRepository<WorkTeam, Long> {
                                                @Param("teamLeaderId") Long teamLeaderId,
                                                @Param("teamIds") List<Long> teamIds,
                                                Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

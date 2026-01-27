@@ -15,6 +15,8 @@ public class DocumentDeliveryUpdateRequest {
 
     private String documentName;
 
+    private String abbreviation;
+
     private String documentType;
 
     private String recipientName;

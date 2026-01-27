@@ -14,4 +14,6 @@ public class CourtUpdateRequest {
     private String contactPhone;
 
     private String undertakingJudge;
+    
+    private String address;
 }

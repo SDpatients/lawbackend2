@@ -18,4 +18,5 @@ public interface AdministratorRepository extends JpaRepository<Administrator, Lo
 
     @Query("SELECT COUNT(a) FROM Administrator a WHERE (:caseId IS NULL OR a.caseId = :caseId) AND (:administratorName IS NULL OR a.administratorName LIKE %:administratorName%)")
     Long countByConditions(@Param("caseId") Long caseId, @Param("administratorName") String administratorName);
+    void deleteByCaseId(Long caseId);
 }

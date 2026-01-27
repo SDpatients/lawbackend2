@@ -6,6 +6,8 @@ import com.lawbackend2.lawbackend2.dto.request.*;
 import com.lawbackend2.lawbackend2.dto.response.UserListResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserResponse;
 import com.lawbackend2.lawbackend2.service.UserService;
+
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,7 +38,6 @@ public class UserController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('system:user:query')")
     @RateLimit(limit = 50, timeout = 60)
     @Operation(summary = "获取用户列表", description = "分页查询用户列表，支持排序和筛选")
     public Result<UserListResponse> getUserList(
@@ -58,6 +59,15 @@ public class UserController {
         
         UserListResponse response = userService.getUserList(request);
         return Result.success(response);
+    }
+
+    @GetMapping("/admins")
+    @RateLimit(limit = 50, timeout = 60)
+    @Operation(summary = "获取所有管理员用户", description = "获取所有role_code为ADMIN的用户基本信息")
+    public Result<List<UserResponse>> getAdminUsers() {
+        log.info("获取所有管理员用户请求");
+        List<UserResponse> adminUsers = userService.getAdminUsers();
+        return Result.success(adminUsers);
     }
 
     @GetMapping("/{id}")

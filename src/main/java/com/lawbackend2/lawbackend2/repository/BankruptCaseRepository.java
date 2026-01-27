@@ -40,8 +40,8 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
     @Query("SELECT AVG(c.reviewCount) FROM BankruptCase c")
     Double getAverageReviewCount();
 
-    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE DATE(c.createTime) = :date")
-    Long countByCreatedAtDate(@Param("date") LocalDate date);
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.createTime >= :date AND c.createTime <= :date")
+    Long countByCreatedAtDate(@Param("date") LocalDateTime date);
 
     @Query("SELECT COUNT(c) FROM BankruptCase c WHERE YEAR(c.createTime) = :year AND MONTH(c.createTime) = :month")
     Long countByCreatedAtYearAndMonth(@Param("year") int year, @Param("month") int month);
@@ -56,13 +56,13 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
     List<Object[]> countByCaseProgressGroup();
 
     @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.createTime BETWEEN :startDate AND :endDate")
-    Long countByCreatedAtBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    Long countByCreatedAtBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query("SELECT c.caseStatus, COUNT(c) FROM BankruptCase c WHERE c.createTime BETWEEN :startDate AND :endDate GROUP BY c.caseStatus")
-    List<Object[]> countByCaseStatusGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    List<Object[]> countByCaseStatusGroupByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query("SELECT c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.createTime BETWEEN :startDate AND :endDate GROUP BY c.caseProgress")
-    List<Object[]> countByCaseProgressGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    List<Object[]> countByCaseProgressGroupByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query("SELECT c FROM BankruptCase c WHERE c.caseNumber LIKE %:keyword%")
     Page<BankruptCase> searchByCaseNumber(@Param("keyword") String keyword, Pageable pageable);
@@ -103,13 +103,13 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
     @Query("SELECT c FROM BankruptCase c WHERE c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword% AND c.caseStatus = :caseStatus AND c.caseProgress = :caseProgress")
     Page<BankruptCase> searchByKeywordAndStatusAndProgress(@Param("keyword") String keyword, @Param("caseStatus") String caseStatus, @Param("caseProgress") String caseProgress, Pageable pageable);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName) FROM BankruptCase c WHERE (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByCaseNumber(@Param("caseNumber") String caseNumber, Pageable pageable);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName) FROM BankruptCase c WHERE c.id IN :caseIds")
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.id IN :caseIds")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByIdIn(@Param("caseIds") List<Long> caseIds, Pageable pageable);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName) FROM BankruptCase c WHERE c.id IN :caseIds AND (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.id IN :caseIds AND (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByIdInAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, @Param("caseNumber") String caseNumber, Pageable pageable);
 
     Page<BankruptCase> findByCreateUserId(Long createUserId, Pageable pageable);
@@ -184,4 +184,45 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
 
     @Query("SELECT c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false GROUP BY c.caseProgress")
     List<Object[]> countByProgressGroup();
+
+    Page<BankruptCase> findByReviewStatus(String reviewStatus, Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.reviewStatus = :reviewStatus AND c.caseNumber LIKE %:keyword%")
+    Page<BankruptCase> findByReviewStatusAndKeyword(@Param("reviewStatus") String reviewStatus, @Param("keyword") String keyword, Pageable pageable);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.reviewStatus = :reviewStatus")
+    Long countByReviewStatus(@Param("reviewStatus") String reviewStatus);
+
+    @Query("SELECT c.reviewStatus, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false GROUP BY c.reviewStatus")
+    List<Object[]> countByReviewStatusGroup();
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.reviewerId = :reviewerId")
+    Page<BankruptCase> findByReviewerId(@Param("reviewerId") Long reviewerId, Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.reviewerId = :reviewerId AND c.reviewStatus = :reviewStatus")
+    Page<BankruptCase> findByReviewerIdAndReviewStatus(@Param("reviewerId") Long reviewerId, @Param("reviewStatus") String reviewStatus, Pageable pageable);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.reviewerId = :reviewerId")
+    Long countByReviewerId(@Param("reviewerId") Long reviewerId);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.reviewerId = :reviewerId AND c.reviewStatus = :reviewStatus")
+    Long countByReviewerIdAndReviewStatus(@Param("reviewerId") Long reviewerId, @Param("reviewStatus") String reviewStatus);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId AND c.createTime BETWEEN :startDate AND :endDate")
+    Long countByUserIdAndCreateTimeBetween(@Param("userId") Long userId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId AND YEAR(c.createTime) = :year AND MONTH(c.createTime) = :month")
+    Long countByUserIdAndYearAndMonth(@Param("userId") Long userId, @Param("year") int year, @Param("month") int month);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId AND YEAR(c.createTime) = :year AND QUARTER(c.createTime) = :quarter")
+    Long countByUserIdAndYearAndQuarter(@Param("userId") Long userId, @Param("year") int year, @Param("quarter") int quarter);
+
+    @Query("SELECT c.caseStatus, c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId GROUP BY c.caseStatus, c.caseProgress")
+    List<Object[]> countByUserIdAndStatusAndProgressGroup(@Param("userId") Long userId);
+
+    @Query("SELECT c.caseStatus, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId GROUP BY c.caseStatus")
+    List<Object[]> countByUserIdAndStatusGroup(@Param("userId") Long userId);
+
+    @Query("SELECT c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId GROUP BY c.caseProgress")
+    List<Object[]> countByUserIdAndProgressGroup(@Param("userId") Long userId);
 }

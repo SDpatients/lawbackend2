@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.entity;
 
+import com.lawbackend2.lawbackend2.enums.CreditorStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -37,4 +38,8 @@ public class CreditorInfo extends BaseEntity {
 
     @Column(name = "registered_capital", precision = 18, scale = 4)
     private BigDecimal registeredCapital;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "creditor_status", length = 255)
+    private CreditorStatus creditorStatus;
 }

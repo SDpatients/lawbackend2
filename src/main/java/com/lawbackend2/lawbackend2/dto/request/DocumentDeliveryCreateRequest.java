@@ -14,6 +14,8 @@ public class DocumentDeliveryCreateRequest {
     @NotNull(message = "文书名称不能为空")
     private String documentName;
 
+    private String abbreviation;
+
     private String documentType;
 
     @NotBlank(message = "受送达人不能为空")
@@ -30,6 +32,8 @@ public class DocumentDeliveryCreateRequest {
     private String deliveryContent;
 
     private String documentAttachment;
+
+    private String sendStatus;
 
     private String status;
 }

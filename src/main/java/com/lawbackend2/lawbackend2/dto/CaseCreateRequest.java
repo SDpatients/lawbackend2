@@ -27,6 +27,10 @@ public class CaseCreateRequest {
 
     private String mainResponsiblePerson;
 
+    private String designatedJudge;
+
+    private String undertakingPersonnel;
+
     private Integer isSimplifiedTrial = 0;
 
     private String caseReason;

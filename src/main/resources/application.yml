@@ -3,6 +3,8 @@ spring:
     name: lawbackend2
   main:
     allow-circular-references: true
+  mvc:
+    static-path-pattern: /**
 
   servlet:
     multipart:
@@ -83,7 +85,6 @@ logging:
   level:
     root: INFO
     com.lawbackend2.lawbackend2: DEBUG
-    org.hibernate.SQL: WARN
-    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

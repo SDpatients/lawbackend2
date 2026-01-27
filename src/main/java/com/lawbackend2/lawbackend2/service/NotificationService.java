@@ -44,4 +44,8 @@ public interface NotificationService {
     void batchDeleteNotifications(List<Long> notificationIds);
 
     void updateNotificationStatus(Long notificationId, String status);
+
+    void sendNotificationToAdminAndSuperAdmin(String title, String content, String type, Long relatedId, String relatedType, Long createUserId, String createUserName);
+
+    void sendNotificationToUser(Long userId, String title, String content, String type, Long relatedId, String relatedType, Long createUserId, String createUserName);
 }

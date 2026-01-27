@@ -4,11 +4,14 @@ import com.lawbackend2.lawbackend2.dto.*;
 import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
 import com.lawbackend2.lawbackend2.entity.ClaimReview;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.ClaimRegistrationService;
+import com.lawbackend2.lawbackend2.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,14 +34,20 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     private final ClaimRegistrationRepository claimRegistrationRepository;
     private final ClaimReviewRepository claimReviewRepository;
     private final ClaimConfirmationRepository claimConfirmationRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Autowired
     public ClaimRegistrationServiceImpl(ClaimRegistrationRepository claimRegistrationRepository,
                                       ClaimReviewRepository claimReviewRepository,
-                                      ClaimConfirmationRepository claimConfirmationRepository) {
+                                      ClaimConfirmationRepository claimConfirmationRepository,
+                                      UserRepository userRepository,
+                                      NotificationService notificationService) {
         this.claimRegistrationRepository = claimRegistrationRepository;
         this.claimReviewRepository = claimReviewRepository;
         this.claimConfirmationRepository = claimConfirmationRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -63,7 +72,20 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         ClaimRegistration saved = claimRegistrationRepository.save(claimRegistration);
         
         createInitialReviewAndConfirmation(saved, userId);
-        
+
+        User user = userRepository.findById(userId).orElse(null);
+        String realName = user != null ? user.getRealName() : "未知用户";
+        String content = String.format("%s 完成了债权登记：%s", realName, saved.getCreditorName());
+        notificationService.sendNotificationToAdminAndSuperAdmin(
+                "债权登记通知",
+                content,
+                "CLAIM_REGISTRATION",
+                saved.getId(),
+                "ClaimRegistration",
+                userId,
+                realName
+        );
+
         log.info("债权申报创建成功, claimId: {}, claimNo: {}", saved.getId(), claimNo);
         return saved;
     }

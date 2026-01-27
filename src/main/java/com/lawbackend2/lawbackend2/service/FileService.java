@@ -34,4 +34,6 @@ public interface FileService {
     List<FileRecord> getCaseTaskFiles(Long caseId, Integer stageNum, String taskCode);
 
     void deleteCaseTaskFiles(List<Long> fileIds, Long caseId, Integer stageNum, String taskCode);
+
+    List<FileRecord> getAllFilesByBizTypeAndBizId(String bizType, String bizId);
 }

@@ -28,4 +28,7 @@ public interface UserRoleRepository extends JpaRepository<UserRole, Long> {
 
     @Query("SELECT ur FROM UserRole ur WHERE ur.userId IN :userIds")
     List<UserRole> findByUserIds(@Param("userIds") List<Long> userIds);
+
+    @Query("SELECT DISTINCT ur.userId FROM UserRole ur WHERE ur.roleId IN (SELECT r.id FROM Role r WHERE r.roleCode IN :roleCodes AND r.isDeleted = false)")
+    List<Long> findUserIdsByRoleCodes(@Param("roleCodes") List<String> roleCodes);
 }

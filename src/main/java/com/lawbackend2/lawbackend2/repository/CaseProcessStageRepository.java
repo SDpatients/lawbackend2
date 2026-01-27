@@ -28,4 +28,5 @@ public interface CaseProcessStageRepository extends JpaRepository<CaseProcessSta
 
     @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId AND c.stageNum = :stageNum AND c.moduleCode = :moduleCode AND c.isDeleted = false")
     List<CaseProcessStage> findByCaseIdAndStageNumAndModuleCodeAndNotDeleted(@Param("caseId") Long caseId, @Param("stageNum") Integer stageNum, @Param("moduleCode") String moduleCode);
+    void deleteByCaseId(Long caseId);
 }

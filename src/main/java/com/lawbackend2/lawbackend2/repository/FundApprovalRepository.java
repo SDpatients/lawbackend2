@@ -35,4 +35,5 @@ public interface FundApprovalRepository extends JpaRepository<FundApproval, Long
 
     @Query("SELECT fa FROM FundApproval fa WHERE fa.isDeleted = false AND fa.caseId = :caseId")
     Page<FundApproval> findByCaseIdAndIsDeletedWithPage(@Param("caseId") Long caseId, Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

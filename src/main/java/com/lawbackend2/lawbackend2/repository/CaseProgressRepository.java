@@ -52,4 +52,5 @@ public interface CaseProgressRepository extends JpaRepository<CaseProgress, Long
 
     @Query("SELECT cp FROM CaseProgress cp WHERE cp.caseId = :caseId ORDER BY cp.createTime DESC")
     List<CaseProgress> findLatestByCaseId(@Param("caseId") Long caseId, Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

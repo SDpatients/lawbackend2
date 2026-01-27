@@ -86,6 +86,13 @@ public class GlobalExceptionHandler {
         return Result.error(403, "权限不足，您没有执行此操作的权限");
     }
 
+    @ExceptionHandler(PermissionDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Result<?> handlePermissionDeniedException(PermissionDeniedException e) {
+        log.error("权限拒绝: {}", e.getMessage());
+        return Result.error(e.getCode(), e.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<?> handleException(Exception e) {

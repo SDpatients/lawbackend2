@@ -13,6 +13,9 @@ import javax.validation.constraints.NotBlank;
 @Builder
 public class UserLoginRequest {
 
+    private String loginType;
+    private String selectAccount;
+    
     @NotBlank(message = "用户名不能为空")
     private String username;
 
@@ -20,4 +23,5 @@ public class UserLoginRequest {
     private String password;
 
     private String smsCode;
+    private Boolean captcha;
 }

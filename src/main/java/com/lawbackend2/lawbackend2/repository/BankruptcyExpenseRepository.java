@@ -28,4 +28,5 @@ public interface BankruptcyExpenseRepository extends JpaRepository<BankruptcyExp
                                             Pageable pageable);
 
     List<BankruptcyExpense> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    void deleteByCaseId(Long caseId);
 }

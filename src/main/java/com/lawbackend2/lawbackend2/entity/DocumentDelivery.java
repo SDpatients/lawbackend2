@@ -33,6 +33,12 @@ public class DocumentDelivery extends BaseEntity {
     @Column(name = "document_name", length = 200, nullable = false)
     private String documentName;
 
+    @Column(name = "document_number", length = 100)
+    private String documentNumber;
+
+    @Column(name = "abbreviation", length = 50)
+    private String abbreviation;
+
     @Column(name = "document_type", length = 50)
     private String documentType;
 
@@ -71,4 +77,10 @@ public class DocumentDelivery extends BaseEntity {
 
     @Column(name = "remark", length = 500)
     private String remark;
+
+    @Column(name = "create_user_id")
+    private Long createUserId;
+
+    @Column(name = "update_user_id")
+    private Long updateUserId;
 }

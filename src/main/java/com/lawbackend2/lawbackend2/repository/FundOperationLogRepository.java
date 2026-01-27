@@ -19,4 +19,5 @@ public interface FundOperationLogRepository extends JpaRepository<FundOperationL
                                              @Param("operationType") String operationType,
                                              @Param("status") String status,
                                              Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

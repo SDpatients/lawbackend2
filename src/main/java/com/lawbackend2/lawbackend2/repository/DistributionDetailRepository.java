@@ -27,4 +27,5 @@ public interface DistributionDetailRepository extends JpaRepository<Distribution
     List<DistributionDetail> findByDistributionExecutionIdAndIsDeleted(Long distributionExecutionId, Boolean isDeleted);
 
     List<DistributionDetail> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    void deleteByCaseId(Long caseId);
 }

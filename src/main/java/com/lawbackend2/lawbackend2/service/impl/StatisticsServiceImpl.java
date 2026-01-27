@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.dto.response.*;
 import com.lawbackend2.lawbackend2.entity.*;
 import com.lawbackend2.lawbackend2.repository.*;
 import com.lawbackend2.lawbackend2.service.StatisticsService;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,6 +50,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "fundTransactionStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "fundTransactionStatistics", key = "#caseId")
     public FundTransactionStatistics getFundTransactionStatistics(Long caseId) {
         List<FundFlow> transactions = fundFlowRepository.findByCaseIdAndIsDeleted(caseId, false);
@@ -119,6 +121,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "fundApprovalStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "fundApprovalStatistics", key = "#caseId")
     public FundApprovalStatistics getFundApprovalStatistics(Long caseId) {
         List<FundApproval> approvals = fundApprovalRepository.findByCaseIdAndIsDeleted(caseId, false);
@@ -161,6 +164,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "fundAccountStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "fundAccountStatistics", key = "#caseId")
     public FundAccountStatistics getFundAccountStatistics(Long caseId) {
         List<FundAccount> accounts = fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false);
@@ -201,6 +205,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "workPlanStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "workPlanStatistics", key = "#caseId")
     public WorkPlanStatistics getWorkPlanStatistics(Long caseId) {
         List<WorkPlan> plans = workPlanRepository.findByCaseIdAndIsDeleted(caseId, false);
@@ -241,6 +246,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "fundTransactionTrend", key = "#caseId + '_' + #period", beforeInvocation = true)
     @Cacheable(value = "fundTransactionTrend", key = "#caseId + '_' + #period")
     public TimeTrendStatistics getFundTransactionTrend(Long caseId, String period) {
         List<TrendData> trendDataList = new ArrayList<>();
@@ -324,6 +330,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "fundApprovalTrend", key = "#caseId + '_' + #period", beforeInvocation = true)
     @Cacheable(value = "fundApprovalTrend", key = "#caseId + '_' + #period")
     public TimeTrendStatistics getFundApprovalTrend(Long caseId, String period) {
         List<TrendData> trendDataList = new ArrayList<>();
@@ -407,8 +414,14 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "caseTrend", key = "#period", beforeInvocation = true)
     @Cacheable(value = "caseTrend", key = "#period")
     public TimeTrendStatistics getCaseTrend(String period) {
+        return getCaseTrend(period, null);
+    }
+
+    @Override
+    public TimeTrendStatistics getCaseTrend(String period, Long userId) {
         List<TrendData> trendDataList = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
         int periods = 12;
@@ -441,11 +454,21 @@ public class StatisticsServiceImpl implements StatisticsService {
                 periodLabel = String.valueOf(targetYear);
             }
 
-            Long count = bankruptCaseRepository.countByCreateTimeBetween(startDate, endDate);
+            Long count;
+            if (userId != null) {
+                count = bankruptCaseRepository.countByUserIdAndCreateTimeBetween(userId, startDate, endDate);
+            } else {
+                count = bankruptCaseRepository.countByCreateTimeBetween(startDate, endDate);
+            }
 
             LocalDateTime prevStartDate = startDate.minusDays(1);
             LocalDateTime prevEndDate = startDate.minusMonths(1).plusDays(1);
-            Long previousCount = bankruptCaseRepository.countByCreateTimeBetween(prevStartDate, prevEndDate);
+            Long previousCount;
+            if (userId != null) {
+                previousCount = bankruptCaseRepository.countByUserIdAndCreateTimeBetween(userId, prevStartDate, prevEndDate);
+            } else {
+                previousCount = bankruptCaseRepository.countByCreateTimeBetween(prevStartDate, prevEndDate);
+            }
 
             Double growthRate = null;
             if (previousCount != null && previousCount > 0) {
@@ -482,11 +505,27 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "caseCrossAnalysis", allEntries = true, beforeInvocation = true)
     @Cacheable(value = "caseCrossAnalysis")
     public CrossAnalysisStatistics getCaseCrossAnalysis() {
-        List<Object[]> statusProgressData = bankruptCaseRepository.countByStatusAndProgressGroup();
-        List<Object[]> statusData = bankruptCaseRepository.countByStatusGroup();
-        List<Object[]> progressData = bankruptCaseRepository.countByProgressGroup();
+        return getCaseCrossAnalysis(null);
+    }
+
+    @Override
+    public CrossAnalysisStatistics getCaseCrossAnalysis(Long userId) {
+        List<Object[]> statusProgressData;
+        List<Object[]> statusData;
+        List<Object[]> progressData;
+
+        if (userId != null) {
+            statusProgressData = bankruptCaseRepository.countByUserIdAndStatusAndProgressGroup(userId);
+            statusData = bankruptCaseRepository.countByUserIdAndStatusGroup(userId);
+            progressData = bankruptCaseRepository.countByUserIdAndProgressGroup(userId);
+        } else {
+            statusProgressData = bankruptCaseRepository.countByStatusAndProgressGroup();
+            statusData = bankruptCaseRepository.countByStatusGroup();
+            progressData = bankruptCaseRepository.countByProgressGroup();
+        }
 
         Map<String, Map<String, Long>> crossData = new HashMap<>();
         for (Object[] row : statusProgressData) {
@@ -520,13 +559,25 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "caseAmountRanking", key = "#topN", beforeInvocation = true)
     @Cacheable(value = "caseAmountRanking", key = "#topN")
     public RankingStatistics getCaseAmountRanking(Integer topN) {
+        return getCaseAmountRanking(topN, null);
+    }
+
+    @Override
+    public RankingStatistics getCaseAmountRanking(Integer topN, Long userId) {
         if (topN == null || topN <= 0) {
             topN = 10;
         }
 
-        List<Object[]> caseAmountData = creditorClaimRepository.sumTotalAmountByCaseIdWithNameGroup();
+        List<Object[]> caseAmountData;
+        if (userId != null) {
+            caseAmountData = creditorClaimRepository.sumTotalAmountByCaseIdWithNameGroupByUserId(userId);
+        } else {
+            caseAmountData = creditorClaimRepository.sumTotalAmountByCaseIdWithNameGroup();
+        }
+
         List<RankingItem> rankings = new ArrayList<>();
 
         BigDecimal totalAmount = BigDecimal.ZERO;
@@ -561,13 +612,25 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @CacheEvict(value = "creditorClaimAmountRanking", key = "#topN", beforeInvocation = true)
     @Cacheable(value = "creditorClaimAmountRanking", key = "#topN")
     public RankingStatistics getCreditorClaimAmountRanking(Integer topN) {
+        return getCreditorClaimAmountRanking(topN, null);
+    }
+
+    @Override
+    public RankingStatistics getCreditorClaimAmountRanking(Integer topN, Long userId) {
         if (topN == null || topN <= 0) {
             topN = 10;
         }
 
-        List<Object[]> claimAmountData = creditorClaimRepository.findTopClaimsByAmount(PageRequest.of(0, topN));
+        List<Object[]> claimAmountData;
+        if (userId != null) {
+            claimAmountData = creditorClaimRepository.findTopClaimsByAmountByUserId(userId, PageRequest.of(0, topN));
+        } else {
+            claimAmountData = creditorClaimRepository.findTopClaimsByAmount(PageRequest.of(0, topN));
+        }
+
         List<RankingItem> rankings = new ArrayList<>();
 
         BigDecimal totalAmount = BigDecimal.ZERO;

@@ -56,4 +56,5 @@ public interface ClaimConfirmationRepository extends JpaRepository<ClaimConfirma
 
     @Query("SELECT c FROM ClaimConfirmation c WHERE c.caseId = :caseId AND c.lawsuitStatus = 'TRIALING'")
     List<ClaimConfirmation> findTrialingLawsuitsByCaseId(@Param("caseId") Long caseId);
+    void deleteByCaseId(Long caseId);
 }

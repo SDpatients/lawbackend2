@@ -30,4 +30,5 @@ public interface FundReimbursementRepository extends JpaRepository<FundReimburse
                                               Pageable pageable);
 
     List<FundReimbursement> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    void deleteByCaseId(Long caseId);
 }

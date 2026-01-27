@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
     @Index(name = "idx_biz_type", columnList = "biz_type"),
     @Index(name = "idx_biz_id", columnList = "biz_id"),
     @Index(name = "idx_biz_type_biz_id", columnList = "biz_type,biz_id"),
+    @Index(name = "idx_biz_type_biz_ids", columnList = "biz_type,biz_id,sort_order"),
     @Index(name = "idx_file_status", columnList = "file_status"),
     @Index(name = "idx_status", columnList = "status"),
     @Index(name = "idx_upload_time", columnList = "upload_time"),
@@ -62,4 +63,10 @@ public class FileRecord extends BaseEntity {
 
     @Column(name = "delete_user_id")
     private Long deleteUserId;
+
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Column(name = "sort_order")
+    private Integer sortOrder;
 }

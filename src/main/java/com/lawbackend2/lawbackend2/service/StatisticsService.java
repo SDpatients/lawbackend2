@@ -31,11 +31,19 @@ public interface StatisticsService {
 
     TimeTrendStatistics getCaseTrend(String period);
 
+    TimeTrendStatistics getCaseTrend(String period, Long userId);
+
     CrossAnalysisStatistics getCaseCrossAnalysis();
+
+    CrossAnalysisStatistics getCaseCrossAnalysis(Long userId);
 
     RankingStatistics getCaseAmountRanking(Integer topN);
 
+    RankingStatistics getCaseAmountRanking(Integer topN, Long userId);
+
     RankingStatistics getCreditorClaimAmountRanking(Integer topN);
+
+    RankingStatistics getCreditorClaimAmountRanking(Integer topN, Long userId);
 
     FundApprovalExport exportFundApprovals(Long caseId);
 

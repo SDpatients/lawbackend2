@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.dto;
 
+import com.lawbackend2.lawbackend2.enums.CreditorStatus;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
@@ -25,4 +26,6 @@ public class CreditorCreateRequest {
     private String legalRepresentative;
 
     private java.math.BigDecimal registeredCapital;
+
+    private CreditorStatus status;
 }

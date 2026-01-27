@@ -28,4 +28,5 @@ public interface DebtorEnterpriseRepository extends JpaRepository<DebtorEnterpri
                                            @Param("unifiedSocialCreditCode") String unifiedSocialCreditCode,
                                            @Param("legalRepresentative") String legalRepresentative,
                                            Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

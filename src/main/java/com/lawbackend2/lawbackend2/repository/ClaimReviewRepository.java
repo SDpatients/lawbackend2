@@ -52,4 +52,5 @@ public interface ClaimReviewRepository extends JpaRepository<ClaimReview, Long>,
 
     @Query("SELECT r FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId ORDER BY r.reviewRound DESC")
     List<ClaimReview> findAllByClaimRegistrationIdOrderByReviewRoundDesc(@Param("claimRegistrationId") Long claimRegistrationId);
+    void deleteByCaseId(Long caseId);
 }

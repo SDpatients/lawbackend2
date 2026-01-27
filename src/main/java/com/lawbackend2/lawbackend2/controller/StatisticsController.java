@@ -12,6 +12,8 @@ import com.lawbackend2.lawbackend2.dto.response.RankingStatistics;
 import com.lawbackend2.lawbackend2.dto.response.FundApprovalExport;
 import com.lawbackend2.lawbackend2.dto.response.FundAccountExport;
 import com.lawbackend2.lawbackend2.dto.response.WorkPlanExport;
+import com.lawbackend2.lawbackend2.entity.BankruptCase;
+import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.StatisticsService;
 import com.lawbackend2.lawbackend2.util.StatisticsPermissionUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,10 +35,12 @@ public class StatisticsController {
 
     private final StatisticsService statisticsService;
     private final StatisticsPermissionUtil statisticsPermissionUtil;
+    private final BankruptCaseService bankruptCaseService;
 
-    public StatisticsController(StatisticsService statisticsService, StatisticsPermissionUtil statisticsPermissionUtil) {
+    public StatisticsController(StatisticsService statisticsService, StatisticsPermissionUtil statisticsPermissionUtil, BankruptCaseService bankruptCaseService) {
         this.statisticsService = statisticsService;
         this.statisticsPermissionUtil = statisticsPermissionUtil;
+        this.bankruptCaseService = bankruptCaseService;
     }
 
     @Operation(summary = "资金流水统计")
@@ -45,7 +49,10 @@ public class StatisticsController {
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
 
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         FundTransactionStatistics statistics = statisticsService.getFundTransactionStatistics(caseId);
         return Result.success(statistics);
     }
@@ -56,7 +63,10 @@ public class StatisticsController {
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
 
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         FundTransactionExport export = statisticsService.exportFundTransactions(caseId);
         return Result.success(export);
     }
@@ -67,7 +77,10 @@ public class StatisticsController {
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
 
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         FundApprovalStatistics statistics = statisticsService.getFundApprovalStatistics(caseId);
         return Result.success(statistics);
     }
@@ -78,7 +91,10 @@ public class StatisticsController {
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
 
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         FundAccountStatistics statistics = statisticsService.getFundAccountStatistics(caseId);
         return Result.success(statistics);
     }
@@ -89,7 +105,10 @@ public class StatisticsController {
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
 
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         WorkPlanStatistics statistics = statisticsService.getWorkPlanStatistics(caseId);
         return Result.success(statistics);
     }
@@ -101,7 +120,10 @@ public class StatisticsController {
             @Parameter(description = "周期类型: month/quarter/year") @RequestParam(defaultValue = "month") String period) {
 
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         TimeTrendStatistics trend = statisticsService.getFundTransactionTrend(caseId, period);
         return Result.success(trend);
     }
@@ -113,7 +135,10 @@ public class StatisticsController {
             @Parameter(description = "周期类型: month/quarter/year") @RequestParam(defaultValue = "month") String period) {
 
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         TimeTrendStatistics trend = statisticsService.getFundApprovalTrend(caseId, period);
         return Result.success(trend);
     }
@@ -122,17 +147,16 @@ public class StatisticsController {
     @GetMapping("/case/trend")
     public Result<TimeTrendStatistics> getCaseTrend(
             @Parameter(description = "周期类型: month/quarter/year") @RequestParam(defaultValue = "month") String period) {
-
-        statisticsPermissionUtil.checkStatisticsPermission();
-        TimeTrendStatistics trend = statisticsService.getCaseTrend(period);
+        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        TimeTrendStatistics trend = statisticsService.getCaseTrend(period, userId);
         return Result.success(trend);
     }
 
     @Operation(summary = "案件状态与进度交叉分析")
     @GetMapping("/case/cross-analysis")
     public Result<CrossAnalysisStatistics> getCaseCrossAnalysis() {
-        statisticsPermissionUtil.checkStatisticsPermission();
-        CrossAnalysisStatistics analysis = statisticsService.getCaseCrossAnalysis();
+        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        CrossAnalysisStatistics analysis = statisticsService.getCaseCrossAnalysis(userId);
         return Result.success(analysis);
     }
 
@@ -140,8 +164,8 @@ public class StatisticsController {
     @GetMapping("/case/amount-ranking")
     public Result<RankingStatistics> getCaseAmountRanking(
             @Parameter(description = "前N名") @RequestParam(defaultValue = "10") Integer topN) {
-        statisticsPermissionUtil.checkStatisticsPermission();
-        RankingStatistics ranking = statisticsService.getCaseAmountRanking(topN);
+        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        RankingStatistics ranking = statisticsService.getCaseAmountRanking(topN, userId);
         return Result.success(ranking);
     }
 
@@ -149,8 +173,8 @@ public class StatisticsController {
     @GetMapping("/creditor-claim/amount-ranking")
     public Result<RankingStatistics> getCreditorClaimAmountRanking(
             @Parameter(description = "前N名") @RequestParam(defaultValue = "10") Integer topN) {
-        statisticsPermissionUtil.checkStatisticsPermission();
-        RankingStatistics ranking = statisticsService.getCreditorClaimAmountRanking(topN);
+        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        RankingStatistics ranking = statisticsService.getCreditorClaimAmountRanking(topN, userId);
         return Result.success(ranking);
     }
 
@@ -159,7 +183,10 @@ public class StatisticsController {
     public Result<FundApprovalExport> exportFundApprovals(
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         FundApprovalExport export = statisticsService.exportFundApprovals(caseId);
         return Result.success(export);
     }
@@ -169,7 +196,10 @@ public class StatisticsController {
     public Result<FundAccountExport> exportFundAccounts(
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         FundAccountExport export = statisticsService.exportFundAccounts(caseId);
         return Result.success(export);
     }
@@ -179,7 +209,10 @@ public class StatisticsController {
     public Result<WorkPlanExport> exportWorkPlans(
             @Parameter(description = "案件ID") @RequestParam Long caseId) {
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         WorkPlanExport export = statisticsService.exportWorkPlans(caseId);
         return Result.success(export);
     }
@@ -191,7 +224,10 @@ public class StatisticsController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "100") Integer size) {
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         FundApprovalExport export = statisticsService.exportFundApprovals(caseId, pageable);
         return Result.success(export);
@@ -204,7 +240,10 @@ public class StatisticsController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "100") Integer size) {
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         FundAccountExport export = statisticsService.exportFundAccounts(caseId, pageable);
         return Result.success(export);
@@ -217,7 +256,10 @@ public class StatisticsController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "100") Integer size) {
         statisticsPermissionUtil.checkStatisticsPermission();
-        statisticsPermissionUtil.checkCaseAccessPermission(caseId);
+        BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+        if (bankruptCase != null) {
+            statisticsPermissionUtil.checkCaseAccessPermission(caseId, bankruptCase.getCreateUserId());
+        }
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         WorkPlanExport export = statisticsService.exportWorkPlans(caseId, pageable);
         return Result.success(export);

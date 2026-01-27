@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.dto;
 
+import com.lawbackend2.lawbackend2.enums.CreditorStatus;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -17,6 +18,7 @@ public class CreditorInfoResponse {
     private String idNumber;
     private String legalRepresentative;
     private BigDecimal registeredCapital;
+    private CreditorStatus status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long createUserId;

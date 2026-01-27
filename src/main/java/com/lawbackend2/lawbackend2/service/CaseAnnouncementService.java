@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.dto.CaseAnnouncementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementPublishRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
+import com.lawbackend2.lawbackend2.entity.FileRecord;
 
 import java.util.List;
 
@@ -26,4 +27,6 @@ public interface CaseAnnouncementService {
     void unTopAnnouncement(Long announcementId, Long userId);
 
     void deleteAnnouncement(Long announcementId);
+
+    List<FileRecord> getAnnouncementAttachments(Long announcementId);
 }

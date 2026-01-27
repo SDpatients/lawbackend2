@@ -19,7 +19,8 @@
   "address": "北京市朝阳区",
   "idNumber": "110101199001011234",
   "legalRepresentative": "张三",
-  "registeredCapital": 1000000.00
+  "registeredCapital": 1000000.00,
+  "status": "KNOWN"
 }
 ```
 
@@ -59,6 +60,7 @@
     "idNumber": "110101199001011234",
     "legalRepresentative": "张三",
     "registeredCapital": 1000000.00,
+    "status": "KNOWN",
     "createTime": "2026-01-08T10:00:00",
     "updateTime": "2026-01-08T10:00:00"
   }
@@ -96,6 +98,7 @@
         "idNumber": "110101199001011234",
         "legalRepresentative": "张三",
         "registeredCapital": 1000000.00,
+        "status": "KNOWN",
         "createTime": "2026-01-08T10:00:00",
         "updateTime": "2026-01-08T10:00:00"
       }
@@ -124,7 +127,8 @@
   "address": "上海市浦东新区",
   "idNumber": "310101199001011234",
   "legalRepresentative": "李四",
-  "registeredCapital": 2000000.00
+  "registeredCapital": 2000000.00,
+  "status": "CONFIRMED"
 }
 ```
 
@@ -1392,3 +1396,43 @@
 7. **管理人（律师事务所）管理模块**：✅ 创建、查询、更新、删除、员工管理
 
 所有接口均已实现完整的CRUD功能，代码符合SSM框架规范，包含详细的中文注释，并已在Swagger中配置了完整的API文档。
+
+---
+
+## 十一、API修改记录
+
+### 2026-01-26 修改记录
+
+#### 债权人管理模块
+
+**修改内容**：
+- 新增债权人状态字段 `status`，支持两种状态值：
+  - `KNOWN` - 已知债权人
+  - `CONFIRMED` - 确认债权人
+
+**影响的API接口**：
+
+1. **创建债权人** (`POST /creditor`)
+   - 请求参数新增 `status` 字段（可选）
+   - 示例值：`"status": "KNOWN"`
+
+2. **获取债权人详情** (`GET /creditor/{creditorId}`)
+   - 响应数据新增 `status` 字段
+   - 示例值：`"status": "KNOWN"`
+
+3. **债权人列表** (`GET /creditor/list`)
+   - 响应数据新增 `status` 字段
+   - 示例值：`"status": "KNOWN"`
+
+4. **更新债权人信息** (`PUT /creditor/{creditorId}`)
+   - 请求参数新增 `status` 字段（可选）
+   - 示例值：`"status": "CONFIRMED"`
+
+**数据库变更**：
+- `tb_creditor_info` 表新增 `status` 字段，类型为 VARCHAR(255)
+- 默认值可设置为 `KNOWN`（已知债权人）
+
+**前端注意事项**：
+- 在创建/编辑债权人表单中，可添加状态下拉选择框
+- 在债权人列表中，可添加状态列显示
+- 在查询条件中，可添加状态筛选功能

@@ -19,4 +19,5 @@ public interface CaseAnnouncementRepository extends JpaRepository<CaseAnnounceme
     Page<CaseAnnouncement> findByStatus(String status, Pageable pageable);
 
     List<CaseAnnouncement> findByIsTopTrueAndTopExpireTimeBefore(LocalDateTime expireTime);
+    void deleteByCaseId(Long caseId);
 }

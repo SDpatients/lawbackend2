@@ -4,6 +4,8 @@ import com.lawbackend2.lawbackend2.dto.request.BankAccountCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountPasswordRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountStatusRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.BankAccountResponse;
+import com.lawbackend2.lawbackend2.dto.response.BankAccountWithTransactionsResponse;
 import com.lawbackend2.lawbackend2.entity.BankAccount;
 import com.lawbackend2.lawbackend2.common.PageResult;
 
@@ -11,7 +13,7 @@ public interface BankAccountService {
 
     Long createBankAccount(BankAccountCreateRequest request, Long userId);
 
-    PageResult<BankAccount> getBankAccountList(Integer pageNum, Integer pageSize, String accountType, String status, String accountName, Long caseId, Long userId);
+    PageResult<BankAccountResponse> getBankAccountList(Integer pageNum, Integer pageSize, String accountType, String status, String accountName, Long caseId, Long userId);
 
     BankAccount getBankAccountDetail(Long accountId, Long userId);
 
@@ -22,4 +24,6 @@ public interface BankAccountService {
     void updateBankAccountStatus(Long accountId, BankAccountStatusRequest request, Long userId);
 
     void deleteBankAccount(Long accountId);
+
+    BankAccountWithTransactionsResponse getBankAccountWithTransactions(Long accountId, Long userId);
 }

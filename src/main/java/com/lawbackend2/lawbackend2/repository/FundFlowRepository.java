@@ -35,4 +35,5 @@ public interface FundFlowRepository extends JpaRepository<FundFlow, Long> {
 
     @Query("SELECT SUM(ff.amount) FROM FundFlow ff WHERE ff.isDeleted = false AND ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
     java.math.BigDecimal sumAmountByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    void deleteByCaseId(Long caseId);
 }

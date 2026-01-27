@@ -133,6 +133,9 @@ public class CourtServiceImpl implements CourtService {
         if (request.getUndertakingJudge() != null) {
             court.setUndertakingJudge(request.getUndertakingJudge());
         }
+        if (request.getAddress() != null) {
+            court.setAddress(request.getAddress());
+        }
 
         Court updated = courtRepository.save(court);
         log.info("法院信息更新成功, ID: {}", updated.getId());

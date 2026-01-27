@@ -4,10 +4,15 @@ import com.lawbackend2.lawbackend2.dto.request.BankAccountCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountPasswordRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountStatusRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.BankAccountResponse;
+import com.lawbackend2.lawbackend2.dto.response.BankAccountTransactionResponse;
+import com.lawbackend2.lawbackend2.dto.response.BankAccountWithTransactionsResponse;
 import com.lawbackend2.lawbackend2.entity.BankAccount;
+import com.lawbackend2.lawbackend2.entity.BankAccountTransaction;
 import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankAccountRepository;
+import com.lawbackend2.lawbackend2.repository.BankAccountTransactionRepository;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
 import com.lawbackend2.lawbackend2.service.BankAccountService;
@@ -18,26 +23,27 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.criteria.Predicate;
-import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class BankAccountServiceImpl implements BankAccountService {
 
     private final BankAccountRepository bankAccountRepository;
+    private final BankAccountTransactionRepository transactionRepository;
     private final com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
 
     @Autowired
-    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil, UserRoleRepository userRoleRepository, RoleRepository roleRepository) {
+    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, BankAccountTransactionRepository transactionRepository, com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil, UserRoleRepository userRoleRepository, RoleRepository roleRepository) {
         this.bankAccountRepository = bankAccountRepository;
+        this.transactionRepository = transactionRepository;
         this.passwordUtil = passwordUtil;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
@@ -61,13 +67,14 @@ public class BankAccountServiceImpl implements BankAccountService {
     }
 
     @Override
-    public PageResult<BankAccount> getBankAccountList(Integer pageNum, Integer pageSize, String accountType, String status, String accountName, Long caseId, Long userId) {
+    public PageResult<BankAccountResponse> getBankAccountList(Integer pageNum, Integer pageSize, String accountType, String status, String accountName, Long caseId, Long userId) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         
-        Specification<BankAccount> spec = buildSpecificationWithPermission(accountType, status, accountName, caseId, userId);
-        Page<BankAccount> page = bankAccountRepository.findAll(spec, pageable);
+        boolean isAdmin = isAdminOrSuperAdmin(userId);
+        Page<BankAccountResponse> page = bankAccountRepository.findBankAccountsWithCaseInfo(
+            accountType, status, accountName, caseId, isAdmin ? null : userId, isAdmin, pageable);
 
-        PageResult<BankAccount> result = new PageResult<>();
+        PageResult<BankAccountResponse> result = new PageResult<>();
         result.setTotal(page.getTotalElements());
         result.setList(page.getContent());
         return result;
@@ -120,34 +127,6 @@ public class BankAccountServiceImpl implements BankAccountService {
         bankAccountRepository.deleteById(accountId);
     }
 
-    private Specification<BankAccount> buildSpecificationWithPermission(String accountType, String status, String accountName, Long caseId, Long userId) {
-        return (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (accountType != null && !accountType.isEmpty()) {
-                predicates.add(cb.equal(root.get("accountType"), accountType));
-            }
-
-            if (status != null && !status.isEmpty()) {
-                predicates.add(cb.equal(root.get("status"), status));
-            }
-
-            if (accountName != null && !accountName.isEmpty()) {
-                predicates.add(cb.like(root.get("accountName"), "%" + accountName + "%"));
-            }
-
-            if (caseId != null) {
-                predicates.add(cb.equal(root.get("caseId"), caseId));
-            }
-
-            if (!isAdminOrSuperAdmin(userId)) {
-                predicates.add(cb.equal(root.get("createUserId"), userId));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-    }
-
     private void checkPermission(BankAccount bankAccount, Long userId) {
         if (isAdminOrSuperAdmin(userId)) {
             return;
@@ -169,5 +148,49 @@ public class BankAccountServiceImpl implements BankAccountService {
             }
         }
         return false;
+    }
+
+    @Override
+    public BankAccountWithTransactionsResponse getBankAccountWithTransactions(Long accountId, Long userId) {
+        BankAccount bankAccount = getBankAccountDetail(accountId, userId);
+
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "transactionDate", "createTime"));
+        Page<BankAccountTransactionResponse> transactionsPage = transactionRepository.findTransactionsWithDetails(
+                accountId, null, null, null, null, null, pageable);
+
+        List<BankAccountTransactionResponse> transactions = transactionsPage.getContent();
+
+        BigDecimal totalInflow = transactions.stream()
+                .filter(t -> "IN".equals(t.getTransactionType()))
+                .map(BankAccountTransactionResponse::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalOutflow = transactions.stream()
+                .filter(t -> "OUT".equals(t.getTransactionType()))
+                .map(BankAccountTransactionResponse::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BankAccountWithTransactionsResponse response = new BankAccountWithTransactionsResponse();
+        response.setId(bankAccount.getId());
+        response.setStatus(bankAccount.getStatus());
+        response.setIsDeleted(bankAccount.getIsDeleted());
+        response.setCreateTime(bankAccount.getCreateTime());
+        response.setUpdateTime(bankAccount.getUpdateTime());
+        response.setCreateUserId(bankAccount.getCreateUserId());
+        response.setUpdateUserId(bankAccount.getUpdateUserId());
+        response.setAccountName(bankAccount.getAccountName());
+        response.setBankName(bankAccount.getBankName());
+        response.setAccountNumber(bankAccount.getAccountNumber());
+        response.setAccountType(bankAccount.getAccountType());
+        response.setCurrency(bankAccount.getCurrency());
+        response.setCurrentBalance(bankAccount.getCurrentBalance());
+        response.setOpeningDate(bankAccount.getOpeningDate());
+        response.setClosingDate(bankAccount.getClosingDate());
+        response.setCaseId(bankAccount.getCaseId());
+        response.setTransactions(transactions);
+        response.setTotalInflow(totalInflow);
+        response.setTotalOutflow(totalOutflow);
+
+        return response;
     }
 }

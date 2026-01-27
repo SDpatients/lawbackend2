@@ -28,4 +28,5 @@ public interface CommonDebtRepository extends JpaRepository<CommonDebt, Long> {
                                       Pageable pageable);
 
     List<CommonDebt> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    void deleteByCaseId(Long caseId);
 }

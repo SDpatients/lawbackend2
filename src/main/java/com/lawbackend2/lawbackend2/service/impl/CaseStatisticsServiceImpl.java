@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,14 +46,16 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
             Map<String, Long> progressDistribution = new HashMap<>();
 
             if (startDate != null && endDate != null) {
-                totalCases = caseRepository.countByCreatedAtBetween(startDate, endDate);
+                LocalDateTime startDateTime = startDate.atStartOfDay();
+                LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
+                totalCases = caseRepository.countByCreatedAtBetween(startDateTime, endDateTime);
 
-                List<Object[]> statusGroup = caseRepository.countByCaseStatusGroupByDateRange(startDate, endDate);
+                List<Object[]> statusGroup = caseRepository.countByCaseStatusGroupByDateRange(startDateTime, endDateTime);
                 for (Object[] row : statusGroup) {
                     statusDistribution.put((String) row[0], (Long) row[1]);
                 }
 
-                List<Object[]> progressGroup = caseRepository.countByCaseProgressGroupByDateRange(startDate, endDate);
+                List<Object[]> progressGroup = caseRepository.countByCaseProgressGroupByDateRange(startDateTime, endDateTime);
                 for (Object[] row : progressGroup) {
                     progressDistribution.put((String) row[0], (Long) row[1]);
                 }
@@ -106,7 +109,9 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
             response.setAverageReviewCount(avgReviewCount != null ? BigDecimal.valueOf(avgReviewCount).setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
 
             LocalDate today = LocalDate.now();
-            Long todayCreatedCases = caseRepository.countByCreatedAtDate(today);
+            LocalDateTime startOfToday = today.atStartOfDay();
+            LocalDateTime endOfToday = today.atTime(23, 59, 59);
+            Long todayCreatedCases = caseRepository.countByCreatedAtBetween(startOfToday, endOfToday);
             response.setTodayCreatedCases(todayCreatedCases != null ? todayCreatedCases : 0L);
 
             Long monthCreatedCases = caseRepository.countByCreatedAtYearAndMonth(today.getYear(), today.getMonthValue());

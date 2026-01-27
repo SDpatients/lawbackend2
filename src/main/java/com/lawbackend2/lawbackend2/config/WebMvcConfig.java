@@ -1,32 +1,10 @@
 package com.lawbackend2.lawbackend2.config;
 
-import com.lawbackend2.lawbackend2.interceptor.RateLimitInterceptor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
-
-    @Autowired
-    private RateLimitInterceptor rateLimitInterceptor;
-
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-    }
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/**")
-                .excludePathPatterns("/auth/**")
-                .excludePathPatterns("/**/options/**");
-    }
+    // 此配置确保SockJS能够正确处理静态资源路径
+    // 当应用程序有context-path时，SockJS需要这个配置来定位iframe.html等资源
 }

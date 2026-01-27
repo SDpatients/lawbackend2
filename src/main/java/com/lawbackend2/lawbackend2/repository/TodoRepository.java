@@ -16,6 +16,10 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     Page<Todo> findByUserId(Long userId, Pageable pageable);
 
+    Page<Todo> findByUserIdAndCreateTimeBetween(Long userId, LocalDateTime startTime, LocalDateTime endTime, Pageable pageable);
+
+    Page<Todo> findByUserIdAndDeadlineBetween(Long userId, LocalDateTime startTime, LocalDateTime endTime, Pageable pageable);
+
     Page<Todo> findByUserIdAndStatus(Long userId, String status, Pageable pageable);
 
     Page<Todo> findByUserIdAndType(Long userId, String type, Pageable pageable);

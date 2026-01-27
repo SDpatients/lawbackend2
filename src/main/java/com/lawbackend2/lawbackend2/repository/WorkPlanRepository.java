@@ -29,4 +29,5 @@ public interface WorkPlanRepository extends JpaRepository<WorkPlan, Long>, JpaSp
 
     @Query("SELECT wp FROM WorkPlan wp WHERE wp.isDeleted = false AND wp.caseId = :caseId")
     Page<WorkPlan> findByCaseIdAndIsDeletedWithPage(@Param("caseId") Long caseId, Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

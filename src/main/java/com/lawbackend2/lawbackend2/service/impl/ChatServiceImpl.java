@@ -117,17 +117,29 @@ public class ChatServiceImpl implements ChatService {
     public ChatMessageResponse sendMessage(Long senderId, SendMessageRequest request) {
         Long receiverId = request.getReceiverId();
 
+        log.info("=== 开始处理发送消息请求 ===");
+        log.info("处理发送消息请求 - 发送者: {}, 接收者: {}, 类型: {}, 内容: {}", 
+                senderId, receiverId, request.getMessageType(), request.getContent());
+        log.debug("完整请求对象: {}", request);
+
         if (senderId.equals(receiverId)) {
+            log.warn("❌ 发送者与接收者相同，不能给自己发送消息");
             throw new BusinessException("不能给自己发送消息");
         }
 
+        log.info("开始验证发送者和接收者信息");
         User sender = userRepository.findById(senderId)
                 .orElseThrow(() -> new BusinessException("发送者不存在"));
         User receiver = userRepository.findById(receiverId)
                 .orElseThrow(() -> new BusinessException("接收者不存在"));
+        log.info("✅ 发送者和接收者验证成功");
+        log.info("发送者: {}, 接收者: {}", sender.getUsername(), receiver.getUsername());
 
+        log.info("准备获取或创建会话");
         Conversation conversation = getOrCreateConversation(senderId, receiverId);
+        log.info("✅ 会话获取/创建成功，会话ID: {}", conversation.getId());
 
+        log.info("准备创建ChatMessage对象");
         ChatMessage message = new ChatMessage();
         message.setConversationId(conversation.getId());
         message.setSenderId(senderId);
@@ -141,9 +153,17 @@ public class ChatServiceImpl implements ChatService {
         message.setMessageStatus("SENT");
         message.setIsDeleted(false);
         message.setIsRecalled(false);
+        message.setCreateUserId(senderId);
+        message.setUpdateUserId(senderId);
+        log.info("✅ ChatMessage对象创建成功");
+        log.debug("ChatMessage对象内容: {}", message);
 
+        log.info("准备保存消息到数据库");
         ChatMessage savedMessage = chatMessageRepository.save(message);
+        log.info("✅ 消息保存成功，消息ID: {}", savedMessage.getId());
+        log.debug("保存后的消息内容: {}", savedMessage);
 
+        log.info("准备更新会话的最后消息");
         String lastContent = request.getMessageType().equals("TEXT") ? request.getContent() :
                 request.getMessageType().equals("IMAGE") ? "[图片]" :
                 request.getMessageType().equals("FILE") ? request.getFileName() :
@@ -156,15 +176,22 @@ public class ChatServiceImpl implements ChatService {
                 request.getMessageType(),
                 savedMessage.getCreateTime()
         );
+        log.info("✅ 会话最后消息更新成功");
 
+        log.info("准备更新未读消息数");
         if (conversation.getUserId1().equals(senderId)) {
             conversationRepository.incrementUser2UnreadCount(conversation.getId(), senderId);
         } else {
             conversationRepository.incrementUser1UnreadCount(conversation.getId(), senderId);
         }
+        log.info("✅ 未读消息数更新成功");
 
+        log.info("准备转换为ChatMessageResponse");
         ChatMessageResponse response = convertToChatMessageResponse(savedMessage);
+        log.info("✅ 转换成功");
+        log.debug("ChatMessageResponse内容: {}", response);
 
+        log.info("准备创建WebSocketMessage对象");
         com.lawbackend2.lawbackend2.dto.WebSocketMessage wsMessage = com.lawbackend2.lawbackend2.dto.WebSocketMessage.builder()
                 .type("NEW_MESSAGE")
                 .userId(receiverId)
@@ -173,13 +200,17 @@ public class ChatServiceImpl implements ChatService {
                 .data(response)
                 .timestamp(System.currentTimeMillis())
                 .build();
+        log.info("✅ WebSocketMessage对象创建成功");
+        log.debug("WebSocketMessage内容: {}", wsMessage);
 
-        log.info("准备通过WebSocket发送消息，发送者: {}, 接收者: {}, WebSocket消息: {}", 
-                senderId, receiverId, wsMessage);
+        log.info("准备调用 webSocketService.sendChatMessage() 发送消息");
+        log.info("WebSocket发送参数 - 发送者: {}, 接收者: {}, WebSocket消息: {}", 
+                senderId, receiverId, wsMessage.getType());
         
         webSocketService.sendChatMessage(senderId, receiverId, wsMessage);
         
-        log.info("WebSocket消息发送完成");
+        log.info("✅ webSocketService.sendChatMessage() 调用完成");
+        log.info("=== 发送消息请求处理完成 ===");
 
         return response;
     }

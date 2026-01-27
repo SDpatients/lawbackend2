@@ -38,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -775,5 +776,28 @@ public class UserServiceImpl implements UserService {
                 .createTime(user.getCreateTime())
                 .updateTime(user.getUpdateTime())
                 .build();
+    }
+
+    @Override
+    public List<UserResponse> getAdminUsers() {
+        // 查找role_code为ADMIN的角色
+        Optional<Role> adminRoleOpt = roleRepository.findByRoleCode("ADMIN");
+        if (!adminRoleOpt.isPresent()) {
+            return Collections.emptyList();
+        }
+        
+        Long adminRoleId = adminRoleOpt.get().getId();
+        
+        // 通过user_role表查询所有具有ADMIN角色的用户ID
+        List<Long> userIds = userRoleRepository.findUserIdsByRoleId(adminRoleId);
+        
+        // 查询这些用户的详细信息
+        List<User> users = userRepository.findAllById(userIds);
+        
+        // 转换为UserResponse并返回，过滤掉已删除的用户
+        return users.stream()
+                .filter(user -> !user.getIsDeleted())
+                .map(this::convertToUserResponse)
+                .collect(Collectors.toList());
     }
 }

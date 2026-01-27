@@ -28,4 +28,5 @@ public interface FundBudgetRepository extends JpaRepository<FundBudget, Long> {
                                       Pageable pageable);
 
     List<FundBudget> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    void deleteByCaseId(Long caseId);
 }

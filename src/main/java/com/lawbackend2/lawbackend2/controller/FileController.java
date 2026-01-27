@@ -205,4 +205,14 @@ public class FileController {
         fileService.deleteCaseTaskFiles(fileIds, caseId, stageNum, taskCode);
         return Result.success();
     }
+
+    @Operation(summary = "根据业务类型和业务ID查询所有文件列表")
+    @GetMapping("/all")
+    public Result<List<FileRecord>> getAllFilesByBizTypeAndBizId(
+            @Parameter(description = "业务类型") @RequestParam("bizType") String bizType,
+            @Parameter(description = "业务ID") @RequestParam("bizId") String bizId) {
+
+        List<FileRecord> fileRecords = fileService.getAllFilesByBizTypeAndBizId(bizType, bizId);
+        return Result.success(fileRecords);
+    }
 }

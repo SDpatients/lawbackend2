@@ -51,4 +51,7 @@ public class DebtorEnterprise extends BaseEntity {
 
     @Column(name = "contact_person", length = 100)
     private String contactPerson;
+
+    @Column(name = "status", length = 20)
+    private String status;
 }

@@ -23,6 +23,10 @@ public class DocumentDeliveryResponse {
 
     private String documentName;
 
+    private String documentNumber;
+
+    private String abbreviation;
+
     private String documentType;
 
     private String recipientName;

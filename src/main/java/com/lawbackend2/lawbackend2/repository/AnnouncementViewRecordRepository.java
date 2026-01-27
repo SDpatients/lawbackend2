@@ -51,4 +51,5 @@ public interface AnnouncementViewRecordRepository extends JpaRepository<Announce
 
     @Query("SELECT r FROM AnnouncementViewRecord r WHERE r.announcementId = :announcementId ORDER BY r.viewTime DESC")
     List<AnnouncementViewRecord> findLatestByAnnouncementId(@Param("announcementId") Long announcementId, Pageable pageable);
+    void deleteByCaseId(Long caseId);
 }

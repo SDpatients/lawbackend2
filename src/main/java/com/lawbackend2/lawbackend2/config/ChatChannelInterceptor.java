@@ -24,13 +24,11 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
-        // 对于所有消息，检查是否已经设置了用户
         if (accessor.getUser() != null) {
             log.debug("用户已存在: {}", accessor.getUser().getName());
             return message;
         }
 
-        // 尝试从session attributes中获取（握手时设置的）
         if (accessor.getSessionAttributes() != null) {
             Object userId = accessor.getSessionAttributes().get("userId");
             if (userId != null) {
@@ -38,12 +36,39 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
                     new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of());
                 accessor.setUser(authentication);
                 log.debug("从session attributes设置WebSocket用户ID: {}", userId);
+                
+                // 确保用户被添加到在线列表
+                try {
+                    Long userIdLong = Long.valueOf(userId.toString());
+                    webSocketService.addUserToOnline(accessor.getSessionId(), userIdLong);
+                } catch (Exception e) {
+                    log.warn("添加用户到在线列表失败: {}", userId, e);
+                }
+                
                 return message;
             }
         }
 
-        // 处理CONNECT消息，设置用户信息
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+            if (accessor.getSessionAttributes() != null) {
+                Object userId = accessor.getSessionAttributes().get("userId");
+                if (userId != null) {
+                    try {
+                        Long userIdLong = Long.valueOf(userId.toString());
+                        UsernamePasswordAuthenticationToken authentication = 
+                            new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of());
+                        accessor.setUser(authentication);
+                        log.info("CONNECT消息 - 从session attributes设置用户ID: {}", userId);
+                        
+                        webSocketService.addUserToOnline(accessor.getSessionId(), userIdLong);
+                        
+                        return message;
+                    } catch (Exception e) {
+                        log.warn("处理CONNECT消息失败: {}", userId, e);
+                    }
+                }
+            }
+            
             String userIdFromHeader = accessor.getFirstNativeHeader("userId");
             if (userIdFromHeader != null) {
                 try {
@@ -54,7 +79,6 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
                     accessor.getSessionAttributes().put("userId", userIdFromHeader);
                     log.info("CONNECT消息 - 从连接头设置用户ID: {}", userIdFromHeader);
                     
-                    // 添加用户到在线列表
                     webSocketService.addUserToOnline(accessor.getSessionId(), userId);
                     
                     return message;
@@ -64,7 +88,6 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
             }
         }
 
-        // 尝试从连接头中获取userId
         String userIdFromHeader = accessor.getFirstNativeHeader("userId");
         if (userIdFromHeader != null) {
             try {
@@ -73,6 +96,11 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
                 accessor.setUser(authentication);
                 accessor.getSessionAttributes().put("userId", userIdFromHeader);
                 log.debug("从连接头设置WebSocket用户ID: {}", userIdFromHeader);
+                
+                // 确保用户被添加到在线列表
+                Long userIdLong = Long.valueOf(userIdFromHeader);
+                webSocketService.addUserToOnline(accessor.getSessionId(), userIdLong);
+                
                 return message;
             } catch (Exception e) {
                 log.warn("解析连接头中的userId失败: {}", userIdFromHeader, e);
@@ -87,7 +115,6 @@ public class ChatChannelInterceptor implements ChannelInterceptor {
     public void postSend(Message<?> message, MessageChannel channel, boolean sent) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
         
-        // 处理DISCONNECT消息
         if (StompCommand.DISCONNECT.equals(accessor.getCommand())) {
             log.info("用户断开WebSocket连接: {}", accessor.getSessionId());
             webSocketService.removeUserFromOnline(accessor.getSessionId());

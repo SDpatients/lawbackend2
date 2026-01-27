@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lawbackend2.lawbackend2.dto.request.CaseProcessStageStatusUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseProcessStage;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
@@ -193,5 +194,35 @@ public class CaseProcessStageServiceImpl implements CaseProcessStageService {
         fileMap.put("fileSize", fileRecord.getFileSize());
         fileMap.put("uploadTime", fileRecord.getUploadTime());
         return fileMap;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateStatusByCaseIdAndModuleCode(CaseProcessStageStatusUpdateRequest request) {
+        try {
+            List<CaseProcessStage> stages = caseProcessStageRepository.findByCaseIdAndModuleCodeAndNotDeleted(
+                    request.getCaseId(), request.getModuleCode());
+            
+            if (stages.isEmpty()) {
+                throw new BusinessException("未找到对应的案件流程阶段数据");
+            }
+            
+            for (CaseProcessStage stage : stages) {
+                if ("PENDING".equals(stage.getStatus())) {
+                    throw new BusinessException("存在待处理状态的阶段数据，无法修改状态");
+                }
+                stage.setStatus(request.getStatus());
+                caseProcessStageRepository.save(stage);
+            }
+            
+            log.info("更新案件流程阶段状态成功, caseId: {}, moduleCode: {}, status: {}, count: {}", 
+                     request.getCaseId(), request.getModuleCode(), request.getStatus(), stages.size());
+            return true;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("更新案件流程阶段状态失败", e);
+            throw new BusinessException("更新案件流程阶段状态失败: " + e.getMessage());
+        }
     }
 }

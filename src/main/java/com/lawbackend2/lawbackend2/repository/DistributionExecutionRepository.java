@@ -28,4 +28,5 @@ public interface DistributionExecutionRepository extends JpaRepository<Distribut
                                               Pageable pageable);
 
     List<DistributionExecution> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    void deleteByCaseId(Long caseId);
 }

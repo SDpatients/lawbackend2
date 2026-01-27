@@ -2,8 +2,11 @@ package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.dto.WebSocketMessage;
 import com.lawbackend2.lawbackend2.entity.Notification;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.NotificationRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
+import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
 import com.lawbackend2.lawbackend2.service.NotificationService;
 import com.lawbackend2.lawbackend2.service.WebSocketService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +25,18 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final WebSocketService webSocketService;
+    private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
 
     @Autowired
     public NotificationServiceImpl(NotificationRepository notificationRepository,
-                              WebSocketService webSocketService) {
+                              WebSocketService webSocketService,
+                              UserRepository userRepository,
+                              UserRoleRepository userRoleRepository) {
         this.notificationRepository = notificationRepository;
         this.webSocketService = webSocketService;
+        this.userRepository = userRepository;
+        this.userRoleRepository = userRoleRepository;
     }
 
     @Override
@@ -172,5 +181,85 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setStatus(status);
         notificationRepository.save(notification);
         log.info("更新通知状态, ID: {}, 状态: {}", notificationId, status);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void sendNotificationToAdminAndSuperAdmin(String title, String content, String type, Long relatedId, String relatedType, Long createUserId, String createUserName) {
+        List<Long> userIds = userRoleRepository.findUserIdsByRoleCodes(List.of("ADMIN", "SUPER_ADMIN"));
+        if (userIds == null || userIds.isEmpty()) {
+            log.warn("未找到 ADMIN 或 SUPER_ADMIN 角色的用户");
+            return;
+        }
+
+        List<User> users = userRepository.findAllById(userIds);
+        for (User user : users) {
+            Notification notification = Notification.builder()
+                    .userId(user.getId())
+                    .userAccount(user.getUsername())
+                    .userName(user.getRealName())
+                    .title(title)
+                    .content(content)
+                    .type(type)
+                    .isRead(false)
+                    .relatedId(relatedId)
+                    .relatedType(relatedType)
+                    .priority("NORMAL")
+                    .status("ACTIVE")
+                    .createUserId(createUserId)
+                    .createUserName(createUserName)
+                    .build();
+            Notification savedNotification = notificationRepository.save(notification);
+
+            WebSocketMessage message = WebSocketMessage.builder()
+                    .type("NEW_NOTIFICATION")
+                    .userId(user.getId())
+                    .title(title)
+                    .content(content)
+                    .data(savedNotification)
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+            webSocketService.sendNotificationToUser(user.getId(), message);
+        }
+        log.info("向 ADMIN 和 SUPER_ADMIN 用户发送通知, 共 {} 条", users.size());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void sendNotificationToUser(Long userId, String title, String content, String type, Long relatedId, String relatedType, Long createUserId, String createUserName) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            log.warn("未找到用户，用户ID: {}", userId);
+            return;
+        }
+
+        Notification notification = Notification.builder()
+                .userId(user.getId())
+                .userAccount(user.getUsername())
+                .userName(user.getRealName())
+                .title(title)
+                .content(content)
+                .type(type)
+                .isRead(false)
+                .relatedId(relatedId)
+                .relatedType(relatedType)
+                .priority("NORMAL")
+                .status("ACTIVE")
+                .createUserId(createUserId)
+                .createUserName(createUserName)
+                .build();
+        Notification savedNotification = notificationRepository.save(notification);
+
+        WebSocketMessage message = WebSocketMessage.builder()
+                .type("NEW_NOTIFICATION")
+                .userId(user.getId())
+                .title(title)
+                .content(content)
+                .data(savedNotification)
+                .timestamp(System.currentTimeMillis())
+                .build();
+        webSocketService.sendNotificationToUser(user.getId(), message);
+
+        log.info("向用户发送通知, 用户ID: {}, 标题: {}", userId, title);
     }
 }

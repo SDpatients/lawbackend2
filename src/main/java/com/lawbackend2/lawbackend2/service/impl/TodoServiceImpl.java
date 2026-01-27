@@ -89,6 +89,11 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
+    public Page<Todo> getUserTodos(Long userId, LocalDateTime startTime, LocalDateTime endTime, Pageable pageable) {
+        return todoRepository.findByUserIdAndDeadlineBetween(userId, startTime, endTime, pageable);
+    }
+
+    @Override
     public Page<Todo> getUserTodosByStatus(Long userId, String status, Pageable pageable) {
         return todoRepository.findByUserIdAndStatus(userId, status, pageable);
     }

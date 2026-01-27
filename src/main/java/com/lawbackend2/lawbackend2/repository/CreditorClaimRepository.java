@@ -98,4 +98,12 @@ public interface CreditorClaimRepository extends JpaRepository<CreditorClaim, Lo
 
     @Query("SELECT c.id, c.creditorName, c.totalAmount FROM CreditorClaim c WHERE c.isDeleted = false ORDER BY c.totalAmount DESC")
     List<Object[]> findTopClaimsByAmount(org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT c.caseId, c.caseName, SUM(c.totalAmount) FROM CreditorClaim c WHERE c.isDeleted = false AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) GROUP BY c.caseId, c.caseName ORDER BY SUM(c.totalAmount) DESC")
+    List<Object[]> sumTotalAmountByCaseIdWithNameGroupByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT c.id, c.creditorName, c.totalAmount FROM CreditorClaim c WHERE c.isDeleted = false AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) ORDER BY c.totalAmount DESC")
+    List<Object[]> findTopClaimsByAmountByUserId(@Param("userId") Long userId, org.springframework.data.domain.Pageable pageable);
+
+    void deleteByCaseId(Long caseId);
 }

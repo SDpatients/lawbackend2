@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.service;
 
+import com.lawbackend2.lawbackend2.dto.request.CaseProcessStageStatusUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseProcessStage;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,4 +24,6 @@ public interface CaseProcessStageService {
     List<CaseProcessStage> getStagesByCaseIdAndStageNum(Long caseId, Integer stageNum);
 
     List<CaseProcessStage> getStagesByCaseIdAndModuleCode(Long caseId, String moduleCode);
+
+    boolean updateStatusByCaseIdAndModuleCode(CaseProcessStageStatusUpdateRequest request);
 }

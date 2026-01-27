@@ -4,11 +4,14 @@ import com.lawbackend2.lawbackend2.dto.CaseAnnouncementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementPublishRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
+import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.CaseAnnouncementRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.CaseAnnouncementService;
+import com.lawbackend2.lawbackend2.service.FileService;
+import com.lawbackend2.lawbackend2.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -27,10 +30,14 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
 
     private final CaseAnnouncementRepository caseAnnouncementRepository;
     private final UserRepository userRepository;
+    private final FileService fileService;
+    private final NotificationService notificationService;
 
-    public CaseAnnouncementServiceImpl(CaseAnnouncementRepository caseAnnouncementRepository, UserRepository userRepository) {
+    public CaseAnnouncementServiceImpl(CaseAnnouncementRepository caseAnnouncementRepository, UserRepository userRepository, FileService fileService, NotificationService notificationService) {
         this.caseAnnouncementRepository = caseAnnouncementRepository;
         this.userRepository = userRepository;
+        this.fileService = fileService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -145,6 +152,17 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
 
         caseAnnouncementRepository.save(announcement);
         log.info("公告发布成功, ID: {}, 发布人: {}", announcementId, user.getRealName());
+
+        String content = String.format("%s 发布了公告：%s", user.getRealName(), announcement.getTitle());
+        notificationService.sendNotificationToAdminAndSuperAdmin(
+                "公告发布通知",
+                content,
+                "CASE_ANNOUNCEMENT",
+                announcement.getId(),
+                "CaseAnnouncement",
+                userId,
+                user.getRealName()
+        );
     }
 
     @Override
@@ -188,5 +206,14 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
 
         caseAnnouncementRepository.delete(announcement);
         log.info("案件公告删除成功, ID: {}", announcementId);
+    }
+
+    @Override
+    public List<FileRecord> getAnnouncementAttachments(Long announcementId) {
+        log.debug("查询公告附件列表, 公告ID: {}", announcementId);
+
+        getAnnouncementById(announcementId);
+
+        return fileService.getFileList(1, 100, "announcement", String.valueOf(announcementId), null).getList();
     }
 }

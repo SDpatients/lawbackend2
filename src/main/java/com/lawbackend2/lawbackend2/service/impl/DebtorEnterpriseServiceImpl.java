@@ -162,6 +162,21 @@ public class DebtorEnterpriseServiceImpl implements DebtorEnterpriseService {
         if (request.getRegisteredAddress() != null) {
             debtorEnterprise.setRegisteredAddress(request.getRegisteredAddress());
         }
+        if (request.getUnifiedSocialCreditCode() != null) {
+            debtorEnterprise.setUnifiedSocialCreditCode(request.getUnifiedSocialCreditCode());
+        }
+        if (request.getEstablishmentDate() != null) {
+            debtorEnterprise.setEstablishmentDate(request.getEstablishmentDate());
+        }
+        if (request.getRegistrationAuthority() != null) {
+            debtorEnterprise.setRegistrationAuthority(request.getRegistrationAuthority());
+        }
+        if (request.getEnterpriseType() != null) {
+            debtorEnterprise.setEnterpriseType(request.getEnterpriseType());
+        }
+        if (request.getStatus() != null) {
+            debtorEnterprise.setStatus(request.getStatus());
+        }
 
         DebtorEnterprise updated = debtorEnterpriseRepository.save(debtorEnterprise);
         log.info("债务人信息更新成功, ID: {}", updated.getId());

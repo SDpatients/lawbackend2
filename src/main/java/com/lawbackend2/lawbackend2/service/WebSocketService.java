@@ -1,6 +1,7 @@
 package com.lawbackend2.lawbackend2.service;
 
 import com.lawbackend2.lawbackend2.dto.WebSocketMessage;
+import java.util.List;
 
 public interface WebSocketService {
 
@@ -23,4 +24,6 @@ public interface WebSocketService {
     boolean isUserOnline(Long userId);
     
     int getOnlineUserCount();
+    
+    List<Long> getOnlineUsersList();
 }

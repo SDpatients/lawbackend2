@@ -22,6 +22,8 @@ public interface TodoService {
 
     Page<Todo> getUserTodos(Long userId, Pageable pageable);
 
+    Page<Todo> getUserTodos(Long userId, LocalDateTime startTime, LocalDateTime endTime, Pageable pageable);
+
     Page<Todo> getUserTodosByStatus(Long userId, String status, Pageable pageable);
 
     Page<Todo> getUserTodosByType(Long userId, String type, Pageable pageable);

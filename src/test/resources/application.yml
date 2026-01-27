@@ -34,5 +34,4 @@ logging:
   level:
     com.lawbackend2.lawbackend2: DEBUG
     org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE

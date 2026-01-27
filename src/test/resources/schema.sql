@@ -370,7 +370,8 @@ CREATE TABLE IF NOT EXISTS tb_file_record (
   create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   create_user_id BIGINT,
-  update_user_id BIGINT
+  update_user_id BIGINT,
+  sort_order INT DEFAULT NULL
 );
 
 -- Administrator table
@@ -573,4 +574,66 @@ CREATE TABLE IF NOT EXISTS tb_login_fail (
   update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   create_user_id BIGINT,
   update_user_id BIGINT
+);
+
+-- ExpenseReimbursement table
+CREATE TABLE IF NOT EXISTS tb_expense_reimbursement (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  reimbursement_number VARCHAR(50) NOT NULL UNIQUE,
+  case_id BIGINT NOT NULL,
+  case_name VARCHAR(255),
+  applicant_id BIGINT NOT NULL,
+  applicant_name VARCHAR(100),
+  fund_account_id BIGINT NOT NULL,
+  fund_account_name VARCHAR(100),
+  bank_name VARCHAR(100),
+  bank_account VARCHAR(50),
+  total_amount DECIMAL(18,2) NOT NULL,
+  reimbursement_date DATE NOT NULL,
+  description VARCHAR(500),
+  approval_status VARCHAR(20) DEFAULT 'PENDING',
+  approver_id BIGINT,
+  approver_name VARCHAR(100),
+  approval_time TIMESTAMP,
+  approval_opinion VARCHAR(500),
+  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  create_user_id BIGINT,
+  update_user_id BIGINT,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+-- ExpenseReimbursementItem table
+CREATE TABLE IF NOT EXISTS tb_expense_reimbursement_item (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  reimbursement_id BIGINT NOT NULL,
+  item_name VARCHAR(100) NOT NULL,
+  item_amount DECIMAL(18,2) NOT NULL,
+  item_description VARCHAR(500),
+  sort_order INT DEFAULT 0,
+  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  create_user_id BIGINT,
+  update_user_id BIGINT,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  status VARCHAR(20) DEFAULT 'ACTIVE'
+);
+
+-- ExpenseReimbursementAttachment table
+CREATE TABLE IF NOT EXISTS tb_expense_reimbursement_attachment (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  reimbursement_id BIGINT NOT NULL,
+  file_name VARCHAR(255) NOT NULL,
+  file_path VARCHAR(1000) NOT NULL,
+  file_size BIGINT,
+  file_type VARCHAR(50),
+  upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  sort_order INT DEFAULT 0,
+  create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  create_user_id BIGINT,
+  update_user_id BIGINT,
+  is_deleted BOOLEAN DEFAULT FALSE,
+  status VARCHAR(20) DEFAULT 'ACTIVE'
 );

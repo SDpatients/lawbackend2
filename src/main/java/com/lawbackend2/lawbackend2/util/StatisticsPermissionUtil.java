@@ -85,10 +85,50 @@ public class StatisticsPermissionUtil {
             throw new PermissionDeniedException("用户不存在");
         }
 
-        if (isManager()) {
+        throw new PermissionDeniedException("您没有权限访问该案件的统计数据");
+    }
+
+    public void checkCaseAccessPermission(Long caseId, Long caseCreateUserId) {
+        if (isAdmin()) {
             return;
         }
 
-        throw new PermissionDeniedException("您没有权限访问该案件的统计数据");
+        Long userId = getCurrentUserId();
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            throw new PermissionDeniedException("用户不存在");
+        }
+
+        if (!userId.equals(caseCreateUserId)) {
+            throw new PermissionDeniedException("您没有权限访问该案件的统计数据");
+        }
+    }
+
+    public Long getCurrentUserCaseId(Long caseId) {
+        if (isAdmin()) {
+            return caseId;
+        }
+
+        Long userId = getCurrentUserId();
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            throw new PermissionDeniedException("用户不存在");
+        }
+
+        return caseId;
+    }
+
+    public List<Long> getAccessibleCaseIds() {
+        if (isAdmin()) {
+            return null;
+        }
+
+        Long userId = getCurrentUserId();
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            throw new PermissionDeniedException("用户不存在");
+        }
+
+        return List.of(userId);
     }
 }

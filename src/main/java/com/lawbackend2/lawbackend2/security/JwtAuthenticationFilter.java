@@ -124,6 +124,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                requestURI.contains("/ws") ||
                requestURI.contains("/sockjs") ||
                requestURI.contains("/api/v1/ws") ||
-               requestURI.contains("/api/v1/sockjs");
+               requestURI.contains("/api/v1/sockjs") ||
+               requestURI.contains("/work-team/list/details") ||
+               requestURI.contains("/api/v1/work-team/list/details");
     }
 }

@@ -514,16 +514,61 @@
             let sender = '系统';
             let content = JSON.stringify(message);
             
-            // 如果是WebSocketMessage对象，从data字段中获取实际消息
-            if (message.data) {
-                // data字段包含ChatMessageResponse
-                const actualMessage = message.data;
-                sender = actualMessage.senderId || '系统';
-                content = actualMessage.content || JSON.stringify(actualMessage);
-            } else if (message.content) {
-                // 直接有content字段
-                sender = message.senderId || '系统';
-                content = message.content;
+            // 增强消息格式处理，支持服务器发送的WebSocketMessage格式
+            try {
+                // 如果message是字符串，先解析为JSON对象
+                let msgObj = message;
+                if (typeof message === 'string') {
+                    msgObj = JSON.parse(message);
+                }
+                
+                // 详细日志记录，便于调试
+                addLog(`处理消息对象: ${JSON.stringify(msgObj)}`, 'info');
+                
+                // 处理服务器发送的WebSocketMessage格式
+                if (msgObj.type) {
+                    // WebSocketMessage格式，包含type、userId、title、content、data等字段
+                    addLog(`处理WebSocketMessage，类型: ${msgObj.type}`, 'info');
+                    
+                    if (msgObj.type === 'NEW_MESSAGE') {
+                        // 新消息类型
+                        if (msgObj.data && msgObj.data.content) {
+                            // data字段包含实际消息内容
+                            sender = msgObj.data.senderId || '系统';
+                            content = msgObj.data.content;
+                        } else if (msgObj.content) {
+                            // 直接包含content字段
+                            sender = msgObj.userId || '系统';
+                            content = msgObj.content;
+                        }
+                    } else if (msgObj.type === 'USER_ONLINE' || msgObj.type === 'USER_OFFLINE') {
+                        // 在线状态通知
+                        sender = '系统';
+                        content = msgObj.content || `${msgObj.type === 'USER_ONLINE' ? '用户上线' : '用户下线'}: ${msgObj.data?.userId || msgObj.userId}`;
+                    } else {
+                        // 其他类型消息
+                        sender = msgObj.userId || '系统';
+                        content = msgObj.content || JSON.stringify(msgObj);
+                    }
+                } else if (msgObj.data) {
+                    // 包含data字段的消息结构
+                    const actualMessage = msgObj.data;
+                    sender = actualMessage.senderId || actualMessage.fromUserId || '系统';
+                    content = actualMessage.content || JSON.stringify(actualMessage);
+                } else if (msgObj.content) {
+                    // 直接包含content字段的消息
+                    sender = msgObj.senderId || msgObj.fromUserId || '系统';
+                    content = msgObj.content;
+                } else {
+                    // 其他格式消息
+                    sender = msgObj.senderId || msgObj.fromUserId || '系统';
+                    content = msgObj.content || msgObj.message || JSON.stringify(msgObj);
+                }
+            } catch (error) {
+                // 如果解析失败，显示原始消息
+                addLog(`解析消息格式失败: ${error.message}`, 'error');
+                sender = '系统';
+                content = typeof message === 'string' ? message : JSON.stringify(message);
             }
             
             messageDiv.innerHTML = `
@@ -683,6 +728,7 @@
 
         function connect() {
             const serverUrl = document.getElementById('serverUrl').value;
+            // SockJS期望使用http:或https:协议，不需要转换为ws:或wss:
             const wsUrl = `${serverUrl}/ws?token=${accessToken}`;
             
             if (!accessToken) {
@@ -695,6 +741,11 @@
 
             const socket = new SockJS(wsUrl);
             stompClient = Stomp.over(socket);
+            
+            // 配置STOMP客户端
+            stompClient.debug = function(str) {
+                addLog(`STOMP调试: ${str}`, 'info');
+            };
 
             const headers = {
                 'userId': currentUser.userId.toString()
@@ -724,10 +775,15 @@
             }
 
             addLog('开始订阅消息主题...', 'info');
+            
+            // 订阅时使用的headers，包含用户ID
+            const subscriptionHeaders = {
+                'userId': currentUser.userId.toString()
+            };
 
-            // 订阅聊天消息主题 - 确保使用正确的主题路径
+            // 订阅聊天消息主题 - Spring STOMP默认用户特定主题
             const chatSubscription = stompClient.subscribe('/user/queue/chat', function(message) {
-                addLog(`收到原始消息: ${message.body}`, 'debug');
+                addLog(`收到原始消息: ${message.body}`, 'info');
                 try {
                     const data = JSON.parse(message.body);
                     addLog(`收到聊天消息: ${JSON.stringify(data)}`, 'info');
@@ -736,35 +792,174 @@
                     addLog(`解析消息失败: ${error.message}`, 'error');
                     addLog(`消息内容: ${message.body}`, 'error');
                 }
-            });
+            }, subscriptionHeaders);
             addLog(`已订阅聊天主题: /user/queue/chat, 订阅ID: ${chatSubscription.id}`, 'success');
 
-            // 订阅广播消息主题
-            stompClient.subscribe('/topic/broadcast', function(message) {
-                const data = JSON.parse(message.body);
-                addLog(`收到广播消息: ${JSON.stringify(data)}`, 'info');
-                
-                if (data.type === 'USER_ONLINE' || data.type === 'USER_OFFLINE') {
-                    updateUserList(data);
+            // 订阅服务器实际发送消息的主题 - 根据服务器日志，使用 /user/{userId}/queue/chat 格式
+            const serverTopic = `/user/${currentUser.userId}/queue/chat`;
+            const serverSubscription = stompClient.subscribe(serverTopic, function(message) {
+                addLog(`收到服务器主题消息: ${message.body}`, 'info');
+                try {
+                    const data = JSON.parse(message.body);
+                    addLog(`收到服务器主题消息内容: ${JSON.stringify(data)}`, 'info');
+                    addMessage(data, 'received');
+                } catch (error) {
+                    addLog(`解析服务器主题消息失败: ${error.message}`, 'error');
+                    addLog(`服务器主题消息内容: ${message.body}`, 'error');
                 }
-            });
+            }, subscriptionHeaders);
+            addLog(`已订阅服务器主题: ${serverTopic}, 订阅ID: ${serverSubscription.id}`, 'success');
+
+            // 订阅用户特定的消息主题 - 备用主题路径
+            const userTopic = `/user/${currentUser.userId}/queue/messages`;
+            const userSubscription = stompClient.subscribe(userTopic, function(message) {
+                addLog(`收到用户特定消息: ${message.body}`, 'info');
+                try {
+                    const data = JSON.parse(message.body);
+                    addLog(`收到用户特定消息内容: ${JSON.stringify(data)}`, 'info');
+                    addMessage(data, 'received');
+                } catch (error) {
+                    addLog(`解析用户特定消息失败: ${error.message}`, 'error');
+                    addLog(`用户特定消息内容: ${message.body}`, 'error');
+                }
+            }, subscriptionHeaders);
+            addLog(`已订阅用户特定主题: ${userTopic}, 订阅ID: ${userSubscription.id}`, 'success');
+
+            // 订阅广播消息主题
+            const broadcastSubscription = stompClient.subscribe('/topic/broadcast', function(message) {
+                addLog(`收到广播消息原始数据: ${message.body}`, 'info');
+                try {
+                    const data = JSON.parse(message.body);
+                    addLog(`收到广播消息: ${JSON.stringify(data)}`, 'info');
+                    
+                    // 增强广播消息处理，支持更多消息格式
+                    if (data.type === 'USER_ONLINE' || data.type === 'USER_OFFLINE') {
+                        updateUserList(data);
+                        addMessage(data, 'system');
+                    } else if (data.onlineCount !== undefined) {
+                        // 直接包含在线用户数的消息格式
+                        const onlineData = {
+                            type: 'USER_ONLINE',
+                            data: {
+                                onlineCount: data.onlineCount,
+                                userId: data.userId
+                            }
+                        };
+                        updateUserList(onlineData);
+                        addMessage(onlineData, 'system');
+                    } else {
+                        addMessage(data, 'system');
+                    }
+                } catch (error) {
+                    addLog(`解析广播消息失败: ${error.message}`, 'error');
+                    addLog(`广播消息内容: ${message.body}`, 'error');
+                }
+            }, subscriptionHeaders);
+            addLog(`已订阅广播主题: /topic/broadcast, 订阅ID: ${broadcastSubscription.id}`, 'success');
+
+            // 订阅在线用户列表主题（如果服务器支持）
+            const onlineUsersSubscription = stompClient.subscribe('/topic/onlineUsers', function(message) {
+                addLog(`收到在线用户列表: ${message.body}`, 'info');
+                try {
+                    const data = JSON.parse(message.body);
+                    addLog(`在线用户列表数据: ${JSON.stringify(data)}`, 'info');
+                    
+                    // 更新在线用户数
+                    const onlineCount = data.users?.length || data.onlineCount || 0;
+                    document.getElementById('onlineCount').textContent = onlineCount;
+                    
+                    // 更新在线用户列表
+                    const userList = document.getElementById('userList');
+                    userList.innerHTML = '';
+                    
+                    if (data.users && Array.isArray(data.users)) {
+                        data.users.forEach(user => {
+                            if (user.userId && user.userId != currentUser.userId) {
+                                const userTag = document.createElement('div');
+                                userTag.className = 'user-tag';
+                                userTag.id = `user-${user.userId}`;
+                                userTag.innerHTML = `
+                                    <span class="dot"></span>
+                                    <span>用户 ${user.userId} (${user.username || user.realName || ''})</span>
+                                `;
+                                userList.appendChild(userTag);
+                            }
+                        });
+                    } else if (onlineCount > 0) {
+                        // 如果只有在线用户数，没有具体列表，显示提示
+                        userList.innerHTML = `<span style="color: #999;">当前有 ${onlineCount} 个在线用户</span>`;
+                    } else {
+                        userList.innerHTML = `<span style="color: #999;">暂无在线用户</span>`;
+                    }
+                } catch (error) {
+                    addLog(`解析在线用户列表失败: ${error.message}`, 'error');
+                    addLog(`在线用户列表内容: ${message.body}`, 'error');
+                }
+            }, subscriptionHeaders);
+            addLog(`已订阅在线用户列表主题: /topic/onlineUsers, 订阅ID: ${onlineUsersSubscription.id}`, 'success');
 
             // 订阅正在输入状态主题
-            stompClient.subscribe('/topic/chat/typing', function(message) {
+            const typingSubscription = stompClient.subscribe('/topic/chat/typing', function(message) {
                 addLog(`收到正在输入状态: ${message.body}`, 'info');
-            });
+            }, subscriptionHeaders);
+            addLog(`已订阅输入状态主题: /topic/chat/typing, 订阅ID: ${typingSubscription.id}`, 'success');
 
             addLog('所有主题订阅完成', 'success');
+            
+            // 连接成功后，主动请求获取在线用户列表
+            requestOnlineUsers();
+        }
+        
+        // 主动请求获取在线用户列表
+        function requestOnlineUsers() {
+            if (!stompClient || !connected) {
+                addLog('未连接到服务器，无法请求在线用户列表', 'error');
+                return;
+            }
+            
+            addLog('主动请求获取在线用户列表...', 'info');
+            try {
+                // 发送请求获取在线用户列表
+                const headers = {
+                    'userId': currentUser.userId.toString()
+                };
+                stompClient.send('/app/chat/onlineUsers', headers, JSON.stringify({}));
+                addLog('已发送获取在线用户列表请求', 'success');
+                
+                // 同时，请求当前用户自己的在线状态，触发服务器广播
+                stompClient.send('/app/chat/status', headers, JSON.stringify({
+                    type: 'GET_STATUS',
+                    userId: currentUser.userId
+                }));
+                addLog('已发送获取在线状态请求', 'success');
+            } catch (error) {
+                addLog(`请求在线用户列表失败: ${error.message}`, 'error');
+            }
         }
 
         function updateUserList(data) {
-            const onlineCount = data.data?.onlineCount || 0;
+            // 增强在线用户列表处理，支持多种数据格式
+            let onlineCount = 0;
+            let userId = null;
+            let users = [];
+            
+            // 解析不同格式的数据
+            if (data.data) {
+                onlineCount = data.data.onlineCount || 0;
+                userId = data.data.userId;
+                users = data.data.users || [];
+            } else {
+                onlineCount = data.onlineCount || 0;
+                userId = data.userId;
+                users = data.users || [];
+            }
+            
             document.getElementById('onlineCount').textContent = onlineCount;
             
             const userList = document.getElementById('userList');
             
             if (data.type === 'USER_ONLINE') {
-                const userId = data.data?.userId;
+                // 单个用户上线
                 if (userId && userId != currentUser.userId) {
                     const existingUser = document.getElementById(`user-${userId}`);
                     if (!existingUser) {
@@ -780,12 +975,40 @@
                 }
                 addMessage({ content: `用户 ${userId} 上线了` }, 'system');
             } else if (data.type === 'USER_OFFLINE') {
-                const userId = data.data?.userId;
-                const existingUser = document.getElementById(`user-${userId}`);
-                if (existingUser) {
-                    existingUser.remove();
+                // 单个用户下线
+                if (userId) {
+                    const existingUser = document.getElementById(`user-${userId}`);
+                    if (existingUser) {
+                        existingUser.remove();
+                    }
                 }
                 addMessage({ content: `用户 ${userId} 下线了` }, 'system');
+            } else if (users.length > 0) {
+                // 完整的在线用户列表
+                addLog(`更新在线用户列表，共 ${users.length} 个用户`, 'info');
+                userList.innerHTML = '';
+                
+                users.forEach(user => {
+                    const userIdToAdd = user.userId || user;
+                    if (userIdToAdd && userIdToAdd != currentUser.userId) {
+                        const userTag = document.createElement('div');
+                        userTag.className = 'user-tag';
+                        userTag.id = `user-${userIdToAdd}`;
+                        userTag.innerHTML = `
+                            <span class="dot"></span>
+                            <span>用户 ${userIdToAdd}</span>
+                        `;
+                        userList.appendChild(userTag);
+                    }
+                });
+                
+                if (users.length === 0) {
+                    userList.innerHTML = '<span style="color: #999;">暂无在线用户</span>';
+                }
+            } else if (onlineCount > 0) {
+                // 只有在线用户数，没有具体列表
+                addLog(`更新在线用户数为 ${onlineCount}`, 'info');
+                // 保持现有用户列表不变
             }
         }
 
@@ -819,17 +1042,28 @@
             }
 
             const message = {
+                senderId: currentUser.userId,
                 receiverId: parseInt(receiverId),
                 messageType: 'TEXT',
-                content: content
+                content: content,
+                timestamp: new Date().getTime()
             };
 
-            stompClient.send('/app/chat/send', {}, JSON.stringify(message));
+            const messageJson = JSON.stringify(message);
+            addLog(`准备发送消息: ${messageJson}`, 'info');
             
-            addMessage({ content: content, senderId: currentUser.userId }, 'sent');
-            addLog(`发送消息给用户 ${receiverId}: ${content}`, 'info');
-            
-            document.getElementById('messageContent').value = '';
+            // 尝试使用主路径发送消息
+            try {
+                stompClient.send('/app/chat/send', {}, messageJson);
+                addMessage({ content: content, senderId: currentUser.userId }, 'sent');
+                addLog(`消息发送成功: 发送给用户 ${receiverId}: ${content}`, 'success');
+                
+                // 清空输入框
+                document.getElementById('messageContent').value = '';
+            } catch (error) {
+                addLog(`消息发送失败: ${error.message}`, 'error');
+                alert('消息发送失败: ' + error.message);
+            }
         }
 
         window.addEventListener('beforeunload', function() {

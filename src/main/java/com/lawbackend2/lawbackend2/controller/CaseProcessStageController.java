@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.controller;
 
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.CaseProcessStageCreateRequest;
+import com.lawbackend2.lawbackend2.dto.request.CaseProcessStageStatusUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.request.CaseProcessStageUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseProcessStage;
 import com.lawbackend2.lawbackend2.service.CaseProcessStageService;
@@ -146,5 +147,13 @@ public class CaseProcessStageController {
             @Parameter(description = "模块编码") @PathVariable String moduleCode) {
         List<CaseProcessStage> stages = caseProcessStageService.getStagesByCaseIdAndModuleCode(caseId, moduleCode);
         return Result.success(stages);
+    }
+
+    @Operation(summary = "根据案件ID和模块编码更新状态")
+    @PutMapping("/update-status")
+    public Result<Boolean> updateStatusByCaseIdAndModuleCode(
+            @Valid @RequestBody CaseProcessStageStatusUpdateRequest request) {
+        boolean result = caseProcessStageService.updateStatusByCaseIdAndModuleCode(request);
+        return Result.success(result);
     }
 }

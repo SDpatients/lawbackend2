@@ -5,6 +5,7 @@ import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.FileRecordRepository;
 import com.lawbackend2.lawbackend2.service.FileService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -67,6 +68,9 @@ public class FileServiceImpl implements FileService {
 
             file.transferTo(filePath.toFile());
 
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            LocalDateTime now = LocalDateTime.now();
+
             FileRecord fileRecord = new FileRecord();
             fileRecord.setOriginalFileName(originalFileName);
             fileRecord.setStoredFileName(storedFileName);
@@ -76,10 +80,11 @@ public class FileServiceImpl implements FileService {
             fileRecord.setMimeType(file.getContentType());
             fileRecord.setBizType(bizType);
             fileRecord.setBizId(bizId);
-            fileRecord.setUploadTime(LocalDateTime.now());
-            fileRecord.setUploadUserId(1L);
+            fileRecord.setUploadTime(now);
+            fileRecord.setUploadUserId(currentUserId);
             fileRecord.setFileStatus(1);
             fileRecord.setStatus("ACTIVE");
+            fileRecord.setCreateUserId(currentUserId);
 
             return fileRecordRepository.save(fileRecord);
         } catch (IOException e) {
@@ -313,5 +318,19 @@ public class FileServiceImpl implements FileService {
             }
             deleteFile(fileId);
         }
+    }
+
+    @Override
+    public List<FileRecord> getAllFilesByBizTypeAndBizId(String bizType, String bizId) {
+        if (bizType == null || bizType.trim().isEmpty()) {
+            throw new BusinessException("业务类型不能为空");
+        }
+        if (bizId == null || bizId.trim().isEmpty()) {
+            throw new BusinessException("业务ID不能为空");
+        }
+
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "uploadTime"));
+        Page<FileRecord> page = fileRecordRepository.findByConditions(bizType, bizId, null, pageable);
+        return page.getContent();
     }
 }

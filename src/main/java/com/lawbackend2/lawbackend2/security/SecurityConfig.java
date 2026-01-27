@@ -37,6 +37,9 @@ public class SecurityConfig {
             .csrf().disable()
             .cors().configurationSource(corsConfigurationSource())
             .and()
+            .headers()
+                .frameOptions().sameOrigin()
+            .and()
             .sessionManagement()
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
@@ -55,6 +58,8 @@ public class SecurityConfig {
                 .antMatchers("/v3/api-docs/**").permitAll()
                 .antMatchers("/webjars/**").permitAll()
                 .antMatchers("/swagger-resources/**").permitAll()
+                .antMatchers("/work-team/list/details").permitAll()
+                .antMatchers("/api/v1/work-team/list/details").permitAll()
                 .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated();
 

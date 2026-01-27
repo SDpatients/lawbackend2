@@ -226,6 +226,9 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         if (request.getRegisteredCapital() != null) {
             creditorInfo.setRegisteredCapital(request.getRegisteredCapital());
         }
+        if (request.getStatus() != null) {
+            creditorInfo.setCreditorStatus(request.getStatus());
+        }
 
         return creditorInfoRepository.save(creditorInfo);
     }

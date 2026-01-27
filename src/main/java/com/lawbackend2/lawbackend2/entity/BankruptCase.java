@@ -92,7 +92,7 @@ public class BankruptCase extends BaseEntity {
     private Integer reviewCount = 0;
 
     @Column(name = "case_status", length = 50)
-    private String caseStatus = "PENDING";
+    private String caseStatus = "ONGOING";
 
     @Column(name = "designated_judge", length = 100)
     private String designatedJudge;

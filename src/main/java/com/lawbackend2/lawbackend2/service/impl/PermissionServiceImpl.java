@@ -218,7 +218,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public List<String> getUserPermissions(Long userId) {
-        log.info("查询用户权限 - 用户ID: {}", userId);
+         log.info("查询用户权限 - 用户ID: {}", userId);
         
         List<Long> roleIds = userRoleRepository.findRoleIdsByUserId(userId);
         if (roleIds.isEmpty()) {

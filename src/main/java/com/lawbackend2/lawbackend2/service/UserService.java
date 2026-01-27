@@ -7,6 +7,8 @@ import com.lawbackend2.lawbackend2.dto.response.UserListResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserLoginResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserResponse;
 
+import java.util.List;
+
 public interface UserService {
 
     UserLoginResponse register(UserRegisterRequest request);
@@ -40,4 +42,6 @@ public interface UserService {
     UserResponse patchUser(Long id, UserPatchRequest request);
 
     void deleteUserById(Long id);
+
+    List<UserResponse> getAdminUsers();
 }

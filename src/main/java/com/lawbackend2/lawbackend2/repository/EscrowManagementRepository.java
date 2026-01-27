@@ -26,4 +26,5 @@ public interface EscrowManagementRepository extends JpaRepository<EscrowManageme
                                             Pageable pageable);
 
     List<EscrowManagement> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    void deleteByCaseId(Long caseId);
 }

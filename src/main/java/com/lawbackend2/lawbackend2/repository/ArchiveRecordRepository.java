@@ -51,4 +51,5 @@ public interface ArchiveRecordRepository extends JpaRepository<ArchiveRecord, Lo
     Long countByCaseIdAndCategoryCodeAndStatus(@Param("caseId") Long caseId,
                                                @Param("categoryCode") String categoryCode,
                                                @Param("status") String status);
+    void deleteByCaseId(Long caseId);
 }

@@ -4,10 +4,13 @@ import com.lawbackend2.lawbackend2.dto.ClaimReviewCreateRequest;
 import com.lawbackend2.lawbackend2.dto.ClaimReviewUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
 import com.lawbackend2.lawbackend2.entity.ClaimReview;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.ClaimReviewService;
+import com.lawbackend2.lawbackend2.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,12 +30,18 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
 
     private final ClaimReviewRepository claimReviewRepository;
     private final ClaimRegistrationRepository claimRegistrationRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Autowired
     public ClaimReviewServiceImpl(ClaimReviewRepository claimReviewRepository,
-                                ClaimRegistrationRepository claimRegistrationRepository) {
+                                ClaimRegistrationRepository claimRegistrationRepository,
+                                UserRepository userRepository,
+                                NotificationService notificationService) {
         this.claimReviewRepository = claimReviewRepository;
         this.claimRegistrationRepository = claimRegistrationRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -217,10 +226,6 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
     public void submitReview(Long reviewId, Long userId) {
         ClaimReview review = getReviewById(reviewId);
         
-        if (!"PENDING".equals(review.getReviewStatus()) && !"IN_PROGRESS".equals(review.getReviewStatus())) {
-            throw new BusinessException("当前审查状态不允许提交");
-        }
-
         if (review.getReviewConclusion() == null) {
             throw new BusinessException("请填写审查结论");
         }
@@ -228,7 +233,20 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
         review.setReviewStatus("COMPLETED");
         review.setUpdateUserId(userId);
         claimReviewRepository.save(review);
-        
+
+        User user = userRepository.findById(userId).orElse(null);
+        String realName = user != null ? user.getRealName() : "未知用户";
+        String content = String.format("%s 完成了债权审查：%s", realName, review.getCreditorName());
+        notificationService.sendNotificationToAdminAndSuperAdmin(
+                "债权审查通知",
+                content,
+                "CLAIM_REVIEW",
+                review.getId(),
+                "ClaimReview",
+                userId,
+                realName
+        );
+
         log.info("债权审查提交成功, reviewId: {}, claimRegistrationId: {}, reviewConclusion: {}", 
                   reviewId, review.getClaimRegistrationId(), review.getReviewConclusion());
     }

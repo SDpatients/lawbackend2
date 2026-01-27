@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 
 @Repository
 public interface FileRecordRepository extends JpaRepository<FileRecord, Long> {
@@ -19,4 +20,13 @@ public interface FileRecordRepository extends JpaRepository<FileRecord, Long> {
                                      @Param("bizId") String bizId,
                                      @Param("status") String status,
                                      Pageable pageable);
+
+    @Query("SELECT fr FROM FileRecord fr WHERE fr.isDeleted = false " +
+           "AND fr.bizType = :bizType " +
+           "AND fr.bizId IN :bizIds " +
+           "AND (:status IS NULL OR fr.status = :status) " +
+           "ORDER BY fr.bizId, fr.sortOrder")
+    List<FileRecord> findByBizTypeAndBizIds(@Param("bizType") String bizType,
+                                            @Param("bizIds") List<String> bizIds,
+                                            @Param("status") String status);
 }

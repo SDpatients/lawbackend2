@@ -6,7 +6,9 @@ import com.lawbackend2.lawbackend2.dto.CaseAnnouncementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementPublishRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
+import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.service.CaseAnnouncementService;
+import com.lawbackend2.lawbackend2.service.FileService;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,8 +16,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +32,11 @@ import java.util.Map;
 public class CaseAnnouncementController {
 
     private final CaseAnnouncementService caseAnnouncementService;
+    private final FileService fileService;
 
-    public CaseAnnouncementController(CaseAnnouncementService caseAnnouncementService) {
+    public CaseAnnouncementController(CaseAnnouncementService caseAnnouncementService, FileService fileService) {
         this.caseAnnouncementService = caseAnnouncementService;
+        this.fileService = fileService;
     }
 
     @Operation(summary = "创建案件公告")
@@ -121,6 +127,33 @@ public class CaseAnnouncementController {
         caseAnnouncementService.deleteAnnouncement(announcementId);
         log.info("删除案件公告成功, ID: {}", announcementId);
         return Result.success();
+    }
+
+    @Operation(summary = "获取公告附件列表")
+    @GetMapping("/{announcementId}/attachments")
+    public Result<List<FileRecord>> getAnnouncementAttachments(
+            @Parameter(description = "公告ID") @PathVariable Long announcementId) {
+
+        List<FileRecord> attachments = caseAnnouncementService.getAnnouncementAttachments(announcementId);
+        return Result.success(attachments);
+    }
+
+    @Operation(summary = "上传公告附件")
+    @PostMapping("/{announcementId}/attachments/upload")
+    public Result<List<FileRecord>> uploadAnnouncementAttachments(
+            @Parameter(description = "公告ID") @PathVariable Long announcementId,
+            @Parameter(description = "文件列表") @RequestParam("files") List<MultipartFile> files) {
+
+        caseAnnouncementService.getAnnouncementById(announcementId);
+        List<FileRecord> uploadedFiles = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            FileRecord fileRecord = fileService.uploadFile(file, "announcement", String.valueOf(announcementId));
+            uploadedFiles.add(fileRecord);
+        }
+
+        log.info("公告附件上传成功, 公告ID: {}, 文件数量: {}", announcementId, uploadedFiles.size());
+        return Result.success(uploadedFiles);
     }
 
     private Long getCurrentUserId() {

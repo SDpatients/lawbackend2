@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,13 +49,15 @@ public class TodoController {
     }
 
     @GetMapping("/list")
-    @Operation(summary = "获取用户待办列表", description = "分页获取用户的待办事项列表")
+    @Operation(summary = "获取用户待办列表", description = "分页获取用户的待办事项列表，支持时间范围查询")
     public ResponseEntity<ApiResponse<Page<Todo>>> getUserTodos(
             @Parameter(description = "用户ID") @RequestParam Long userId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer pageNum,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "开始时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @Parameter(description = "结束时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
         Pageable pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
-        Page<Todo> todos = todoService.getUserTodos(userId, pageable);
+        Page<Todo> todos = todoService.getUserTodos(userId, startTime, endTime, pageable);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 
