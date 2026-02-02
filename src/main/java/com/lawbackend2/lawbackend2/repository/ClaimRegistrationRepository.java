@@ -87,4 +87,6 @@ public interface ClaimRegistrationRepository extends JpaRepository<ClaimRegistra
     @Query("SELECT c.claimNature, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.claimNature IS NOT NULL GROUP BY c.claimNature")
     List<Object[]> countByClaimNatureGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
     void deleteByCaseId(Long caseId);
+
+    List<ClaimRegistration> findAllByCreditorName(String creditorName);
 }

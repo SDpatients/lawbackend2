@@ -20,6 +20,8 @@ public interface ClaimReviewRepository extends JpaRepository<ClaimReview, Long>,
 
     Page<ClaimReview> findByReviewStatus(String reviewStatus, Pageable pageable);
 
+    Page<ClaimReview> findByCaseIdAndReviewStatus(Long caseId, String reviewStatus, Pageable pageable);
+
     Page<ClaimReview> findByReviewConclusion(String reviewConclusion, Pageable pageable);
 
     Page<ClaimReview> findByClaimRegistrationIdAndReviewRound(Long claimRegistrationId, Integer reviewRound, Pageable pageable);
@@ -53,4 +55,6 @@ public interface ClaimReviewRepository extends JpaRepository<ClaimReview, Long>,
     @Query("SELECT r FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId ORDER BY r.reviewRound DESC")
     List<ClaimReview> findAllByClaimRegistrationIdOrderByReviewRoundDesc(@Param("claimRegistrationId") Long claimRegistrationId);
     void deleteByCaseId(Long caseId);
+
+    List<ClaimReview> findAllByCreditorName(String creditorName);
 }

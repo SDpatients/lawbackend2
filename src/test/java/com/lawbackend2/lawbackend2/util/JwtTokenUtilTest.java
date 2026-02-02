@@ -26,7 +26,8 @@ class JwtTokenUtilTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(jwtTokenUtil, "secret", TEST_SECRET);
-        ReflectionTestUtils.setField(jwtTokenUtil, "expiration", TEST_EXPIRATION);
+        ReflectionTestUtils.setField(jwtTokenUtil, "accessTokenExpiration", TEST_EXPIRATION);
+        ReflectionTestUtils.setField(jwtTokenUtil, "refreshTokenExpiration", TEST_EXPIRATION * 2);
     }
 
     @Test
@@ -82,9 +83,9 @@ class JwtTokenUtilTest {
 
     @Test
     void testValidateToken_ExpiredToken() {
-        ReflectionTestUtils.setField(jwtTokenUtil, "expiration", -1000L);
+        ReflectionTestUtils.setField(jwtTokenUtil, "accessTokenExpiration", -1000L);
         String token = jwtTokenUtil.generateToken(TEST_USER_ID, TEST_USERNAME);
-        ReflectionTestUtils.setField(jwtTokenUtil, "expiration", TEST_EXPIRATION);
+        ReflectionTestUtils.setField(jwtTokenUtil, "accessTokenExpiration", TEST_EXPIRATION);
 
         boolean isValid = jwtTokenUtil.validateToken(token, TEST_USERNAME);
 
@@ -126,5 +127,54 @@ class JwtTokenUtilTest {
         assertNotNull(token);
         Claims claims = jwtTokenUtil.getClaimsFromToken(token);
         assertEquals("customValue", claims.get("customKey"));
+    }
+
+    @Test
+    void testGenerateAccessToken() {
+        String token = jwtTokenUtil.generateAccessToken(TEST_USER_ID, TEST_USERNAME);
+
+        assertNotNull(token);
+        assertTrue(jwtTokenUtil.isAccessToken(token));
+        assertFalse(jwtTokenUtil.isRefreshToken(token));
+    }
+
+    @Test
+    void testGenerateRefreshToken() {
+        String token = jwtTokenUtil.generateRefreshToken(TEST_USER_ID, TEST_USERNAME);
+
+        assertNotNull(token);
+        assertTrue(jwtTokenUtil.isRefreshToken(token));
+        assertFalse(jwtTokenUtil.isAccessToken(token));
+    }
+
+    @Test
+    void testValidateTokenWithoutUsername() {
+        String token = jwtTokenUtil.generateToken(TEST_USER_ID, TEST_USERNAME);
+        boolean isValid = jwtTokenUtil.validateToken(token);
+
+        assertTrue(isValid);
+    }
+
+    @Test
+    void testValidateToken_InvalidToken() {
+        boolean isValid = jwtTokenUtil.validateToken("invalid.token.here");
+
+        assertFalse(isValid);
+    }
+
+    @Test
+    void testGetTokenType() {
+        String accessToken = jwtTokenUtil.generateAccessToken(TEST_USER_ID, TEST_USERNAME);
+        String refreshToken = jwtTokenUtil.generateRefreshToken(TEST_USER_ID, TEST_USERNAME);
+
+        assertEquals("ACCESS", jwtTokenUtil.getTokenType(accessToken));
+        assertEquals("REFRESH", jwtTokenUtil.getTokenType(refreshToken));
+    }
+
+    @Test
+    void testGetRefreshTokenExpiration() {
+        Long expiration = jwtTokenUtil.getRefreshTokenExpiration();
+
+        assertEquals(TEST_EXPIRATION * 2, expiration);
     }
 }

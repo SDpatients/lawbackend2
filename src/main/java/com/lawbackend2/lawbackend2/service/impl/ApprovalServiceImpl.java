@@ -84,6 +84,15 @@ public class ApprovalServiceImpl implements ApprovalService {
             existingApproval.setUpdateUserId(userId);
             existingApproval.setUpdateTime(LocalDateTime.now());
             
+            // 如果approvalType以TASK_开头，则重新查询相关任务、提交记录和文件信息
+            if (request.getApprovalType() != null && request.getApprovalType().startsWith("TASK_")) {
+                String taskCode = request.getApprovalType();
+                enrichApprovalWithTaskInfo(existingApproval, request.getCaseId(), taskCode, request.getApprovalAttachment());
+            } else if ("CASE_SUBMIT".equals(request.getApprovalType())) {
+                // 如果approvalType为CASE_SUBMIT，则查询该案件的所有CASE_SUBMIT类型的文件
+                enrichApprovalWithCaseSubmitFiles(existingApproval, request.getCaseId(), request.getApprovalAttachment());
+            }
+            
             Approval saved = approvalRepository.save(existingApproval);
             return saved.getId();
         }
@@ -99,14 +108,17 @@ public class ApprovalServiceImpl implements ApprovalService {
         // 如果approvalType以TASK_开头，则查询相关任务、提交记录和文件信息
         if (request.getApprovalType() != null && request.getApprovalType().startsWith("TASK_")) {
             String taskCode = request.getApprovalType();
-            enrichApprovalWithTaskInfo(approval, request.getCaseId(), taskCode);
+            enrichApprovalWithTaskInfo(approval, request.getCaseId(), taskCode, request.getApprovalAttachment());
+        } else if ("CASE_SUBMIT".equals(request.getApprovalType())) {
+            // 如果approvalType为CASE_SUBMIT，则查询该案件的所有CASE_SUBMIT类型的文件
+            enrichApprovalWithCaseSubmitFiles(approval, request.getCaseId(), request.getApprovalAttachment());
         }
         
         Approval saved = approvalRepository.save(approval);
         return saved.getId();
     }
     
-    private void enrichApprovalWithTaskInfo(Approval approval, Long caseId, String taskCode) {
+    private void enrichApprovalWithTaskInfo(Approval approval, Long caseId, String taskCode, String frontendAttachment) {
         try {
             // 1. 查询任务信息
             Optional<CaseTask> taskOpt = caseTaskRepository.findByCaseIdAndTaskCode(caseId, taskCode);
@@ -115,8 +127,8 @@ public class ApprovalServiceImpl implements ApprovalService {
             }
             CaseTask task = taskOpt.get();
             
-            // 2. 查询该任务的所有提交记录
-            List<CaseTaskSubmission> submissions = caseTaskSubmissionRepository.findByCaseTaskId(task.getId());
+            // 2. 查询该任务的所有提交记录（只查询未删除的）
+            List<CaseTaskSubmission> submissions = caseTaskSubmissionRepository.findLatestByCaseTaskId(task.getId());
             
             // 3. 查询所有提交记录关联的文件
             List<String> submissionIds = submissions.stream()
@@ -137,6 +149,13 @@ public class ApprovalServiceImpl implements ApprovalService {
             
             // 5. 构建approval_attachment的JSON数据
             Map<String, Object> attachmentMap = new HashMap<>();
+            
+            // 添加前端传入的附件信息
+            if (frontendAttachment != null && !frontendAttachment.isEmpty()) {
+                attachmentMap.put("frontendAttachment", frontendAttachment);
+            }
+            
+            // 添加从数据库查询到的文件信息
             Map<String, List<Map<String, Object>>> filesBySubmission = new HashMap<>();
             
             for (FileRecord file : files) {
@@ -144,9 +163,36 @@ public class ApprovalServiceImpl implements ApprovalService {
                 filesBySubmission.computeIfAbsent(submissionId, k -> new ArrayList<>()).add(buildFileInfo(file));
             }
             
-            attachmentMap.put("files", filesBySubmission);
-            String approvalAttachment = objectMapper.writeValueAsString(attachmentMap);
-            approval.setApprovalAttachment(approvalAttachment);
+            if (!filesBySubmission.isEmpty()) {
+                attachmentMap.put("files", filesBySubmission);
+            }
+            
+            // 只在有数据时设置attachment，避免空JSON字符串
+            if (!attachmentMap.isEmpty()) {
+                String approvalAttachment = objectMapper.writeValueAsString(attachmentMap);
+                // 打印原始长度和内容
+                System.out.println("Original approval attachment length: " + approvalAttachment.length());
+                System.out.println("Files by submission size: " + filesBySubmission.size());
+                System.out.println("Files count: " + files.size());
+                // 检查长度，如果超过3990个字符，进行截断
+                if (approvalAttachment.length() > 3990) {
+                    System.out.println("Attachment too long, truncating...");
+                    // 保留前端附件信息和文件数量，只截断详细文件信息
+                    Map<String, Object> truncatedMap = new HashMap<>();
+                    if (attachmentMap.containsKey("frontendAttachment")) {
+                        truncatedMap.put("frontendAttachment", attachmentMap.get("frontendAttachment"));
+                    }
+                    truncatedMap.put("filesCount", filesBySubmission.size());
+                    truncatedMap.put("files", "[文件信息过长，已截断]");
+                    truncatedMap.put("message", "文件信息过长，已截断");
+                    approvalAttachment = objectMapper.writeValueAsString(truncatedMap);
+                    System.out.println("Truncated approval attachment length: " + approvalAttachment.length());
+                }
+                // 打印最终长度和内容
+                System.out.println("Final approval attachment length: " + approvalAttachment.length());
+                System.out.println("Final approval attachment content: " + approvalAttachment);
+                approval.setApprovalAttachment(approvalAttachment);
+            }
             
         } catch (JsonProcessingException e) {
             throw new BusinessException("构建审批信息失败", e);
@@ -181,17 +227,73 @@ public class ApprovalServiceImpl implements ApprovalService {
     
     private Map<String, Object> buildFileInfo(FileRecord file) {
         Map<String, Object> fileInfo = new HashMap<>();
+        // 只保留最核心的字段，进一步减少JSON长度
         fileInfo.put("id", file.getId());
         fileInfo.put("originalFileName", file.getOriginalFileName());
-        fileInfo.put("storedFileName", file.getStoredFileName());
-        fileInfo.put("filePath", file.getFilePath());
-        fileInfo.put("fileSize", file.getFileSize());
-        fileInfo.put("fileExtension", file.getFileExtension());
-        fileInfo.put("mimeType", file.getMimeType());
-        fileInfo.put("description", file.getDescription());
-        fileInfo.put("sortOrder", file.getSortOrder());
-        fileInfo.put("uploadTime", file.getUploadTime());
         return fileInfo;
+    }
+    
+    private void enrichApprovalWithCaseSubmitFiles(Approval approval, Long caseId, String frontendAttachment) {
+        try {
+            // 查询该案件的所有CASE_SUBMIT类型的文件（只查询未删除的）
+            List<String> caseIds = new ArrayList<>();
+            caseIds.add(caseId.toString());
+            List<FileRecord> caseSubmitFiles = fileRecordRepository.findByBizTypeAndBizIds("CASE_SUBMIT", caseIds, null);
+            
+            // 查询该案件的所有case类型的文件（只查询未删除的）
+            List<FileRecord> caseTypeFiles = fileRecordRepository.findByBizTypeAndBizIds("case", caseIds, null);
+            
+            // 合并所有文件
+            List<FileRecord> files = new ArrayList<>();
+            files.addAll(caseSubmitFiles);
+            files.addAll(caseTypeFiles);
+            
+            // 构建approval_attachment的JSON数据
+            Map<String, Object> attachmentMap = new HashMap<>();
+            
+            // 添加前端传入的附件信息
+            if (frontendAttachment != null && !frontendAttachment.isEmpty()) {
+                attachmentMap.put("frontendAttachment", frontendAttachment);
+            }
+            
+            // 添加从数据库查询到的文件信息
+            List<Map<String, Object>> caseFiles = new ArrayList<>();
+            for (FileRecord file : files) {
+                caseFiles.add(buildFileInfo(file));
+            }
+            
+            if (!caseFiles.isEmpty()) {
+                attachmentMap.put("files", caseFiles);
+                attachmentMap.put("filesCount", caseFiles.size());
+            }
+            
+            // 只在有数据时设置attachment，避免空JSON字符串
+            if (!attachmentMap.isEmpty()) {
+                String approvalAttachment = objectMapper.writeValueAsString(attachmentMap);
+                // 检查长度，如果超过3990个字符，进行截断
+                if (approvalAttachment.length() > 3990) {
+                    System.out.println("Attachment too long, truncating...");
+                    // 保留前端附件信息和文件数量，只截断详细文件信息
+                    Map<String, Object> truncatedMap = new HashMap<>();
+                    if (attachmentMap.containsKey("frontendAttachment")) {
+                        truncatedMap.put("frontendAttachment", attachmentMap.get("frontendAttachment"));
+                    }
+                    truncatedMap.put("filesCount", caseFiles.size());
+                    truncatedMap.put("files", "[文件信息过长，已截断]");
+                    truncatedMap.put("message", "文件信息过长，已截断");
+                    approvalAttachment = objectMapper.writeValueAsString(truncatedMap);
+                    System.out.println("Truncated approval attachment length: " + approvalAttachment.length());
+                }
+                // 打印调试信息
+                System.out.println("Case submit approval attachment length: " + approvalAttachment.length());
+                System.out.println("Case submit files count: " + files.size());
+                System.out.println("Case submit approval attachment content: " + approvalAttachment);
+                approval.setApprovalAttachment(approvalAttachment);
+            }
+            
+        } catch (JsonProcessingException e) {
+            throw new BusinessException("构建审批信息失败", e);
+        }
     }
 
     @Override
@@ -296,7 +398,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
 
     @Override
-    public void approveApproval(Long approvalId, ApprovalRequest request) {
+    public void approveApproval(Long approvalId, ApprovalRequest request, Long approverId) {
         Approval approval = approvalRepository.findById(approvalId)
                 .orElseThrow(() -> new BusinessException("审批不存在"));
 
@@ -306,10 +408,15 @@ public class ApprovalServiceImpl implements ApprovalService {
 
         LocalDateTime now = LocalDateTime.now();
         
+        // 检查并截断approvalAttachment，避免长度超过限制
+        if (approval.getApprovalAttachment() != null && approval.getApprovalAttachment().length() > 3990) {
+            approval.setApprovalAttachment(approval.getApprovalAttachment().substring(0, 3990) + "...");
+        }
+        
         // 更新审批主表
         approval.setApprovalStatus(request.getApprovalResult().equals("PASS") ? "APPROVED" : "REJECTED");
         approval.setApprovalResult(request.getApprovalResult());
-        approval.setApproverId(request.getApproverId());
+        approval.setApproverId(approverId);
         approval.setApprovalDate(now);
         approval.setApprovalCount(approval.getApprovalCount() + 1);
         
@@ -319,10 +426,15 @@ public class ApprovalServiceImpl implements ApprovalService {
         ApprovalHistory history = new ApprovalHistory();
         history.setApprovalId(approval.getId());
         history.setCaseId(approval.getCaseId());
-        history.setApproverId(request.getApproverId());
+        history.setApproverId(approverId);
         history.setApprovalType(approval.getApprovalType());
         history.setApprovalTitle(approval.getApprovalTitle());
-        history.setApprovalAttachment(approval.getApprovalAttachment());
+        // 检查并截断approvalAttachment，避免长度超过限制
+        if (approval.getApprovalAttachment() != null && approval.getApprovalAttachment().length() > 3990) {
+            history.setApprovalAttachment(approval.getApprovalAttachment().substring(0, 3990) + "...");
+        } else {
+            history.setApprovalAttachment(approval.getApprovalAttachment());
+        }
         history.setApprovalStatus(approval.getApprovalStatus());
         history.setApprovalOpinion(request.getApprovalOpinion());
         history.setApprovalDate(now);
@@ -344,5 +456,176 @@ public class ApprovalServiceImpl implements ApprovalService {
         Approval approval = approvalRepository.findById(approvalId)
                 .orElseThrow(() -> new BusinessException("审批不存在"));
         approvalRepository.delete(approval);
+    }
+
+    @Override
+    public Map<String, Object> getApprovalAttachments(Long approvalId, Boolean includeImages, Boolean includeFiles) {
+        // 1. 查找审批信息
+        Approval approval = approvalRepository.findById(approvalId)
+                .orElseThrow(() -> new BusinessException("审批不存在"));
+        
+        // 2. 设置默认值
+        if (includeImages == null) {
+            includeImages = false;
+        }
+        if (includeFiles == null) {
+            includeFiles = true;
+        }
+        
+        // 3. 初始化返回数据
+        Map<String, Object> result = new HashMap<>();
+        result.put("approvalId", approvalId);
+        
+        Map<String, List<Map<String, Object>>> attachments = new HashMap<>();
+        int totalFiles = 0;
+        int imageFiles = 0;
+        
+        // 4. 优先处理approval_attachment字段中已存储的文件信息
+        if (approval.getApprovalAttachment() != null && !approval.getApprovalAttachment().isEmpty()) {
+            try {
+                Map<String, Object> attachmentData = objectMapper.readValue(approval.getApprovalAttachment(), Map.class);
+                if (attachmentData.containsKey("files")) {
+                    Object filesObj = attachmentData.get("files");
+                    if (filesObj instanceof List) {
+                        // CASE_SUBMIT类型的文件存储格式
+                        List<?> filesList = (List<?>) filesObj;
+                        List<Map<String, Object>> fileList = new ArrayList<>();
+                        
+                        for (Object fileObj : filesList) {
+                            if (fileObj instanceof Map) {
+                                Map<?, ?> fileMap = (Map<?, ?>) fileObj;
+                                Map<String, Object> fileInfo = new HashMap<>();
+                                fileInfo.put("id", fileMap.get("id"));
+                                fileInfo.put("originalFileName", fileMap.get("originalFileName"));
+                                
+                                // 尝试根据文件名判断是否为图片
+                                String fileName = fileMap.get("originalFileName") != null ? fileMap.get("originalFileName").toString() : "";
+                                String lowerFileName = fileName.toLowerCase();
+                                if (lowerFileName.endsWith(".jpg") || lowerFileName.endsWith(".jpeg") || lowerFileName.endsWith(".png") || lowerFileName.endsWith(".gif") || lowerFileName.endsWith(".bmp")) {
+                                    imageFiles++;
+                                }
+                                
+                                fileList.add(fileInfo);
+                                totalFiles++;
+                            }
+                        }
+                        
+                        if (!fileList.isEmpty()) {
+                            attachments.put("case_files", fileList);
+                        }
+                    } else if (filesObj instanceof Map) {
+                        // TASK类型的文件存储格式
+                        Map<?, ?> filesMap = (Map<?, ?>) filesObj;
+                        for (Map.Entry<?, ?> entry : filesMap.entrySet()) {
+                            String submissionId = entry.getKey().toString();
+                            Object value = entry.getValue();
+                            if (value instanceof List) {
+                                List<?> filesList = (List<?>) value;
+                                List<Map<String, Object>> fileList = new ArrayList<>();
+                                
+                                for (Object fileObj : filesList) {
+                                    if (fileObj instanceof Map) {
+                                        Map<?, ?> fileMap = (Map<?, ?>) fileObj;
+                                        Map<String, Object> fileInfo = new HashMap<>();
+                                        fileInfo.put("id", fileMap.get("id"));
+                                        fileInfo.put("originalFileName", fileMap.get("originalFileName"));
+                                        
+                                        // 尝试根据文件名判断是否为图片
+                                        String fileName = fileMap.get("originalFileName") != null ? fileMap.get("originalFileName").toString() : "";
+                                        String lowerFileName = fileName.toLowerCase();
+                                        if (lowerFileName.endsWith(".jpg") || lowerFileName.endsWith(".jpeg") || lowerFileName.endsWith(".png") || lowerFileName.endsWith(".gif") || lowerFileName.endsWith(".bmp")) {
+                                            imageFiles++;
+                                        }
+                                        
+                                        fileList.add(fileInfo);
+                                        totalFiles++;
+                                    }
+                                }
+                                
+                                if (!fileList.isEmpty()) {
+                                    attachments.put(submissionId, fileList);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // 解析失败时，继续执行原来的逻辑
+                System.out.println("解析approval_attachment失败: " + e.getMessage());
+            }
+        }
+        
+        // 5. 如果没有从approval_attachment中获取到文件信息，再处理任务类型的审批
+        if (attachments.isEmpty() && approval.getCaseId() != null && approval.getApprovalType() != null && approval.getApprovalType().startsWith("TASK_")) {
+            String taskCode = approval.getApprovalType();
+            Optional<CaseTask> taskOpt = caseTaskRepository.findByCaseIdAndTaskCode(approval.getCaseId(), taskCode);
+            
+            if (taskOpt.isPresent()) {
+                CaseTask task = taskOpt.get();
+                
+                // 6. 查询该任务的所有提交记录
+                List<CaseTaskSubmission> submissions = caseTaskSubmissionRepository.findByCaseTaskId(task.getId());
+                
+                // 7. 查询所有提交记录关联的文件
+                List<String> submissionIds = submissions.stream()
+                        .map(sub -> sub.getId().toString())
+                        .collect(Collectors.toList());
+                
+                if (!submissionIds.isEmpty()) {
+                    List<FileRecord> files = fileRecordRepository.findByBizTypeAndBizIds("CASE_TASK_SUBMISSION", submissionIds, null);
+                    
+                    // 8. 按提交记录ID组织文件
+                    for (FileRecord file : files) {
+                        String submissionId = file.getBizId();
+                        
+                        if (!attachments.containsKey(submissionId)) {
+                            attachments.put(submissionId, new ArrayList<>());
+                        }
+                        
+                        Map<String, Object> fileInfo = buildFileInfoWithDetails(file, includeImages);
+                        attachments.get(submissionId).add(fileInfo);
+                        
+                        totalFiles++;
+                        if (file.getMimeType() != null && file.getMimeType().startsWith("image/")) {
+                            imageFiles++;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 9. 构建返回数据
+        Map<String, Object> data = new HashMap<>();
+        data.put("approvalId", approvalId);
+        data.put("attachments", attachments);
+        data.put("totalFiles", totalFiles);
+        data.put("imageFiles", imageFiles);
+        
+        return data;
+    }
+    
+    private Map<String, Object> buildFileInfoWithDetails(FileRecord file, boolean includeImages) {
+        Map<String, Object> fileInfo = new HashMap<>();
+        fileInfo.put("id", file.getId());
+        fileInfo.put("originalFileName", file.getOriginalFileName());
+        fileInfo.put("fileSize", file.getFileSize());
+        fileInfo.put("fileExtension", file.getFileExtension());
+        fileInfo.put("mimeType", file.getMimeType());
+        
+        // 仅当includeImages为true且是图片文件时返回imageData
+        if (includeImages && file.getMimeType() != null && file.getMimeType().startsWith("image/")) {
+            try {
+                java.nio.file.Path filePath = java.nio.file.Paths.get(file.getFilePath());
+                if (java.nio.file.Files.exists(filePath)) {
+                    byte[] fileContent = java.nio.file.Files.readAllBytes(filePath);
+                    String base64Content = java.util.Base64.getEncoder().encodeToString(fileContent);
+                    fileInfo.put("imageData", "data:" + file.getMimeType() + ";base64," + base64Content);
+                }
+            } catch (Exception e) {
+                // 读取文件失败时不返回imageData
+            }
+        }
+        
+        return fileInfo;
     }
 }

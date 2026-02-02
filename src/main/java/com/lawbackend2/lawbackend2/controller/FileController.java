@@ -215,4 +215,96 @@ public class FileController {
         List<FileRecord> fileRecords = fileService.getAllFilesByBizTypeAndBizId(bizType, bizId);
         return Result.success(fileRecords);
     }
+
+    @Operation(summary = "根据文件路径下载文件（兼容旧数据）")
+    @GetMapping("/download-by-path")
+    public void downloadFileByPath(
+            @Parameter(description = "文件路径") @RequestParam("filePath") String filePath,
+            @Parameter(description = "文件名") @RequestParam(value = "fileName", required = false) String fileName,
+            HttpServletResponse response) throws IOException {
+
+        // 处理文件路径
+        String targetFilePath = processFilePath(filePath, fileName);
+
+        java.io.File file = new java.io.File(targetFilePath);
+        if (!file.exists()) {
+            throw new RuntimeException("文件不存在");
+        }
+
+        Resource resource = new org.springframework.core.io.FileSystemResource(file);
+
+        String downloadFileName = (fileName != null && !fileName.trim().isEmpty()) ? fileName : file.getName();
+        String contentType = Files.probeContentType(file.toPath());
+        if (contentType == null) {
+            contentType = "application/octet-stream";
+        }
+
+        response.setContentType(contentType);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + downloadFileName + "\"");
+        response.setContentLengthLong(file.length());
+
+        Files.copy(file.toPath(), response.getOutputStream());
+    }
+
+    @Operation(summary = "根据文件路径预览文件（兼容旧数据）")
+    @GetMapping("/preview-by-path")
+    public ResponseEntity<Resource> previewFileByPath(
+            @Parameter(description = "文件路径") @RequestParam("filePath") String filePath,
+            @Parameter(description = "文件名") @RequestParam(value = "fileName", required = false) String fileName) throws IOException {
+
+        // 处理文件路径
+        String targetFilePath = processFilePath(filePath, fileName);
+
+        java.io.File file = new java.io.File(targetFilePath);
+        if (!file.exists()) {
+            throw new RuntimeException("文件不存在");
+        }
+
+        Resource resource = new org.springframework.core.io.FileSystemResource(file);
+
+        String contentType = Files.probeContentType(file.toPath());
+        if (contentType == null) {
+            contentType = "application/octet-stream";
+        }
+
+        String previewFileName = (fileName != null && !fileName.trim().isEmpty()) ? fileName : file.getName();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + previewFileName + "\"")
+                .body(resource);
+    }
+    
+    /**
+     * 处理文件路径
+     * @param filePath 文件路径参数
+     * @param fileName 文件名参数
+     * @return 处理后的文件路径
+     * @throws IOException IO异常
+     */
+    private String processFilePath(String filePath, String fileName) throws IOException {
+        // 打印调试信息
+        log.debug("原始filePath: {}", filePath);
+        log.debug("原始fileName: {}", fileName);
+        
+        // 先对整个filePath进行URL解码
+        String decodedFilePath = java.net.URLDecoder.decode(filePath, "UTF-8");
+        log.debug("解码后的filePath: {}", decodedFilePath);
+        
+        // 分割文件路径
+        String[] filePaths = decodedFilePath.split(";" );
+        log.debug("分割后的文件路径数量: {}", filePaths.length);
+        
+        // 直接使用最后一个文件路径
+        if (filePaths.length > 0) {
+            String lastPath = filePaths[filePaths.length - 1];
+            log.debug("使用最后一个路径: {}", lastPath);
+            return lastPath;
+        }
+        
+        // 如果没有路径，返回原始路径
+        log.debug("使用原始路径: {}", decodedFilePath);
+        return decodedFilePath;
+    }
 }

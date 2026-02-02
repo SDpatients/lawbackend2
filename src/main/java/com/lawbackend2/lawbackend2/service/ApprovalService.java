@@ -8,12 +8,15 @@ import com.lawbackend2.lawbackend2.dto.request.ApprovalUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.response.ApprovalResponse;
 import com.lawbackend2.lawbackend2.entity.Approval;
 
+import java.util.Map;
+
 public interface ApprovalService {
     Long createApproval(ApprovalCreateRequest request, Long userId);
     PageResult<ApprovalResponse> getApprovalList(Integer pageNum, Integer pageSize, Long caseId, Long lawyerId, String approvalType, String approvalStatus, String status, String approvalTitle);
     ApprovalResponse getApprovalDetail(Long approvalId);
     void updateApproval(Long approvalId, ApprovalUpdateRequest request);
-    void approveApproval(Long approvalId, ApprovalRequest request);
+    void approveApproval(Long approvalId, ApprovalRequest request, Long approverId);
     void updateApprovalStatus(Long approvalId, ApprovalStatusRequest request);
     void deleteApproval(Long approvalId);
+    Map<String, Object> getApprovalAttachments(Long approvalId, Boolean includeImages, Boolean includeFiles);
 }

@@ -5,6 +5,7 @@ import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.WorkPlanCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkPlanStatusRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkPlanUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.WorkPlanResponse;
 import com.lawbackend2.lawbackend2.entity.WorkPlan;
 import com.lawbackend2.lawbackend2.service.WorkPlanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,7 +48,7 @@ public class WorkPlanController {
 
     @Operation(summary = "工作计划列表(分页)")
     @GetMapping("/list")
-    public Result<PageResult<WorkPlan>> getWorkPlanList(
+    public Result<PageResult<WorkPlanResponse>> getWorkPlanList(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "案件ID") @RequestParam(required = false) Long caseId,
@@ -56,7 +57,7 @@ public class WorkPlanController {
             @Parameter(description = "状态") @RequestParam(required = false) String status) {
 
         Long userId = getCurrentUserId();
-        PageResult<WorkPlan> result = workPlanService.getWorkPlanList(pageNum, pageSize, caseId, planType, executionStatus, status, userId);
+        PageResult<WorkPlanResponse> result = workPlanService.getWorkPlanList(pageNum, pageSize, caseId, planType, executionStatus, status, userId);
         return Result.success(result);
     }
 
@@ -95,6 +96,19 @@ public class WorkPlanController {
     public Result<Void> deleteWorkPlan(@Parameter(description = "计划ID") @PathVariable Long planId) {
         workPlanService.deleteWorkPlan(planId);
         return Result.success();
+    }
+
+    @Operation(summary = "根据时间区间查询工作计划")
+    @GetMapping("/list-by-time")
+    public Result<PageResult<WorkPlanResponse>> getWorkPlanListByTimeRange(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "开始时间") @RequestParam String startDate,
+            @Parameter(description = "结束时间") @RequestParam String endDate) {
+
+        Long userId = getCurrentUserId();
+        PageResult<WorkPlanResponse> result = workPlanService.getWorkPlanListByTimeRange(pageNum, pageSize, startDate, endDate, userId);
+        return Result.success(result);
     }
 
     private Long getCurrentUserId() {

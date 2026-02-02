@@ -69,7 +69,8 @@ public class FundAccountController {
             @Parameter(description = "资金账户ID") @PathVariable Long fundAccountId,
             @Valid @RequestBody FundAccountUpdateRequest request) {
 
-        fundAccountService.updateFundAccount(fundAccountId, request);
+        Long userId = getCurrentUserId();
+        fundAccountService.updateFundAccount(fundAccountId, request, userId);
         return Result.success();
     }
 
@@ -79,7 +80,8 @@ public class FundAccountController {
             @Parameter(description = "资金账户ID") @PathVariable Long fundAccountId,
             @Valid @RequestBody FundAccountBalanceRequest request) {
 
-        fundAccountService.updateFundAccountBalance(fundAccountId, request);
+        Long userId = getCurrentUserId();
+        fundAccountService.updateFundAccountBalance(fundAccountId, request, userId);
         return Result.success();
     }
 
@@ -89,14 +91,16 @@ public class FundAccountController {
             @Parameter(description = "资金账户ID") @PathVariable Long fundAccountId,
             @Valid @RequestBody FundAccountStatusRequest request) {
 
-        fundAccountService.updateFundAccountStatus(fundAccountId, request);
+        Long userId = getCurrentUserId();
+        fundAccountService.updateFundAccountStatus(fundAccountId, request, userId);
         return Result.success();
     }
 
     @Operation(summary = "删除资金账户")
     @DeleteMapping("/{fundAccountId}")
     public Result<Void> deleteFundAccount(@Parameter(description = "资金账户ID") @PathVariable Long fundAccountId) {
-        fundAccountService.deleteFundAccount(fundAccountId);
+        Long userId = getCurrentUserId();
+        fundAccountService.deleteFundAccount(fundAccountId, userId);
         return Result.success();
     }
 

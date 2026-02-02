@@ -68,7 +68,7 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         log.debug("查询案件公告列表, pageNum: {}, pageSize: {}, caseId: {}, status: {}", 
                   pageNum, pageSize, caseId, status);
 
-        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "isTop", "createTime"));
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "isTop", "publishTime"));
 
         Page<CaseAnnouncement> page;
         if (caseId != null && status != null && !status.isEmpty()) {

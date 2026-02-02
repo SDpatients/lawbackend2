@@ -49,8 +49,10 @@ public class AdministratorServiceImpl implements AdministratorService {
     public Administrator createAdministrator(AdministratorCreateRequest request, Long userId) {
         log.info("创建管理人信息, 案件ID: {}, 创建人ID: {}", request.getCaseId(), userId);
 
-        BankruptCase bankruptCase = bankruptCaseRepository.findById(request.getCaseId())
-                .orElseThrow(() -> new BusinessException("案件不存在"));
+        if (request.getCaseId() != null) {
+            BankruptCase bankruptCase = bankruptCaseRepository.findById(request.getCaseId())
+                    .orElseThrow(() -> new BusinessException("案件不存在"));
+        }
 
         if (request.getResponsiblePersonId() != null) {
             AdministratorStaff staff = administratorStaffRepository.findById(request.getResponsiblePersonId())

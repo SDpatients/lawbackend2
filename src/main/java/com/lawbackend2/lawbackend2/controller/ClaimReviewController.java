@@ -64,10 +64,11 @@ public class ClaimReviewController {
     public Result<PageResult<ClaimReview>> getReviewListByCaseId(
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "审查状态") @RequestParam(required = false) String reviewStatus) {
 
-        List<ClaimReview> list = claimReviewService.getReviewListByCaseId(caseId, pageNum, pageSize);
-        Long total = claimReviewService.getReviewCount(caseId, null);
+        List<ClaimReview> list = claimReviewService.getReviewListByCaseId(caseId, pageNum, pageSize, reviewStatus);
+        Long total = claimReviewService.getReviewCount(caseId, reviewStatus);
 
         return Result.success(PageResult.of(total, list));
     }
@@ -131,12 +132,11 @@ public class ClaimReviewController {
     @GetMapping("/list")
     public Result<PageResult<ClaimReview>> getReviewList(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
-        
-        // 这里可以根据实际需求添加查询条件
-        // 目前暂时返回空列表，后续可以扩展
-        List<ClaimReview> list = claimReviewService.getReviewListByCaseId(null, pageNum, pageSize);
-        Long total = claimReviewService.getReviewCount(null, null);
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "审查状态") @RequestParam(required = false) String reviewStatus) {
+
+        List<ClaimReview> list = claimReviewService.getReviewListByCaseId(null, pageNum, pageSize, reviewStatus);
+        Long total = claimReviewService.getReviewCount(null, reviewStatus);
 
         return Result.success(PageResult.of(total, list));
     }

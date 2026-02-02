@@ -41,26 +41,30 @@ public interface FundAccountService {
      * 更新基金账户
      * @param fundAccountId 基金账户ID
      * @param request 更新请求
+     * @param userId 用户ID
      */
-    void updateFundAccount(Long fundAccountId, FundAccountUpdateRequest request);
+    void updateFundAccount(Long fundAccountId, FundAccountUpdateRequest request, Long userId);
 
     /**
      * 更新基金账户余额
      * @param fundAccountId 基金账户ID
      * @param request 余额更新请求
+     * @param userId 用户ID
      */
-    void updateFundAccountBalance(Long fundAccountId, FundAccountBalanceRequest request);
+    void updateFundAccountBalance(Long fundAccountId, FundAccountBalanceRequest request, Long userId);
 
     /**
      * 更新基金账户状态
      * @param fundAccountId 基金账户ID
      * @param request 状态更新请求
+     * @param userId 用户ID
      */
-    void updateFundAccountStatus(Long fundAccountId, FundAccountStatusRequest request);
+    void updateFundAccountStatus(Long fundAccountId, FundAccountStatusRequest request, Long userId);
 
     /**
      * 删除基金账户
      * @param fundAccountId 基金账户ID
+     * @param userId 用户ID
      */
-    void deleteFundAccount(Long fundAccountId);
+    void deleteFundAccount(Long fundAccountId, Long userId);
 }

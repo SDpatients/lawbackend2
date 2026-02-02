@@ -1,11 +1,13 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.common.PageResult;
+import com.lawbackend2.lawbackend2.dto.CreditorClaimStagesResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CreditorInfoResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.CreditorInfo;
+import com.lawbackend2.lawbackend2.enums.CreditorStatus;
 import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
@@ -13,6 +15,9 @@ import com.lawbackend2.lawbackend2.repository.CreditorInfoRepository;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
 import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
+import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
+import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
+import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.CreditorInfoService;
 import lombok.extern.slf4j.Slf4j;
@@ -41,13 +46,19 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     private final WorkTeamMemberRepository workTeamMemberRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
+    private final ClaimRegistrationRepository claimRegistrationRepository;
+    private final ClaimReviewRepository claimReviewRepository;
+    private final ClaimConfirmationRepository claimConfirmationRepository;
 
-    public CreditorInfoServiceImpl(CreditorInfoRepository creditorInfoRepository, BankruptCaseService bankruptCaseService, WorkTeamMemberRepository workTeamMemberRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository) {
+    public CreditorInfoServiceImpl(CreditorInfoRepository creditorInfoRepository, BankruptCaseService bankruptCaseService, WorkTeamMemberRepository workTeamMemberRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository, ClaimRegistrationRepository claimRegistrationRepository, ClaimReviewRepository claimReviewRepository, ClaimConfirmationRepository claimConfirmationRepository) {
         this.creditorInfoRepository = creditorInfoRepository;
         this.bankruptCaseService = bankruptCaseService;
         this.workTeamMemberRepository = workTeamMemberRepository;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
+        this.claimRegistrationRepository = claimRegistrationRepository;
+        this.claimReviewRepository = claimReviewRepository;
+        this.claimConfirmationRepository = claimConfirmationRepository;
     }
 
     @Override
@@ -75,6 +86,7 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         
         CreditorInfoResponse response = new CreditorInfoResponse();
         BeanUtils.copyProperties(creditorInfo, response);
+        response.setCreditorStatus(creditorInfo.getCreditorStatus());
         
         if (creditorInfo.getCaseId() != null) {
             BankruptCase bankruptCase = bankruptCaseService.getCaseById(creditorInfo.getCaseId());
@@ -88,22 +100,22 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     }
 
     @Override
-    public List<CreditorInfo> getCreditorList(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative) {
+    public List<CreditorInfo> getCreditorList(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
 
-        Specification<CreditorInfo> spec = buildSpecification(caseId, creditorType, creditorName, idNumber, legalRepresentative);
+        Specification<CreditorInfo> spec = buildSpecification(caseId, creditorType, creditorName, idNumber, legalRepresentative, status);
         Page<CreditorInfo> page = creditorInfoRepository.findAll(spec, pageable);
 
         return page.getContent();
     }
 
     @Override
-    public Long getCreditorCount(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative) {
-        Specification<CreditorInfo> spec = buildSpecification(caseId, creditorType, creditorName, idNumber, legalRepresentative);
+    public Long getCreditorCount(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status) {
+        Specification<CreditorInfo> spec = buildSpecification(caseId, creditorType, creditorName, idNumber, legalRepresentative, status);
         return creditorInfoRepository.count(spec);
     }
 
-    private Specification<CreditorInfo> buildSpecification(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative) {
+    private Specification<CreditorInfo> buildSpecification(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -125,13 +137,21 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
 
             if (legalRepresentative != null && !legalRepresentative.trim().isEmpty()) {
                 predicates.add(cb.like(root.get("legalRepresentative"), "%" + legalRepresentative + "%"));
+            }
+
+            if (status != null && !status.trim().isEmpty()) {
+                try {
+                    predicates.add(cb.equal(root.get("creditorStatus"), CreditorStatus.valueOf(status)));
+                } catch (IllegalArgumentException e) {
+                    // Ignore invalid status values
+                }
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
 
-    private Specification<CreditorInfo> buildSpecificationWithPermission(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, Long userId) {
+    private Specification<CreditorInfo> buildSpecificationWithPermission(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -153,6 +173,14 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
 
             if (legalRepresentative != null && !legalRepresentative.trim().isEmpty()) {
                 predicates.add(cb.like(root.get("legalRepresentative"), "%" + legalRepresentative + "%"));
+            }
+
+            if (status != null && !status.trim().isEmpty()) {
+                try {
+                    predicates.add(cb.equal(root.get("creditorStatus"), CreditorStatus.valueOf(status)));
+                } catch (IllegalArgumentException e) {
+                    // Ignore invalid status values
+                }
             }
 
             if (!isAdminOrSuperAdmin(userId)) {
@@ -226,8 +254,8 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         if (request.getRegisteredCapital() != null) {
             creditorInfo.setRegisteredCapital(request.getRegisteredCapital());
         }
-        if (request.getStatus() != null) {
-            creditorInfo.setCreditorStatus(request.getStatus());
+        if (request.getCreditorStatus() != null) {
+            creditorInfo.setCreditorStatus(request.getCreditorStatus());
         }
 
         return creditorInfoRepository.save(creditorInfo);
@@ -243,10 +271,10 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     }
 
     @Override
-    public PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, Long userId) {
+    public PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
 
-        Specification<CreditorInfo> spec = buildSpecificationWithPermission(caseId, creditorType, creditorName, idNumber, legalRepresentative, userId);
+        Specification<CreditorInfo> spec = buildSpecificationWithPermission(caseId, creditorType, creditorName, idNumber, legalRepresentative, status, userId);
         Page<CreditorInfo> page = creditorInfoRepository.findAll(spec, pageable);
         
         List<CreditorInfo> creditorList = page.getContent();
@@ -270,6 +298,7 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                 .map(creditor -> {
                     CreditorInfoResponse response = new CreditorInfoResponse();
                     BeanUtils.copyProperties(creditor, response);
+                    response.setCreditorStatus(creditor.getCreditorStatus());
                     
                     if (creditor.getCaseId() != null) {
                         BankruptCase bankruptCase = caseMap.get(creditor.getCaseId());
@@ -284,5 +313,51 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                 .collect(Collectors.toList());
 
         return PageResult.of(total, responseList);
+    }
+
+    @Override
+    public CreditorClaimStagesResponse getCreditorClaimStages(Long creditorId, Long userId) {
+        CreditorInfo creditorInfo = getCreditorById(creditorId);
+        
+        checkPermission(creditorInfo, userId);
+        
+        CreditorClaimStagesResponse response = new CreditorClaimStagesResponse();
+        response.setCreditorId(creditorInfo.getId());
+        response.setCreditorName(creditorInfo.getCreditorName());
+        
+        List<CreditorClaimStagesResponse.ClaimRegistrationInfo> claimRegistrations = claimRegistrationRepository
+                .findAllByCreditorName(creditorInfo.getCreditorName())
+                .stream()
+                .map(reg -> {
+                    CreditorClaimStagesResponse.ClaimRegistrationInfo info = new CreditorClaimStagesResponse.ClaimRegistrationInfo();
+                    BeanUtils.copyProperties(reg, info);
+                    return info;
+                })
+                .collect(Collectors.toList());
+        response.setClaimRegistrations(claimRegistrations);
+        
+        List<CreditorClaimStagesResponse.ClaimReviewInfo> claimReviews = claimReviewRepository
+                .findAllByCreditorName(creditorInfo.getCreditorName())
+                .stream()
+                .map(review -> {
+                    CreditorClaimStagesResponse.ClaimReviewInfo info = new CreditorClaimStagesResponse.ClaimReviewInfo();
+                    BeanUtils.copyProperties(review, info);
+                    return info;
+                })
+                .collect(Collectors.toList());
+        response.setClaimReviews(claimReviews);
+        
+        List<CreditorClaimStagesResponse.ClaimConfirmationInfo> claimConfirmations = claimConfirmationRepository
+                .findAllByCreditorName(creditorInfo.getCreditorName())
+                .stream()
+                .map(confirmation -> {
+                    CreditorClaimStagesResponse.ClaimConfirmationInfo info = new CreditorClaimStagesResponse.ClaimConfirmationInfo();
+                    BeanUtils.copyProperties(confirmation, info);
+                    return info;
+                })
+                .collect(Collectors.toList());
+        response.setClaimConfirmations(claimConfirmations);
+        
+        return response;
     }
 }

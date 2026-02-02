@@ -59,29 +59,33 @@ public class FundAccountServiceImpl implements FundAccountService {
     }
 
     @Override
-    public void updateFundAccount(Long fundAccountId, FundAccountUpdateRequest request) {
+    public void updateFundAccount(Long fundAccountId, FundAccountUpdateRequest request, Long userId) {
         FundAccount fundAccount = getFundAccountDetail(fundAccountId);
         BeanUtils.copyProperties(request, fundAccount, "id", "initialBalance", "currentBalance", "status");
+        fundAccount.setUpdateUserId(userId);
         fundAccountRepository.save(fundAccount);
     }
 
     @Override
-    public void updateFundAccountBalance(Long fundAccountId, FundAccountBalanceRequest request) {
+    public void updateFundAccountBalance(Long fundAccountId, FundAccountBalanceRequest request, Long userId) {
         FundAccount fundAccount = getFundAccountDetail(fundAccountId);
         fundAccount.setCurrentBalance(request.getCurrentBalance());
+        fundAccount.setUpdateUserId(userId);
         fundAccountRepository.save(fundAccount);
     }
 
     @Override
-    public void updateFundAccountStatus(Long fundAccountId, FundAccountStatusRequest request) {
+    public void updateFundAccountStatus(Long fundAccountId, FundAccountStatusRequest request, Long userId) {
         FundAccount fundAccount = getFundAccountDetail(fundAccountId);
         fundAccount.setStatus(request.getStatus());
+        fundAccount.setUpdateUserId(userId);
         fundAccountRepository.save(fundAccount);
     }
 
     @Override
-    public void deleteFundAccount(Long fundAccountId) {
+    public void deleteFundAccount(Long fundAccountId, Long userId) {
         FundAccount fundAccount = getFundAccountDetail(fundAccountId);
+        fundAccount.setUpdateUserId(userId);
         fundAccountRepository.delete(fundAccount);
     }
 }

@@ -121,4 +121,34 @@ class WorkPlanControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
+
+    @Test
+    void testGetWorkPlanListByTimeRange_Success() throws Exception {
+        // 准备测试数据：在时间区间内的工作计划
+        WorkPlan planInRange = new WorkPlan();
+        planInRange.setPlanNumber("PLAN002");
+        planInRange.setPlanType("DAILY");
+        planInRange.setPlanContent("时间区间内的测试计划");
+        planInRange.setStartDate(LocalDate.now().minusDays(2));
+        planInRange.setEndDate(LocalDate.now().plusDays(2));
+        planInRange.setResponsibleUserId(1L);
+        planInRange.setExecutionStatus("NOT_STARTED");
+        planInRange.setCaseId(1L);
+        planInRange.setStatus("ACTIVE");
+        workPlanRepository.save(planInRange);
+
+        // 发送请求：查询包含当前日期的时间区间
+        String startDate = LocalDate.now().minusDays(1).toString();
+        String endDate = LocalDate.now().plusDays(1).toString();
+
+        mockMvc.perform(get("/work-plan/list-by-time")
+                        .param("pageNum", "1")
+                        .param("pageSize", "10")
+                        .param("startDate", startDate)
+                        .param("endDate", endDate))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.total").value(greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$.data.list").isArray());
+    }
 }

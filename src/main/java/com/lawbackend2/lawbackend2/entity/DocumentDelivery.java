@@ -83,4 +83,7 @@ public class DocumentDelivery extends BaseEntity {
 
     @Column(name = "update_user_id")
     private Long updateUserId;
+    
+    @Column(name = "approval_id")
+    private Long approvalId;
 }

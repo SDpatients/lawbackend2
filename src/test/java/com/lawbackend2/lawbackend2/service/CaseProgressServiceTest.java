@@ -161,13 +161,13 @@ class CaseProgressServiceTest {
 
     @Test
     void testGetProgressList_WithCaseId() {
-        when(caseProgressRepository.findByCaseIdOrderByStartDateDesc(1L, any())).thenReturn(
+        when(caseProgressRepository.findByCaseIdOrderByStartDateDesc(eq(1L), any())).thenReturn(
                 org.springframework.data.domain.Page.empty());
 
         List<CaseProgress> result = caseProgressService.getProgressList(1, 10, 1L, null, null, null);
 
         assertNotNull(result);
-        verify(caseProgressRepository, times(1)).findByCaseIdOrderByStartDateDesc(1L, any());
+        verify(caseProgressRepository, times(1)).findByCaseIdOrderByStartDateDesc(eq(1L), any());
     }
 
     @Test

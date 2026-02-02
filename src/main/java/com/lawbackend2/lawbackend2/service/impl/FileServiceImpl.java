@@ -62,8 +62,7 @@ public class FileServiceImpl implements FileService {
         try {
             Files.createDirectories(Paths.get(datePath));
 
-            String uuid = UUID.randomUUID().toString();
-            String storedFileName = uuid + "_" + originalFileName;
+            String storedFileName = generateUniqueFileName(datePath, originalFileName);
             Path filePath = Paths.get(datePath, storedFileName);
 
             file.transferTo(filePath.toFile());
@@ -90,6 +89,28 @@ public class FileServiceImpl implements FileService {
         } catch (IOException e) {
             throw new BusinessException("文件上传失败：" + e.getMessage());
         }
+    }
+
+    private String generateUniqueFileName(String directoryPath, String originalFileName) {
+        String fileNameWithoutExt = originalFileName;
+        String fileExtension = "";
+        int dotIndex = originalFileName.lastIndexOf('.');
+        if (dotIndex > 0 && dotIndex < originalFileName.length() - 1) {
+            fileNameWithoutExt = originalFileName.substring(0, dotIndex);
+            fileExtension = originalFileName.substring(dotIndex);
+        }
+
+        String newFileName = originalFileName;
+        int counter = 1;
+        File file = new File(directoryPath, newFileName);
+
+        while (file.exists()) {
+            counter++;
+            newFileName = fileNameWithoutExt + "(" + counter + ")" + fileExtension;
+            file = new File(directoryPath, newFileName);
+        }
+
+        return newFileName;
     }
 
     @Override
@@ -149,11 +170,12 @@ public class FileServiceImpl implements FileService {
         FileRecord fileRecord = getFileInfo(fileId);
 
         String oldFilePath = fileRecord.getFilePath();
-        String oldStoredFileName = fileRecord.getStoredFileName();
+        Path parentPath = Paths.get(oldFilePath).getParent();
+        String directoryPath = parentPath.toString();
         String newFileExtension = getFileExtension(newFileName);
 
-        String newStoredFileName = UUID.randomUUID().toString() + "_" + newFileName;
-        Path newFilePath = Paths.get(oldFilePath).getParent().resolve(newStoredFileName);
+        String newStoredFileName = generateUniqueFileName(directoryPath, newFileName);
+        Path newFilePath = parentPath.resolve(newStoredFileName);
 
         try {
             Files.move(Paths.get(oldFilePath), newFilePath);

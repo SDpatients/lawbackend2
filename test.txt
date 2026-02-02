@@ -1,1 +1,59 @@
-test file content
+2026-01-30 14:12:14 [http-nio-8080-exec-8] INFO  c.l.l.s.impl.PermissionServiceImpl - 查询用户权限 - 用户ID: 1
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.JwtAuthenticationFilter - 用户认证成功 - 用户ID: 1, 用户名: admin, 权限数量: 40, URI: /api/v1/claim-registration/parse-excel
+2026-01-30 14:12:14 [http-nio-8080-exec-8] INFO  c.l.l.s.impl.ExcelParseServiceImpl - 开始解析Excel文件 - 文件名: 已申报债权登记簿(2).xls, 大小: 49KB, Sheet索引: 0
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 1 (1个非空单元格): {0=有限公司已申报债权登记簿, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 3 (2个非空单元格): {0=null, 1=null, 2=null, 3=null, 4=总金额, 5=1000000, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 3 (2个非空单元格): {0=null, 1=null, 2=null, 3=null, 4=总金额, 5=1000000, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 4 (17个非空单元格): {0=收件
+编号, 1=债权人, 2=申报时间, 3=住所/邮编, 4=联系电话, 5=申报金额, 6=性质, 7=法定代表人, 8=代理人, 9=联系电话, 10=债权性质, 11=债权种类, 12=开户名, 13=开户行, 14=账号, 15=涉讼, 16=备注}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 4 (17个非空单元格): {0=收件
+编号, 1=债权人, 2=申报时间, 3=住所/邮编, 4=联系电话, 5=申报金额, 6=性质, 7=法定代表人, 8=代理人, 9=联系电话, 10=债权性质, 11=债权种类, 12=开户名, 13=开户行, 14=账号, 15=涉讼, 16=备注}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 5 (17个非空单元格): {0=001, 1=程某, 2=2024/12/13, 3=江西九江, 4=15111111111, 5=1000000, 6=6, 7=江某, 8=江某, 9=19166666666, 10=债权性质, 11=债权种类, 12=cjt, 13=中国银行, 14=6366666666666660, 15=涉讼, 16=备注}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 5 (17个非空单元格): {0=001, 1=程某, 2=2024/12/13, 3=江西九江, 4=15111111111, 5=1000000, 6=6, 7=江某, 8=江某, 9=19166666666, 10=债权性质, 11=债权种类, 12=cjt, 13=中国银行, 14=6366666666666660, 15=涉讼, 16=备注}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 6 (1个非空单元格): {0=002, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 6 (1个非空单元格): {0=002, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 7 (1个非空单元格): {0=003, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 7 (1个非空单元格): {0=003, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 8 (1个非空单元格): {0=004, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 8 (1个非空单元格): {0=004, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 9 (1个非空单元格): {0=005, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 9 (1个非空单元格): {0=005, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现潜在表头行 10 (1个非空单元格): {0=006, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 10 (1个非空单元格): {0=006, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 11 (1个非空单元格): {0=007, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 12 (1个非空单元格): {0=008, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 13 (1个非空单元格): {0=009, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 14 (1个非空单元格): {0=010, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null, 17=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 15 (1个非空单元格): {0=011, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null, 17=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 16 (1个非空单元格): {0=012, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null, 17=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 17 (1个非空单元格): {0=013, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null, 17=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 18 (1个非空单元格): {0=014, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null, 17=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 19 (1个非空单元格): {0=015, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 20 (1个非空单元格): {0=016, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 21 (1个非空单元格): {0=017, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 22 (1个非空单元格): {0=018, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=null, 10=null, 11=null, 12=null, 13=null, 14=null, 15=null, 16=null}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 65536 (2个非空单元格): {0=null, 1=null, 2=null, 3=null, 4=null, 5=null, 6=null, 7=null, 8=null, 9=无, 10=null, 11=null, 12=null, 13=null, 14=null, 15=调解}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] INFO  c.l.l.s.impl.ExcelParseServiceImpl - Excel解析完成 - 总行数: 65536
+2026-01-30 14:12:14 [http-nio-8080-exec-8] INFO  c.l.l.s.impl.ExcelParseServiceImpl - 发现 9 个潜在表头行, 21 个数据行
+2026-01-30 14:12:14 [http-nio-8080-exec-8] INFO  c.l.l.s.impl.ExcelParseServiceImpl - 选择最佳表头行: {0=收件
+编号, 1=债权人, 2=申报时间, 3=住所/邮编, 4=联系电话, 5=申报金额, 6=性质, 7=法定代表人, 8=代理人, 9=联系电话, 10=债权性质, 11=债权种类, 12=开户名, 13=开户行, 14=账号, 15=涉讼, 16=备注}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] INFO  c.l.l.s.impl.ExcelParseServiceImpl - 选择最佳数据行: {0=收件
+编号, 1=债权人, 2=申报时间, 3=住所/邮编, 4=联系电话, 5=申报金额, 6=性质, 7=法定代表人, 8=代理人, 9=联系电话, 10=债权性质, 11=债权种类, 12=开户名, 13=开户行, 14=账号, 15=涉讼, 16=备注}
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 模糊匹配成功 - 表头: 收件
+编号, 最佳匹配: receiptNumber, 距离: 1
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '收件
+编号', 字段名: 'receiptNumber', 值: '收件
+编号', 列索引: 0
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '债权人', 字段名: 'creditorName', 值: '债权人', 列索引: 1
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '申报时间', 字段名: 'declarationTime', 值: '申报时间', 列索引: 2
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '住所/邮编', 字段名: 'addressAndPostalCode', 值: '住所/邮编', 列索引: 3
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '联系电话', 字段名: 'contactPhone', 值: '联系电话', 列索引: 4
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '申报金额', 字段名: 'declaredAmount', 值: '申报金额', 列索引: 5
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '性质', 字段名: 'nature', 值: '性质', 列索引: 6
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '法定代表人', 字段名: 'legalRepresentative', 值: '法定代表人', 列索引: 7
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '代理人', 字段名: 'agentName', 值: '代理人', 列索引: 8
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '联系电话', 字段名: 'contactPhone', 值: '联系电话', 列索引: 9
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 字段匹配成功 - 表头: '债权性质', 字段名: 'claimNature', 值: '债权性质', 列索引: 10
+
+
+2026-01-30 14:12:14 [http-nio-8080-exec-8] DEBUG c.l.l.s.impl.ExcelParseServiceImpl - 发现数据行 5 (17个非空单元格): {0=001, 1=程某, 2=2024/12/13, 3=江西九江, 4=15111111111, 5=1000000, 6=6, 7=江某, 8=江某, 9=19166666666, 10=债权性质, 11=债权种类, 12=cjt, 13=中国银行, 14=6366666666666660, 15=涉讼, 16=备注}

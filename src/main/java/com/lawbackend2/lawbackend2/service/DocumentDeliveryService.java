@@ -58,4 +58,6 @@ public interface DocumentDeliveryService {
     List<FileRecord> getDocumentDeliveryAttachments(Long deliveryId);
 
     String getLatestAbbreviation();
+
+    String getAbbreviationByCaseId(Long caseId);
 }

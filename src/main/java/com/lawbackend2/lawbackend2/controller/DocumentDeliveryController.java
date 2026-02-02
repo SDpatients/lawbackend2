@@ -370,4 +370,11 @@ public class DocumentDeliveryController {
         String abbreviation = documentDeliveryService.getLatestAbbreviation();
         return Result.success(abbreviation);
     }
+
+    @Operation(summary = "获取案件文书编号缩写")
+    @GetMapping("/case-abbreviation/{caseId}")
+    public Result<String> getAbbreviationByCaseId(@Parameter(description = "案件ID") @PathVariable Long caseId) {
+        String abbreviation = documentDeliveryService.getAbbreviationByCaseId(caseId);
+        return Result.success(abbreviation);
+    }
 }

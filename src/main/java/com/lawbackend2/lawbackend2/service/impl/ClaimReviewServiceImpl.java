@@ -84,11 +84,20 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
     }
 
     @Override
-    public List<ClaimReview> getReviewListByCaseId(Long caseId, Integer pageNum, Integer pageSize) {
+    public List<ClaimReview> getReviewListByCaseId(Long caseId, Integer pageNum, Integer pageSize, String reviewStatus) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "reviewDate"));
+
+        if (reviewStatus == null || reviewStatus.trim().isEmpty()) {
+            reviewStatus = "IN_PROGRESS";
+        }
+
         Page<ClaimReview> page;
-        if (caseId != null) {
+        if (caseId != null && reviewStatus != null) {
+            page = claimReviewRepository.findByCaseIdAndReviewStatus(caseId, reviewStatus, pageable);
+        } else if (caseId != null) {
             page = claimReviewRepository.findByCaseId(caseId, pageable);
+        } else if (reviewStatus != null) {
+            page = claimReviewRepository.findByReviewStatus(reviewStatus, pageable);
         } else {
             page = claimReviewRepository.findAll(pageable);
         }

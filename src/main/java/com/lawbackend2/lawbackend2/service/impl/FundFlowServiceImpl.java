@@ -57,7 +57,7 @@ public class FundFlowServiceImpl implements FundFlowService {
         if (accountIdToUse != null && saved.getBalanceAfter() != null) {
             FundAccountBalanceRequest balanceRequest = new FundAccountBalanceRequest();
             balanceRequest.setCurrentBalance(saved.getBalanceAfter());
-            fundAccountService.updateFundAccountBalance(accountIdToUse, balanceRequest);
+            fundAccountService.updateFundAccountBalance(accountIdToUse, balanceRequest, SecurityUtil.getCurrentUserId());
         }
         
         return saved.getId();
@@ -113,7 +113,7 @@ public class FundFlowServiceImpl implements FundFlowService {
         if (accountIdToUse != null && saved.getBalanceAfter() != null) {
             FundAccountBalanceRequest balanceRequest = new FundAccountBalanceRequest();
             balanceRequest.setCurrentBalance(saved.getBalanceAfter());
-            fundAccountService.updateFundAccountBalance(accountIdToUse, balanceRequest);
+            fundAccountService.updateFundAccountBalance(accountIdToUse, balanceRequest, SecurityUtil.getCurrentUserId());
         }
     }
 

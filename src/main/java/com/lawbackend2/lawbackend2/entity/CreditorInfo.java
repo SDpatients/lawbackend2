@@ -36,7 +36,7 @@ public class CreditorInfo extends BaseEntity {
     @Column(name = "legal_representative", length = 100)
     private String legalRepresentative;
 
-    @Column(name = "registered_capital", precision = 18, scale = 4)
+    @Column(name = "registered_capital", precision = 22, scale = 4)
     private BigDecimal registeredCapital;
 
     @Enumerated(EnumType.STRING)

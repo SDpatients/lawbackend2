@@ -10,7 +10,7 @@ import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementAttachment;
 
 public interface ExpenseReimbursementService {
 
-    Long createExpenseReimbursement(ExpenseReimbursementCreateRequest request);
+    Long createExpenseReimbursement(ExpenseReimbursementCreateRequest request, Long userId);
 
     ExpenseReimbursementResponse getExpenseReimbursementDetail(Long reimbursementId);
 

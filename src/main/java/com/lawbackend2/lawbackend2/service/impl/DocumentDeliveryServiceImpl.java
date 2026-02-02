@@ -84,7 +84,12 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
 
         String abbreviation = request.getAbbreviation();
         if (abbreviation == null || abbreviation.trim().isEmpty()) {
-            abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            if (request.getCaseId() != null) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviationByCaseId(request.getCaseId()).orElse(null);
+            }
+            if (abbreviation == null || abbreviation.trim().isEmpty()) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            }
         }
         documentDelivery.setAbbreviation(abbreviation);
 
@@ -142,7 +147,12 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
 
         String abbreviation = request.getAbbreviation();
         if (abbreviation == null || abbreviation.trim().isEmpty()) {
-            abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            if (request.getCaseId() != null) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviationByCaseId(request.getCaseId()).orElse(null);
+            }
+            if (abbreviation == null || abbreviation.trim().isEmpty()) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            }
         }
         documentDelivery.setAbbreviation(abbreviation);
 
@@ -198,7 +208,12 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
 
         String abbreviation = request.getAbbreviation();
         if (abbreviation == null || abbreviation.trim().isEmpty()) {
-            abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            if (request.getCaseId() != null) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviationByCaseId(request.getCaseId()).orElse(null);
+            }
+            if (abbreviation == null || abbreviation.trim().isEmpty()) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            }
         }
         documentDelivery.setAbbreviation(abbreviation);
 
@@ -219,12 +234,15 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
         approval.setApprovalType("DOCUMENT_DELIVERY");
         approval.setApprovalTitle(request.getApprovalTitle());
         approval.setApprovalContent(request.getApprovalContent());
+        approval.setApprovalAttachment(request.getApprovalAttachment());
         approval.setApprovalStatus("PENDING");
         approval.setApprovalCount(0);
         approval.setStatus("ACTIVE");
         approval.setCreateUserId(currentUserId);
 
-        approvalRepository.save(approval);
+        Approval savedApproval = approvalRepository.save(approval);
+        documentDelivery.setApprovalId(savedApproval.getId());
+        documentDeliveryRepository.save(documentDelivery);
 
         User user = userRepository.findById(currentUserId).orElse(null);
         String realName = user != null ? user.getRealName() : "未知用户";
@@ -256,7 +274,11 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
 
         Long currentUserId = SecurityUtil.getCurrentUserId();
 
-        Approval approval = approvalRepository.findByCaseIdAndApprovalType(documentDelivery.getCaseId(), "DOCUMENT_DELIVERY")
+        if (documentDelivery.getApprovalId() == null) {
+            throw new BusinessException("未找到对应的审批记录");
+        }
+
+        Approval approval = approvalRepository.findById(documentDelivery.getApprovalId())
                 .orElseThrow(() -> new BusinessException("未找到对应的审批记录"));
 
         if (!"PENDING".equals(approval.getApprovalStatus())) {
@@ -319,7 +341,12 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
 
         String abbreviation = request.getAbbreviation();
         if (abbreviation == null || abbreviation.trim().isEmpty()) {
-            abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            if (request.getCaseId() != null) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviationByCaseId(request.getCaseId()).orElse(null);
+            }
+            if (abbreviation == null || abbreviation.trim().isEmpty()) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            }
         }
         documentDelivery.setAbbreviation(abbreviation);
 
@@ -415,7 +442,12 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
 
         String abbreviation = request.getAbbreviation();
         if (abbreviation == null || abbreviation.trim().isEmpty()) {
-            abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            if (request.getCaseId() != null) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviationByCaseId(request.getCaseId()).orElse(null);
+            }
+            if (abbreviation == null || abbreviation.trim().isEmpty()) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            }
         }
         documentDelivery.setAbbreviation(abbreviation);
 
@@ -509,7 +541,12 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
 
         String abbreviation = request.getAbbreviation();
         if (abbreviation == null || abbreviation.trim().isEmpty()) {
-            abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            if (request.getCaseId() != null) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviationByCaseId(request.getCaseId()).orElse(null);
+            }
+            if (abbreviation == null || abbreviation.trim().isEmpty()) {
+                abbreviation = documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+            }
         }
         documentDelivery.setAbbreviation(abbreviation);
 
@@ -547,12 +584,15 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
         approval.setApprovalType("DOCUMENT_DELIVERY");
         approval.setApprovalTitle(request.getApprovalTitle());
         approval.setApprovalContent(request.getApprovalContent());
+        approval.setApprovalAttachment(request.getApprovalAttachment());
         approval.setApprovalStatus("PENDING");
         approval.setApprovalCount(0);
         approval.setStatus("ACTIVE");
         approval.setCreateUserId(currentUserId);
 
-        approvalRepository.save(approval);
+        Approval savedApproval = approvalRepository.save(approval);
+        documentDelivery.setApprovalId(savedApproval.getId());
+        documentDeliveryRepository.save(documentDelivery);
 
         DocumentDeliveryWithFilesResponse response = new DocumentDeliveryWithFilesResponse();
         response.setDeliveryId(deliveryId);
@@ -946,13 +986,37 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
     public List<FileRecord> getDocumentDeliveryAttachments(Long deliveryId) {
         log.debug("查询文书送达附件列表, 送达记录ID: {}", deliveryId);
 
-        getDocumentDeliveryDetail(deliveryId);
+        DocumentDelivery documentDelivery = getDocumentDeliveryDetail(deliveryId);
+        List<FileRecord> attachments = new ArrayList<>(fileService.getFileList(1, 100, "DOCUMENT_DELIVERY", String.valueOf(deliveryId), null).getList());
+        
+        if (documentDelivery.getDocumentAttachment() != null && !documentDelivery.getDocumentAttachment().trim().isEmpty()) {
+            FileRecord legacyAttachment = new FileRecord();
+            legacyAttachment.setOriginalFileName(extractFileName(documentDelivery.getDocumentAttachment()));
+            legacyAttachment.setFilePath(documentDelivery.getDocumentAttachment());
+            legacyAttachment.setBizType("DOCUMENT_DELIVERY");
+            legacyAttachment.setBizId(String.valueOf(deliveryId));
+            legacyAttachment.setUploadTime(documentDelivery.getCreateTime());
+            attachments.add(legacyAttachment);
+        }
+        
+        return attachments;
+    }
 
-        return fileService.getFileList(1, 100, "DOCUMENT_DELIVERY", String.valueOf(deliveryId), null).getList();
+    private String extractFileName(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return "";
+        }
+        int lastSeparator = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+        return lastSeparator >= 0 ? filePath.substring(lastSeparator + 1) : filePath;
     }
 
     @Override
     public String getLatestAbbreviation() {
         return documentDeliveryRepository.findLatestAbbreviation().orElse(null);
+    }
+
+    @Override
+    public String getAbbreviationByCaseId(Long caseId) {
+        return documentDeliveryRepository.findLatestAbbreviationByCaseId(caseId).orElse(null);
     }
 }

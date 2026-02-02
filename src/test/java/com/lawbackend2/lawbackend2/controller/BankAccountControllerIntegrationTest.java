@@ -114,6 +114,15 @@ class BankAccountControllerIntegrationTest {
         BankAccountUpdateRequest request = new BankAccountUpdateRequest();
         request.setAccountName("更新后的账户名称");
         request.setCurrentBalance(new BigDecimal("1500000.00"));
+        request.setAccountNumber("6632102522161219");
+        request.setAccountType("基本户");
+        request.setPassword("newPassword123");
+        request.setCurrency("CNY");
+        request.setOpeningDate(LocalDate.now());
+        request.setClosingDate(null);
+        request.setStatus("ACTIVE");
+        request.setBankName("中国农业银行");
+        request.setCaseId(18L);
 
         mockMvc.perform(put("/bank-account/{accountId}", testAccount.getId())
                         .contentType(MediaType.APPLICATION_JSON)

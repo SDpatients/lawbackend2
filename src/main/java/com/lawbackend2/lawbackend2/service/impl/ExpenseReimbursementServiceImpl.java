@@ -10,22 +10,23 @@ import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementAttachmentRe
 import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementItemResponse;
 import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
+import com.lawbackend2.lawbackend2.entity.BankAccount;
 import com.lawbackend2.lawbackend2.entity.BankAccountTransaction;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursement;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementAttachment;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementItem;
-import com.lawbackend2.lawbackend2.entity.FundAccount;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
+import com.lawbackend2.lawbackend2.repository.BankAccountRepository;
 import com.lawbackend2.lawbackend2.repository.BankAccountTransactionRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementAttachmentRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementItemRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementRepository;
-import com.lawbackend2.lawbackend2.repository.FundAccountRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.BankAccountTransactionService;
 import com.lawbackend2.lawbackend2.service.ExpenseReimbursementService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,7 +50,7 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
     private final ExpenseReimbursementItemRepository expenseReimbursementItemRepository;
     private final ExpenseReimbursementAttachmentRepository expenseReimbursementAttachmentRepository;
     private final BankruptCaseRepository bankruptCaseRepository;
-    private final FundAccountRepository fundAccountRepository;
+    private final BankAccountRepository bankAccountRepository;
     private final UserRepository userRepository;
     private final BankAccountTransactionRepository bankAccountTransactionRepository;
     private final BankAccountTransactionService bankAccountTransactionService;
@@ -58,7 +59,7 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
                                         ExpenseReimbursementItemRepository expenseReimbursementItemRepository,
                                         ExpenseReimbursementAttachmentRepository expenseReimbursementAttachmentRepository,
                                         BankruptCaseRepository bankruptCaseRepository,
-                                        FundAccountRepository fundAccountRepository,
+                                        BankAccountRepository bankAccountRepository,
                                         UserRepository userRepository,
                                         BankAccountTransactionRepository bankAccountTransactionRepository,
                                         BankAccountTransactionService bankAccountTransactionService) {
@@ -66,21 +67,21 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         this.expenseReimbursementItemRepository = expenseReimbursementItemRepository;
         this.expenseReimbursementAttachmentRepository = expenseReimbursementAttachmentRepository;
         this.bankruptCaseRepository = bankruptCaseRepository;
-        this.fundAccountRepository = fundAccountRepository;
+        this.bankAccountRepository = bankAccountRepository;
         this.userRepository = userRepository;
         this.bankAccountTransactionRepository = bankAccountTransactionRepository;
         this.bankAccountTransactionService = bankAccountTransactionService;
     }
 
     @Override
-    public Long createExpenseReimbursement(ExpenseReimbursementCreateRequest request) {
+    public Long createExpenseReimbursement(ExpenseReimbursementCreateRequest request, Long userId) {
         BankruptCase bankruptCase = bankruptCaseRepository.findById(request.getCaseId())
                 .orElseThrow(() -> new BusinessException("案件不存在"));
 
-        FundAccount fundAccount = fundAccountRepository.findById(request.getFundAccountId())
+        BankAccount bankAccount = bankAccountRepository.findById(request.getFundAccountId())
                 .orElseThrow(() -> new BusinessException("银行账户不存在"));
 
-        User applicant = userRepository.findById(1L)
+        User applicant = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException("申请人不存在"));
 
         ExpenseReimbursement reimbursement = new ExpenseReimbursement();
@@ -90,13 +91,15 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         reimbursement.setApplicantId(applicant.getId());
         reimbursement.setApplicantName(applicant.getRealName());
         reimbursement.setFundAccountId(request.getFundAccountId());
-        reimbursement.setFundAccountName(fundAccount.getAccountName());
-        reimbursement.setBankName(fundAccount.getBankName());
-        reimbursement.setBankAccount(fundAccount.getBankAccount());
+        reimbursement.setFundAccountName(bankAccount.getAccountName());
+        reimbursement.setBankName(bankAccount.getBankName());
+        reimbursement.setBankAccount(bankAccount.getAccountNumber());
         reimbursement.setReimbursementDate(request.getReimbursementDate());
         reimbursement.setDescription(request.getDescription());
         reimbursement.setApprovalStatus("PENDING");
         reimbursement.setStatus("ACTIVE");
+        reimbursement.setCreateUserId(userId);
+        reimbursement.setUpdateUserId(userId);
 
         BigDecimal totalAmount = request.getItems().stream()
                 .map(ExpenseReimbursementCreateRequest.ExpenseReimbursementItemRequest::getItemAmount)
@@ -172,15 +175,15 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         BankruptCase bankruptCase = bankruptCaseRepository.findById(request.getCaseId())
                 .orElseThrow(() -> new BusinessException("案件不存在"));
 
-        FundAccount fundAccount = fundAccountRepository.findById(request.getFundAccountId())
+        BankAccount bankAccount = bankAccountRepository.findById(request.getFundAccountId())
                 .orElseThrow(() -> new BusinessException("银行账户不存在"));
 
         reimbursement.setCaseId(request.getCaseId());
         reimbursement.setCaseName(bankruptCase.getCaseName());
         reimbursement.setFundAccountId(request.getFundAccountId());
-        reimbursement.setFundAccountName(fundAccount.getAccountName());
-        reimbursement.setBankName(fundAccount.getBankName());
-        reimbursement.setBankAccount(fundAccount.getBankAccount());
+        reimbursement.setFundAccountName(bankAccount.getAccountName());
+        reimbursement.setBankName(bankAccount.getBankName());
+        reimbursement.setBankAccount(bankAccount.getAccountNumber());
         reimbursement.setReimbursementDate(request.getReimbursementDate());
         reimbursement.setDescription(request.getDescription());
 
@@ -212,10 +215,15 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
             throw new BusinessException("审批状态不正确");
         }
 
+        // 查询审批人信息
+        User approver = userRepository.findById(approverId)
+                .orElseThrow(() -> new BusinessException("审批人不存在"));
+
         reimbursement.setApprovalStatus(request.getApprovalStatus());
         reimbursement.setApprovalOpinion(request.getApprovalOpinion());
         reimbursement.setApprovalTime(LocalDateTime.now());
         reimbursement.setApproverId(approverId);
+        reimbursement.setApproverName(approver.getRealName());
 
         expenseReimbursementRepository.save(reimbursement);
 
@@ -225,15 +233,11 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
     }
 
     private void createTransactionForApprovedReimbursement(ExpenseReimbursement reimbursement) {
-        FundAccount fundAccount = fundAccountRepository.findById(reimbursement.getFundAccountId())
-                .orElseThrow(() -> new BusinessException("资金账户不存在"));
-
-        if (fundAccount.getAccountId() == null) {
-            throw new BusinessException("资金账户未关联银行账户");
-        }
+        BankAccount bankAccount = bankAccountRepository.findById(reimbursement.getFundAccountId())
+                .orElseThrow(() -> new BusinessException("银行账户不存在"));
 
         BankAccountTransaction transaction = new BankAccountTransaction();
-        transaction.setAccountId(fundAccount.getAccountId());
+        transaction.setAccountId(reimbursement.getFundAccountId());
         transaction.setTransactionType("OUT");
         transaction.setAmount(reimbursement.getTotalAmount());
         transaction.setTransactionDate(reimbursement.getReimbursementDate());

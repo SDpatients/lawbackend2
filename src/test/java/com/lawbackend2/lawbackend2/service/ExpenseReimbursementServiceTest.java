@@ -5,19 +5,19 @@ import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementCreateRequest
 import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementItemCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementResponse;
+import com.lawbackend2.lawbackend2.entity.BankAccount;
 import com.lawbackend2.lawbackend2.entity.BankAccountTransaction;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursement;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementItem;
-import com.lawbackend2.lawbackend2.entity.FundAccount;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.repository.BankAccountRepository;
 import com.lawbackend2.lawbackend2.repository.BankAccountTransactionRepository;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementAttachmentRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementItemRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementRepository;
-import com.lawbackend2.lawbackend2.repository.FundAccountRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.BankAccountTransactionService;
 import com.lawbackend2.lawbackend2.service.impl.ExpenseReimbursementServiceImpl;
@@ -55,7 +55,7 @@ class ExpenseReimbursementServiceTest {
     private BankruptCaseRepository bankruptCaseRepository;
 
     @Mock
-    private FundAccountRepository fundAccountRepository;
+    private BankAccountRepository bankAccountRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -70,7 +70,7 @@ class ExpenseReimbursementServiceTest {
     private ExpenseReimbursementServiceImpl expenseReimbursementService;
 
     private BankruptCase mockCase;
-    private FundAccount mockFundAccount;
+    private BankAccount mockBankAccount;
     private User mockUser;
     private ExpenseReimbursementCreateRequest createRequest;
 
@@ -80,11 +80,11 @@ class ExpenseReimbursementServiceTest {
         mockCase.setId(1L);
         mockCase.setCaseName("测试案件");
 
-        mockFundAccount = new FundAccount();
-        mockFundAccount.setId(1L);
-        mockFundAccount.setAccountName("测试账户");
-        mockFundAccount.setBankName("中国银行");
-        mockFundAccount.setBankAccount("1234567890");
+        mockBankAccount = new BankAccount();
+        mockBankAccount.setId(1L);
+        mockBankAccount.setAccountName("测试账户");
+        mockBankAccount.setBankName("中国银行");
+        mockBankAccount.setAccountNumber("1234567890");
 
         mockUser = new User();
         mockUser.setId(1L);
@@ -114,7 +114,7 @@ class ExpenseReimbursementServiceTest {
     @Test
     void testCreateExpenseReimbursement_Success() {
         when(bankruptCaseRepository.findById(1L)).thenReturn(Optional.of(mockCase));
-        when(fundAccountRepository.findById(1L)).thenReturn(Optional.of(mockFundAccount));
+        when(bankAccountRepository.findById(1L)).thenReturn(Optional.of(mockBankAccount));
         when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser));
         when(expenseReimbursementRepository.countByReimbursementNumberPrefix(anyString())).thenReturn(0L);
 
@@ -123,7 +123,7 @@ class ExpenseReimbursementServiceTest {
         when(expenseReimbursementRepository.save(any(ExpenseReimbursement.class))).thenReturn(savedReimbursement);
         when(expenseReimbursementItemRepository.save(any(ExpenseReimbursementItem.class))).thenReturn(new ExpenseReimbursementItem());
 
-        Long result = expenseReimbursementService.createExpenseReimbursement(createRequest);
+        Long result = expenseReimbursementService.createExpenseReimbursement(createRequest, 1L);
 
         assertNotNull(result);
         assertEquals(1L, result);
@@ -136,7 +136,7 @@ class ExpenseReimbursementServiceTest {
         when(bankruptCaseRepository.findById(1L)).thenReturn(Optional.empty());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
-            expenseReimbursementService.createExpenseReimbursement(createRequest);
+            expenseReimbursementService.createExpenseReimbursement(createRequest, 1L);
         });
 
         assertEquals("案件不存在", exception.getMessage());
@@ -144,12 +144,12 @@ class ExpenseReimbursementServiceTest {
     }
 
     @Test
-    void testCreateExpenseReimbursement_FundAccountNotFound() {
+    void testCreateExpenseReimbursement_BankAccountNotFound() {
         when(bankruptCaseRepository.findById(1L)).thenReturn(Optional.of(mockCase));
-        when(fundAccountRepository.findById(1L)).thenReturn(Optional.empty());
+        when(bankAccountRepository.findById(1L)).thenReturn(Optional.empty());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
-            expenseReimbursementService.createExpenseReimbursement(createRequest);
+            expenseReimbursementService.createExpenseReimbursement(createRequest, 1L);
         });
 
         assertEquals("银行账户不存在", exception.getMessage());
@@ -192,12 +192,14 @@ class ExpenseReimbursementServiceTest {
         mockReimbursement.setApprovalStatus("PENDING");
         mockReimbursement.setFundAccountId(1L);
 
-        FundAccount fundAccount = new FundAccount();
-        fundAccount.setId(1L);
-        fundAccount.setAccountId(100L);
+        BankAccount bankAccount = new BankAccount();
+        bankAccount.setId(1L);
+        bankAccount.setAccountName("测试账户");
+        bankAccount.setBankName("测试银行");
+        bankAccount.setAccountNumber("1234567890");
 
         when(expenseReimbursementRepository.findById(1L)).thenReturn(Optional.of(mockReimbursement));
-        when(fundAccountRepository.findById(1L)).thenReturn(Optional.of(fundAccount));
+        when(bankAccountRepository.findById(1L)).thenReturn(Optional.of(bankAccount));
         when(expenseReimbursementRepository.save(any(ExpenseReimbursement.class))).thenReturn(mockReimbursement);
 
         ExpenseReimbursementApprovalRequest request = new ExpenseReimbursementApprovalRequest();
@@ -358,12 +360,14 @@ class ExpenseReimbursementServiceTest {
         mockReimbursement.setBankAccount("1234567890");
         mockReimbursement.setDescription("测试报销");
 
-        FundAccount fundAccount = new FundAccount();
-        fundAccount.setId(1L);
-        fundAccount.setAccountId(100L);
+        BankAccount bankAccount = new BankAccount();
+        bankAccount.setId(1L);
+        bankAccount.setAccountName("测试账户");
+        bankAccount.setBankName("测试银行");
+        bankAccount.setAccountNumber("1234567890");
 
         when(expenseReimbursementRepository.findById(1L)).thenReturn(Optional.of(mockReimbursement));
-        when(fundAccountRepository.findById(1L)).thenReturn(Optional.of(fundAccount));
+        when(bankAccountRepository.findById(1L)).thenReturn(Optional.of(bankAccount));
         when(expenseReimbursementRepository.save(any(ExpenseReimbursement.class))).thenReturn(mockReimbursement);
 
         ExpenseReimbursementApprovalRequest request = new ExpenseReimbursementApprovalRequest();

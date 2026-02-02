@@ -9,7 +9,6 @@ import java.time.LocalDate;
 @Data
 public class WorkPlanCreateRequest {
 
-    @NotBlank(message = "计划编号不能为空")
     private String planNumber;
 
     @NotBlank(message = "计划类型不能为空")

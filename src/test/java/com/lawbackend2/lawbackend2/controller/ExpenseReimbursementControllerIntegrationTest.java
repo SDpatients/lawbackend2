@@ -107,7 +107,7 @@ class ExpenseReimbursementControllerIntegrationTest {
 
         request.setItems(Arrays.asList(item1));
 
-        when(expenseReimbursementService.createExpenseReimbursement(any(ExpenseReimbursementCreateRequest.class)))
+        when(expenseReimbursementService.createExpenseReimbursement(any(ExpenseReimbursementCreateRequest.class), anyLong()))
             .thenReturn(1L);
 
         mockMvc.perform(post("/expense-reimbursement")

@@ -26,13 +26,13 @@ public class ClaimConfirmationCreateRequest {
 
     private String voteNotes;
 
-    private Integer hasObjection = 0;
+    private Boolean hasObjection = false;
 
     private String objector;
 
     private String objectionReason;
 
-    private BigDecimal objectionAmount;
+    private Long objectionAmount;
 
     private LocalDateTime objectionDate;
 
@@ -48,11 +48,11 @@ public class ClaimConfirmationCreateRequest {
 
     private String courtRulingResult;
 
-    private BigDecimal courtRulingAmount;
+    private Long courtRulingAmount;
 
     private String courtRulingNotes;
 
-    private Integer hasLawsuit = 0;
+    private Boolean hasLawsuit = false;
 
     private String lawsuitCaseNo;
 
@@ -60,11 +60,11 @@ public class ClaimConfirmationCreateRequest {
 
     private String lawsuitResult;
 
-    private BigDecimal lawsuitAmount;
+    private Long lawsuitAmount;
 
     private String lawsuitNotes;
 
-    private BigDecimal finalConfirmedAmount;
+    private Long finalConfirmedAmount;
 
     private LocalDateTime finalConfirmationDate;
 

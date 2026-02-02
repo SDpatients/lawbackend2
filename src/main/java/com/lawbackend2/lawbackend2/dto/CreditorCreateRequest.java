@@ -27,5 +27,5 @@ public class CreditorCreateRequest {
 
     private java.math.BigDecimal registeredCapital;
 
-    private CreditorStatus status;
+    private CreditorStatus creditorStatus;
 }

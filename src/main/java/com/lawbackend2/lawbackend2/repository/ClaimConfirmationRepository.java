@@ -14,11 +14,25 @@ import java.util.Optional;
 
 @Repository
 public interface ClaimConfirmationRepository extends JpaRepository<ClaimConfirmation, Long>, JpaSpecificationExecutor<ClaimConfirmation> {
-    Optional<ClaimConfirmation> findByClaimRegistrationId(Long claimRegistrationId);
+    List<ClaimConfirmation> findByClaimRegistrationId(Long claimRegistrationId);
 
     Page<ClaimConfirmation> findByCaseId(Long caseId, Pageable pageable);
 
     Page<ClaimConfirmation> findByConfirmationStatus(String confirmationStatus, Pageable pageable);
+
+    Page<ClaimConfirmation> findByCaseIdAndConfirmationStatus(Long caseId, String confirmationStatus, Pageable pageable);
+
+    @Query("SELECT c FROM ClaimConfirmation c WHERE c.confirmationStatus IN ('IN_PROGRESS', 'CONFIRMED')")
+    Page<ClaimConfirmation> findInProgressAndConfirmed(Pageable pageable);
+
+    @Query("SELECT c FROM ClaimConfirmation c WHERE c.caseId = :caseId AND c.confirmationStatus IN ('IN_PROGRESS', 'CONFIRMED')")
+    Page<ClaimConfirmation> findInProgressAndConfirmedByCaseId(@Param("caseId") Long caseId, Pageable pageable);
+
+    @Query("SELECT COUNT(c) FROM ClaimConfirmation c WHERE c.confirmationStatus IN ('IN_PROGRESS', 'CONFIRMED')")
+    Long countInProgressAndConfirmed();
+
+    @Query("SELECT COUNT(c) FROM ClaimConfirmation c WHERE c.caseId = :caseId AND c.confirmationStatus IN ('IN_PROGRESS', 'CONFIRMED')")
+    Long countInProgressAndConfirmedByCaseId(@Param("caseId") Long caseId);
 
     Page<ClaimConfirmation> findByHasObjection(Boolean hasObjection, Pageable pageable);
 
@@ -57,4 +71,6 @@ public interface ClaimConfirmationRepository extends JpaRepository<ClaimConfirma
     @Query("SELECT c FROM ClaimConfirmation c WHERE c.caseId = :caseId AND c.lawsuitStatus = 'TRIALING'")
     List<ClaimConfirmation> findTrialingLawsuitsByCaseId(@Param("caseId") Long caseId);
     void deleteByCaseId(Long caseId);
+
+    List<ClaimConfirmation> findAllByCreditorName(String creditorName);
 }

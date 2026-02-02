@@ -47,7 +47,8 @@ public class ExpenseReimbursementController {
     @Operation(summary = "创建报销单")
     @PostMapping
     public Result<Map<String, Object>> createExpenseReimbursement(@Valid @RequestBody ExpenseReimbursementCreateRequest request) {
-        Long reimbursementId = expenseReimbursementService.createExpenseReimbursement(request);
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        Long reimbursementId = expenseReimbursementService.createExpenseReimbursement(request, currentUserId);
 
         Map<String, Object> data = new HashMap<>();
         data.put("reimbursementId", reimbursementId);

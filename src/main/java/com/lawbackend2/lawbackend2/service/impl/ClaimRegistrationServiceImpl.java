@@ -1,18 +1,25 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
+import com.alibaba.excel.EasyExcel;
 import com.lawbackend2.lawbackend2.dto.*;
 import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
 import com.lawbackend2.lawbackend2.entity.ClaimReview;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.listener.ClaimRegistrationExcelImportDTO;
+import com.lawbackend2.lawbackend2.listener.ClaimRegistrationExcelListener;
+import com.lawbackend2.lawbackend2.listener.DeclaredClaimsRegisterExcelImportDTO;
+import com.lawbackend2.lawbackend2.listener.DeclaredClaimsRegisterExcelListener;
 import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.ClaimRegistrationService;
 import com.lawbackend2.lawbackend2.service.NotificationService;
+import com.lawbackend2.lawbackend2.util.ExcelImportUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,10 +28,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -53,6 +68,9 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ClaimRegistration createClaim(ClaimRegistrationCreateRequest request, Long userId) {
+        // 验证请求数据
+        validateCreateRequest(request);
+        
         ClaimRegistration claimRegistration = new ClaimRegistration();
         BeanUtils.copyProperties(request, claimRegistration);
         
@@ -70,8 +88,6 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         claimRegistration.setClaimNo(claimNo);
         
         ClaimRegistration saved = claimRegistrationRepository.save(claimRegistration);
-        
-        createInitialReviewAndConfirmation(saved, userId);
 
         User user = userRepository.findById(userId).orElse(null);
         String realName = user != null ? user.getRealName() : "未知用户";
@@ -109,14 +125,18 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             ClaimDetailResponse.ClaimReviewInfo reviewInfo = new ClaimDetailResponse.ClaimReviewInfo();
             BeanUtils.copyProperties(review, reviewInfo);
             response.setReviewInfo(reviewInfo);
+        } else {
+            response.setReviewInfo(null);
         }
         
-        Optional<ClaimConfirmation> confirmationOpt = claimConfirmationRepository.findByClaimRegistrationId(claimId);
-        if (confirmationOpt.isPresent()) {
-            ClaimConfirmation confirmation = confirmationOpt.get();
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimId);
+        if (!confirmations.isEmpty()) {
+            ClaimConfirmation confirmation = confirmations.get(0);
             ClaimDetailResponse.ClaimConfirmationInfo confirmationInfo = new ClaimDetailResponse.ClaimConfirmationInfo();
             BeanUtils.copyProperties(confirmation, confirmationInfo);
             response.setConfirmationInfo(confirmationInfo);
+        } else {
+            response.setConfirmationInfo(null);
         }
         
         return response;
@@ -125,6 +145,10 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     @Override
     public List<ClaimRegistration> getClaimList(Integer pageNum, Integer pageSize, Long caseId, String registrationStatus) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+
+        if (registrationStatus == null || registrationStatus.trim().isEmpty()) {
+            registrationStatus = "PENDING";
+        }
 
         Page<ClaimRegistration> page;
         if (caseId != null && registrationStatus != null) {
@@ -142,6 +166,10 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
     @Override
     public Long getClaimCount(Long caseId, String registrationStatus) {
+        if (registrationStatus == null || registrationStatus.trim().isEmpty()) {
+            registrationStatus = "PENDING";
+        }
+
         if (caseId != null && registrationStatus != null) {
             return claimRegistrationRepository.findByCaseIdAndRegistrationStatus(caseId, registrationStatus, Pageable.unpaged()).getTotalElements();
         } else if (caseId != null) {
@@ -277,10 +305,102 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     @Transactional(rollbackFor = Exception.class)
     public void updateRegistrationStatus(Long claimId, String status, Long userId) {
         ClaimRegistration claimRegistration = getClaimById(claimId);
+        String oldStatus = claimRegistration.getRegistrationStatus();
         claimRegistration.setRegistrationStatus(status);
         claimRegistration.setUpdateUserId(userId);
         claimRegistrationRepository.save(claimRegistration);
-        log.info("债权申报状态更新成功, claimId: {}, status: {}", claimId, status);
+
+        handleStatusChange(claimRegistration, oldStatus, status, userId);
+
+        log.info("债权申报状态更新成功, claimId: {}, oldStatus: {}, newStatus: {}", claimId, oldStatus, status);
+    }
+
+    private void handleStatusChange(ClaimRegistration registration, String oldStatus, String newStatus, Long userId) {
+        if ("REVIEWING".equals(newStatus)) {
+            createOrUpdateReviewRecord(registration, userId);
+        } else if ("CONFIRMING".equals(newStatus)) {
+            createOrUpdateConfirmationRecord(registration, userId);
+        } else if ("REVIEW_COMPLETED".equals(newStatus)) {
+            updateReviewRecordStatus(registration.getId(), "COMPLETED", userId);
+        } else if ("CONFIRMED".equals(newStatus)) {
+            updateConfirmationRecordStatus(registration.getId(), "COMPLETED", userId);
+        }
+    }
+
+    private void createOrUpdateReviewRecord(ClaimRegistration registration, Long userId) {
+        Optional<ClaimReview> existingReview = claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(registration.getId());
+
+        if (existingReview.isPresent()) {
+            ClaimReview review = existingReview.get();
+            review.setReviewStatus("IN_PROGRESS");
+            review.setUpdateUserId(userId);
+            claimReviewRepository.save(review);
+            log.info("更新审查记录状态为进行中, claimId: {}, reviewId: {}", registration.getId(), review.getId());
+        } else {
+            ClaimReview review = new ClaimReview();
+            review.setClaimRegistrationId(registration.getId());
+            review.setCaseId(registration.getCaseId());
+            review.setCreditorName(registration.getCreditorName());
+            review.setDeclaredPrincipal(registration.getPrincipal());
+            review.setDeclaredInterest(registration.getInterest());
+            review.setDeclaredPenalty(registration.getPenalty());
+            review.setDeclaredOtherLosses(registration.getOtherLosses());
+            review.setDeclaredTotalAmount(registration.getTotalAmount());
+            review.setReviewRound(1);
+            review.setReviewStatus("IN_PROGRESS");
+            review.setReviewDate(LocalDateTime.now());
+            review.setCreateUserId(userId);
+            review.setUpdateUserId(userId);
+            claimReviewRepository.save(review);
+            log.info("创建审查记录, claimId: {}, reviewId: {}", registration.getId(), review.getId());
+        }
+    }
+
+    private void createOrUpdateConfirmationRecord(ClaimRegistration registration, Long userId) {
+        List<ClaimConfirmation> existingConfirmations = claimConfirmationRepository.findByClaimRegistrationId(registration.getId());
+
+        if (!existingConfirmations.isEmpty()) {
+            // 更新第一个确认记录
+            ClaimConfirmation confirmation = existingConfirmations.get(0);
+            confirmation.setConfirmationStatus("IN_PROGRESS");
+            confirmation.setUpdateUserId(userId);
+            claimConfirmationRepository.save(confirmation);
+            log.info("更新确认记录状态为进行中, claimId: {}, confirmationId: {}", registration.getId(), confirmation.getId());
+        } else {
+            ClaimConfirmation confirmation = new ClaimConfirmation();
+            confirmation.setClaimRegistrationId(registration.getId());
+            confirmation.setCaseId(registration.getCaseId());
+            confirmation.setCreditorName(registration.getCreditorName());
+            confirmation.setFinalConfirmedAmount(registration.getTotalAmount());
+            confirmation.setConfirmationStatus("IN_PROGRESS");
+            confirmation.setCreateUserId(userId);
+            confirmation.setUpdateUserId(userId);
+            claimConfirmationRepository.save(confirmation);
+            log.info("创建确认记录, claimId: {}, confirmationId: {}", registration.getId(), confirmation.getId());
+        }
+    }
+
+    private void updateReviewRecordStatus(Long claimId, String status, Long userId) {
+        Optional<ClaimReview> reviewOpt = claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(claimId);
+        if (reviewOpt.isPresent()) {
+            ClaimReview review = reviewOpt.get();
+            review.setReviewStatus(status);
+            review.setUpdateUserId(userId);
+            claimReviewRepository.save(review);
+            log.info("更新审查记录状态, claimId: {}, reviewId: {}, status: {}", claimId, review.getId(), status);
+        }
+    }
+
+    private void updateConfirmationRecordStatus(Long claimId, String status, Long userId) {
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimId);
+        if (!confirmations.isEmpty()) {
+            // 更新第一个确认记录
+            ClaimConfirmation confirmation = confirmations.get(0);
+            confirmation.setConfirmationStatus(status);
+            confirmation.setUpdateUserId(userId);
+            claimConfirmationRepository.save(confirmation);
+            log.info("更新确认记录状态, claimId: {}, confirmationId: {}, status: {}", claimId, confirmation.getId(), status);
+        }
     }
 
     @Override
@@ -301,30 +421,439 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         return "CLAIM" + dateStr + String.format("%06d", count);
     }
 
-    private void createInitialReviewAndConfirmation(ClaimRegistration registration, Long userId) {
-        ClaimReview review = new ClaimReview();
-        review.setClaimRegistrationId(registration.getId());
-        review.setCaseId(registration.getCaseId());
-        review.setCreditorName(registration.getCreditorName());
-        review.setDeclaredPrincipal(registration.getPrincipal());
-        review.setDeclaredInterest(registration.getInterest());
-        review.setDeclaredPenalty(registration.getPenalty());
-        review.setDeclaredOtherLosses(registration.getOtherLosses());
-        review.setDeclaredTotalAmount(registration.getTotalAmount());
-        review.setReviewRound(1);
-        review.setReviewStatus("PENDING");
-        review.setCreateUserId(userId);
-        review.setUpdateUserId(userId);
-        claimReviewRepository.save(review);
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ExcelImportResponse importFromExcel(MultipartFile file, Long caseId, Long userId) {
+        ExcelImportResponse response = new ExcelImportResponse();
+        response.setSuccessCount(0);
+        response.setFailCount(0);
+        response.setErrors(new ArrayList<>());
 
-        ClaimConfirmation confirmation = new ClaimConfirmation();
-        confirmation.setClaimRegistrationId(registration.getId());
-        confirmation.setCaseId(registration.getCaseId());
-        confirmation.setCreditorName(registration.getCreditorName());
-        confirmation.setFinalConfirmedAmount(registration.getTotalAmount());
-        confirmation.setConfirmationStatus("PENDING");
-        confirmation.setCreateUserId(userId);
-        confirmation.setUpdateUserId(userId);
-        claimConfirmationRepository.save(confirmation);
+        try {
+            List<Map<String, Object>> dataList = ExcelImportUtil.parseExcel(file);
+
+            if (dataList.isEmpty()) {
+                response.setMessage("Excel文件为空");
+                return response;
+            }
+
+            // 打印数据列表大小和表头信息
+            log.info("Excel解析完成，共{}行数据", dataList.size());
+            if (!dataList.isEmpty()) {
+                Map<String, Object> firstRow = dataList.get(0);
+                log.info("表头信息: {}", firstRow.keySet());
+                log.info("第一行数据: {}", firstRow);
+                log.info("第一行债权人名称: {}", ExcelImportUtil.getStringValue(firstRow, "债权人名称"));
+                
+                // 验证表头是否包含必需的列
+                boolean hasRequiredColumns = false;
+                for (String header : firstRow.keySet()) {
+                    if (header != null && !header.trim().isEmpty()) {
+                        hasRequiredColumns = true;
+                        break;
+                    }
+                }
+                
+                if (!hasRequiredColumns) {
+                    response.setMessage("Excel文件表头格式不正确，无法识别列名");
+                    log.error("Excel文件表头格式不正确，无法识别列名");
+                    return response;
+                }
+            }
+
+            for (int i = 0; i < dataList.size(); i++) {
+                Map<String, Object> row = dataList.get(i);
+                int rowNum = i + 2;
+
+                // 打印当前行数据
+                log.info("处理行号: {}, 数据: {}", rowNum, row);
+                log.info("当前行债权人名称: {}", ExcelImportUtil.getStringValue(row, "债权人名称"));
+
+                // 检查债权人字段是否为空，如果为空则跳过该行
+                String creditorName = ExcelImportUtil.getStringValue(row, "债权人名称");
+                if (creditorName == null || creditorName.trim().isEmpty() || "空".equals(creditorName)) {
+                    log.info("跳过空行，行号: {}, 债权人名称为空", rowNum);
+                    continue;
+                }
+
+                try {
+                    ClaimRegistrationCreateRequest request = buildCreateRequestFromRow(row, caseId);
+                    validateCreateRequest(request);
+
+                    ClaimRegistration claimRegistration = createClaim(request, userId);
+                    response.setSuccessCount(response.getSuccessCount() + 1);
+
+                    log.info("Excel导入成功, 行号: {}, 债权人: {}, claimId: {}", rowNum, request.getCreditorName(), claimRegistration.getId());
+                } catch (Exception e) {
+                    response.setFailCount(response.getFailCount() + 1);
+                    ExcelImportResponse.ImportError error = new ExcelImportResponse.ImportError(rowNum, e.getMessage(), creditorName);
+                    response.getErrors().add(error);
+                    log.error("Excel导入失败, 行号: {}, 错误: {}, 债权人名称: {}", rowNum, e.getMessage(), creditorName);
+                }
+            }
+
+            response.setMessage(String.format("导入完成，成功%d条，失败%d条", response.getSuccessCount(), response.getFailCount()));
+        } catch (IOException e) {
+            response.setMessage("Excel文件解析失败: " + e.getMessage());
+            log.error("Excel文件解析失败", e);
+        }
+
+        return response;
+    }
+
+    private ClaimRegistrationCreateRequest buildCreateRequestFromRow(Map<String, Object> row, Long caseId) {
+        ClaimRegistrationCreateRequest request = new ClaimRegistrationCreateRequest();
+
+        request.setCaseId(caseId);
+        request.setCaseName(getValueFromRow(row, "案件名称"));
+        request.setDebtor(getValueFromRow(row, "债务人"));
+
+        request.setCreditorName(getValueFromRow(row, "债权人名称"));
+        request.setCreditorType(getValueFromRow(row, "债权人类型"));
+        request.setCreditCode(getValueFromRow(row, "统一社会信用代码"));
+        request.setLegalRepresentative(getValueFromRow(row, "法定代表人"));
+        request.setServiceAddress(getValueFromRow(row, "送达地址"));
+
+        request.setAgentName(getValueFromRow(row, "代理人姓名"));
+        request.setAgentPhone(getValueFromRow(row, "代理人电话"));
+        request.setAgentIdCard(getValueFromRow(row, "代理人身份证"));
+        request.setAgentAddress(getValueFromRow(row, "代理人地址"));
+
+        request.setAccountName(getValueFromRow(row, "账户名称"));
+        request.setCreditorBankAccount(getValueFromRow(row, "债权人银行账号"));
+        request.setBankName(getValueFromRow(row, "开户行"));
+
+        request.setPrincipal(getBigDecimalValueFromRow(row, "本金"));
+        request.setInterest(getBigDecimalValueFromRow(row, "利息"));
+        request.setPenalty(getBigDecimalValueFromRow(row, "违约金"));
+        request.setOtherLosses(getBigDecimalValueFromRow(row, "其他损失"));
+        request.setTotalAmount(getBigDecimalValueFromRow(row, "总金额"));
+
+        Boolean hasCourtJudgment = getBooleanValueFromRow(row, "是否有法院判决");
+        request.setHasCourtJudgment(hasCourtJudgment != null && hasCourtJudgment ? 1 : 0);
+
+        Boolean hasExecution = getBooleanValueFromRow(row, "是否有执行");
+        request.setHasExecution(hasExecution != null && hasExecution ? 1 : 0);
+
+        Boolean hasCollateral = getBooleanValueFromRow(row, "是否有担保");
+        request.setHasCollateral(hasCollateral != null && hasCollateral ? 1 : 0);
+
+        request.setClaimNature(getValueFromRow(row, "债权性质"));
+        request.setClaimType(getValueFromRow(row, "债权类型"));
+        request.setClaimFacts(getValueFromRow(row, "债权事实"));
+        request.setClaimIdentifier(getValueFromRow(row, "债权标识"));
+
+        request.setEvidenceList(getValueFromRow(row, "证据清单"));
+        request.setEvidenceMaterials(getValueFromRow(row, "证据材料"));
+        request.setEvidenceAttachments(getValueFromRow(row, "证据附件"));
+
+        request.setRegistrationDate(getLocalDateTimeValueFromRow(row, "登记日期"));
+        request.setRegistrationDeadline(getLocalDateTimeValueFromRow(row, "登记截止日期"));
+
+        request.setMaterialReceiver(getValueFromRow(row, "材料接收人"));
+        request.setMaterialReceiveDate(getLocalDateTimeValueFromRow(row, "材料接收日期"));
+        request.setMaterialCompleteness(getValueFromRow(row, "材料完整性"));
+
+        request.setRemarks(getValueFromRow(row, "备注"));
+
+        return request;
+    }
+
+    // 辅助方法：从行数据中获取字符串值，支持多种表头名称变体
+    private String getValueFromRow(Map<String, Object> row, String key) {
+        // 直接使用ExcelImportUtil的getStringValue方法，它已经支持包含key的表头查找
+        String value = ExcelImportUtil.getStringValue(row, key);
+        if (value != null) {
+            return value;
+        }
+        
+        // 尝试查找常见的变体
+        String[] variants = getKeyVariants(key);
+        for (String variant : variants) {
+            value = ExcelImportUtil.getStringValue(row, variant);
+            if (value != null) {
+                return value;
+            }
+        }
+        
+        return null;
+    }
+
+    // 辅助方法：从行数据中获取BigDecimal值，支持多种表头名称变体
+    private BigDecimal getBigDecimalValueFromRow(Map<String, Object> row, String key) {
+        // 直接查找
+        BigDecimal value = ExcelImportUtil.getBigDecimalValue(row, key);
+        if (value != null) {
+            return value;
+        }
+        
+        // 尝试查找常见的变体
+        String[] variants = getKeyVariants(key);
+        for (String variant : variants) {
+            value = ExcelImportUtil.getBigDecimalValue(row, variant);
+            if (value != null) {
+                return value;
+            }
+        }
+        
+        return null;
+    }
+
+    // 辅助方法：从行数据中获取Boolean值，支持多种表头名称变体
+    private Boolean getBooleanValueFromRow(Map<String, Object> row, String key) {
+        // 直接查找
+        Boolean value = ExcelImportUtil.getBooleanValue(row, key);
+        if (value != null) {
+            return value;
+        }
+        
+        // 尝试查找常见的变体
+        String[] variants = getKeyVariants(key);
+        for (String variant : variants) {
+            value = ExcelImportUtil.getBooleanValue(row, variant);
+            if (value != null) {
+                return value;
+            }
+        }
+        
+        return null;
+    }
+
+    // 辅助方法：从行数据中获取LocalDateTime值，支持多种表头名称变体
+    private LocalDateTime getLocalDateTimeValueFromRow(Map<String, Object> row, String key) {
+        // 直接查找
+        LocalDateTime value = ExcelImportUtil.getLocalDateTimeValue(row, key);
+        if (value != null) {
+            return value;
+        }
+        
+        // 尝试查找常见的变体
+        String[] variants = getKeyVariants(key);
+        for (String variant : variants) {
+            value = ExcelImportUtil.getLocalDateTimeValue(row, variant);
+            if (value != null) {
+                return value;
+            }
+        }
+        
+        return null;
+    }
+
+    // 辅助方法：获取关键字的常见变体
+    private String[] getKeyVariants(String key) {
+        switch (key) {
+            case "案件名称":
+                return new String[]{"案件", "案件名称"};
+            case "债务人":
+                return new String[]{"债务人", "债务人名称"};
+            case "债权人名称":
+                return new String[]{"债权人", "债权人姓名", "债权人名称"};
+            case "债权人类型":
+                return new String[]{"债权人类型", "债权人类别"};
+            case "统一社会信用代码":
+                return new String[]{"统一社会信用代码", "社会信用代码", "信用代码"};
+            case "法定代表人":
+                return new String[]{"法定代表人", "法人代表"};
+            case "送达地址":
+                return new String[]{"送达地址", "地址"};
+            case "代理人姓名":
+                return new String[]{"代理人姓名", "代理人"};
+            case "代理人电话":
+                return new String[]{"代理人电话", "代理人联系电话"};
+            case "代理人身份证":
+                return new String[]{"代理人身份证", "代理人身份证号"};
+            case "代理人地址":
+                return new String[]{"代理人地址", "代理人住址"};
+            case "账户名称":
+                return new String[]{"账户名称", "账户"};
+            case "债权人银行账号":
+                return new String[]{"债权人银行账号", "银行账号", "账号"};
+            case "开户行":
+                return new String[]{"开户行", "开户银行"};
+            case "本金":
+                return new String[]{"本金", "债权本金"};
+            case "利息":
+                return new String[]{"利息", "债权利息"};
+            case "违约金":
+                return new String[]{"违约金", "罚息"};
+            case "其他损失":
+                return new String[]{"其他损失", "其他费用"};
+            case "总金额":
+                return new String[]{"总金额", "债权金额", "金额", "申报金额（元）"};
+            case "是否有法院判决":
+                return new String[]{"是否有法院判决", "有法院判决", "法院判决"};
+            case "是否有执行":
+                return new String[]{"是否有执行", "有执行", "执行"};
+            case "是否有担保":
+                return new String[]{"是否有担保", "有担保", "担保"};
+            case "债权性质":
+                return new String[]{"债权性质", "性质"};
+            case "债权类型":
+                return new String[]{"债权类型", "类型"};
+            case "债权事实":
+                return new String[]{"债权事实", "事实"};
+            case "债权标识":
+                return new String[]{"债权标识", "标识"};
+            case "证据清单":
+                return new String[]{"证据清单", "证据"};
+            case "证据材料":
+                return new String[]{"证据材料", "材料"};
+            case "证据附件":
+                return new String[]{"证据附件", "附件"};
+            case "登记日期":
+                return new String[]{"登记日期", "日期"};
+            case "登记截止日期":
+                return new String[]{"登记截止日期", "截止日期"};
+            case "材料接收人":
+                return new String[]{"材料接收人", "接收人"};
+            case "材料接收日期":
+                return new String[]{"材料接收日期", "接收日期"};
+            case "材料完整性":
+                return new String[]{"材料完整性", "完整性"};
+            case "备注":
+                return new String[]{"备注", "说明"};
+            default:
+                return new String[]{key};
+        }
+    }
+
+    private void validateCreateRequest(ClaimRegistrationCreateRequest request) {
+        if (request.getCreditorName() == null || request.getCreditorName().trim().isEmpty()) {
+            throw new BusinessException("债权人名称不能为空");
+        }
+        if (request.getCreditorType() == null || request.getCreditorType().trim().isEmpty()) {
+            throw new BusinessException("债权人类型不能为空");
+        }
+        if (request.getClaimType() == null || request.getClaimType().trim().isEmpty()) {
+            throw new BusinessException("债权类型不能为空");
+        }
+        // 如果总金额没有查到或者不大于0，设置默认为0
+        if (request.getTotalAmount() == null || request.getTotalAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            request.setTotalAmount(BigDecimal.ZERO);
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ExcelImportResponse importFromExcelEasy(MultipartFile file, Long caseId, Long userId) {
+        ExcelImportResponse response = new ExcelImportResponse();
+        response.setSuccessCount(0);
+        response.setFailCount(0);
+        response.setErrors(new ArrayList<>());
+
+        try {
+            ClaimRegistrationExcelListener listener = new ClaimRegistrationExcelListener(caseId, userId);
+
+            EasyExcel.read(file.getInputStream(), ClaimRegistrationExcelImportDTO.class, listener)
+                    .sheet()
+                    .doRead();
+
+            List<ClaimRegistrationCreateRequest> successList = listener.getSuccessList();
+            List<ExcelImportResponse.ImportError> errorList = listener.getErrorList();
+
+            response.setFailCount(errorList.size());
+            response.setErrors(errorList);
+
+            for (ClaimRegistrationCreateRequest request : successList) {
+                try {
+                    ClaimRegistration claimRegistration = createClaim(request, userId);
+                    listener.addSavedClaim(claimRegistration);
+                    response.setSuccessCount(response.getSuccessCount() + 1);
+                } catch (Exception e) {
+                    response.setFailCount(response.getFailCount() + 1);
+                    ExcelImportResponse.ImportError error = new ExcelImportResponse.ImportError(
+                            0,
+                            "保存失败: " + e.getMessage(),
+                            request.getCreditorName()
+                    );
+                    response.getErrors().add(error);
+                    log.error("保存债权申报失败: {}", e.getMessage(), e);
+                }
+            }
+
+            response.setMessage(String.format("导入完成，成功%d条，失败%d条", response.getSuccessCount(), response.getFailCount()));
+            log.info("EasyExcel导入完成，成功{}条，失败{}条", response.getSuccessCount(), response.getFailCount());
+        } catch (IOException e) {
+            response.setMessage("Excel文件解析失败: " + e.getMessage());
+            log.error("Excel文件解析失败", e);
+        }
+
+        return response;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ExcelImportResponse importFromDeclaredClaimsRegister(MultipartFile file, Long caseId, Long userId) {
+        ExcelImportResponse response = new ExcelImportResponse();
+        response.setSuccessCount(0);
+        response.setFailCount(0);
+        response.setErrors(new ArrayList<>());
+
+        try {
+            log.info("开始导入已申报债权登记簿 - 文件名: {}, 大小: {}KB, 案件ID: {}, 用户ID: {}", 
+                    file.getOriginalFilename(), file.getSize()/1024, caseId, userId);
+
+            DeclaredClaimsRegisterExcelListener listener = new DeclaredClaimsRegisterExcelListener(this, caseId, userId);
+
+            log.debug("开始解析Excel文件");
+            // 配置EasyExcel，设置表头行索引为0（默认），并添加更多的读取配置
+            EasyExcel.read(file.getInputStream(), DeclaredClaimsRegisterExcelImportDTO.class, listener)
+                    .sheet() // 读取第一个sheet
+                    .headRowNumber(0) // 表头在第0行
+                    .autoTrim(true) // 自动去除空格
+                    .doRead();
+            log.debug("Excel文件解析完成");
+
+            response.setMessage("已申报债权登记簿导入成功");
+            log.info("已申报债权登记簿导入完成 - 文件名: {}", file.getOriginalFilename());
+        } catch (IOException e) {
+            response.setMessage("Excel文件解析失败: " + e.getMessage());
+            log.error("Excel文件解析失败 - 文件名: {}, 错误: {}", file.getOriginalFilename(), e.getMessage(), e);
+        } catch (Exception e) {
+            response.setMessage("导入失败: " + e.getMessage());
+            log.error("导入过程中发生异常 - 文件名: {}, 错误: {}", file.getOriginalFilename(), e.getMessage(), e);
+        }
+
+        return response;
+    }
+
+    @Override
+    public void exportToExcel(HttpServletResponse response, Long caseId, String registrationStatus) {
+        try {
+            List<ClaimRegistration> claimList = getClaimList(1, 10000, caseId, registrationStatus);
+
+            List<ClaimRegistrationExcelDTO> excelDataList = new ArrayList<>();
+            for (ClaimRegistration claim : claimList) {
+                ClaimRegistrationExcelDTO dto = new ClaimRegistrationExcelDTO();
+                BeanUtils.copyProperties(claim, dto);
+                dto.setHasCourtJudgment(claim.getHasCourtJudgment() != null && claim.getHasCourtJudgment() ? "是" : "否");
+                dto.setHasExecution(claim.getHasExecution() != null && claim.getHasExecution() ? "是" : "否");
+                dto.setHasCollateral(claim.getHasCollateral() != null && claim.getHasCollateral() ? "是" : "否");
+                excelDataList.add(dto);
+            }
+
+            String fileName = "债权登记表";
+            if (caseId != null) {
+                fileName += "_案件" + caseId;
+            }
+            if (registrationStatus != null) {
+                fileName += "_" + registrationStatus;
+            }
+            fileName += "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("utf-8");
+            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8.toString()).replaceAll("\\+", "%20");
+            response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + encodedFileName + ".xlsx");
+
+            EasyExcel.write(response.getOutputStream(), ClaimRegistrationExcelDTO.class)
+                    .sheet("债权登记")
+                    .doWrite(excelDataList);
+
+            log.info("导出Excel成功，共{}条数据", excelDataList.size());
+        } catch (IOException e) {
+            log.error("导出Excel失败", e);
+            throw new BusinessException("导出Excel失败: " + e.getMessage());
+        }
     }
 }

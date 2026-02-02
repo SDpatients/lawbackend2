@@ -13,7 +13,7 @@ public interface ClaimConfirmationService {
 
     ClaimConfirmation getConfirmationByClaimId(Long claimRegistrationId);
 
-    List<ClaimConfirmation> getConfirmationListByCaseId(Long caseId, Integer pageNum, Integer pageSize);
+    List<ClaimConfirmation> getConfirmationListByCaseId(Long caseId, Integer pageNum, Integer pageSize, String confirmationStatus);
 
     ClaimConfirmation updateConfirmation(Long confirmationId, ClaimConfirmationUpdateRequest request);
 

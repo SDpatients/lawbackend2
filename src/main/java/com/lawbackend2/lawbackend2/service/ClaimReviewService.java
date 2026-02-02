@@ -13,7 +13,7 @@ public interface ClaimReviewService {
 
     List<ClaimReview> getReviewListByClaimId(Long claimRegistrationId);
 
-    List<ClaimReview> getReviewListByCaseId(Long caseId, Integer pageNum, Integer pageSize);
+    List<ClaimReview> getReviewListByCaseId(Long caseId, Integer pageNum, Integer pageSize, String reviewStatus);
 
     ClaimReview updateReview(Long reviewId, ClaimReviewUpdateRequest request);
 

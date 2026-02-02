@@ -28,7 +28,7 @@ public class ApprovalHistory extends BaseEntity {
     @Column(name = "approval_title", length = 255)
     private String approvalTitle;
 
-    @Column(name = "approval_attachment", length = 500)
+    @Column(name = "approval_attachment", length = 4000)
     private String approvalAttachment;
 
     @Column(name = "approval_status", nullable = false, length = 20)

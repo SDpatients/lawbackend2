@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,7 +52,7 @@ public class WorkLogController {
     @PostMapping("/with-files")
     public Result<Map<String, Object>> createWorkLogWithFiles(
             @Parameter(description = "案件ID") @RequestParam("caseId") Long caseId,
-            @Parameter(description = "工作日期") @RequestParam("workDate") LocalDate workDate,
+            @Parameter(description = "工作日期") @RequestParam("workDate") @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate workDate,
             @Parameter(description = "工作类型") @RequestParam("workType") String workType,
             @Parameter(description = "工作内容") @RequestParam("workContent") String workContent,
             @Parameter(description = "工作结果") @RequestParam(value = "workResult", required = false) String workResult,
@@ -77,8 +78,8 @@ public class WorkLogController {
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "案件ID") @RequestParam(required = false) Long caseId,
             @Parameter(description = "工作类型") @RequestParam(required = false) String workType,
-            @Parameter(description = "开始日期") @RequestParam(required = false) LocalDate startDate,
-            @Parameter(description = "结束日期") @RequestParam(required = false) LocalDate endDate,
+            @Parameter(description = "开始日期") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @Parameter(description = "结束日期") @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @Parameter(description = "创建者ID") @RequestParam(required = false) Long createUserId,
             @Parameter(description = "状态") @RequestParam(required = false) String status) {
 

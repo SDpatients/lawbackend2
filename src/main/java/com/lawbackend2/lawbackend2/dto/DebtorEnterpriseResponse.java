@@ -27,6 +27,7 @@ public class DebtorEnterpriseResponse {
     private Long createUserId;
     private Long updateUserId;
     private Boolean isDeleted;
+    private String status;
     
     private String caseNumber;
     private String caseName;

@@ -69,18 +69,34 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
 
     @Override
     public ClaimConfirmation getConfirmationByClaimId(Long claimRegistrationId) {
-        return claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId)
-                .orElseThrow(() -> new BusinessException("债权确认记录不存在"));
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId);
+        if (confirmations.isEmpty()) {
+            throw new BusinessException("债权确认记录不存在");
+        }
+        return confirmations.get(0);
     }
 
     @Override
-    public List<ClaimConfirmation> getConfirmationListByCaseId(Long caseId, Integer pageNum, Integer pageSize) {
+    public List<ClaimConfirmation> getConfirmationListByCaseId(Long caseId, Integer pageNum, Integer pageSize, String confirmationStatus) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+
         Page<ClaimConfirmation> page;
-        if (caseId != null) {
-            page = claimConfirmationRepository.findByCaseId(caseId, pageable);
+        if (confirmationStatus == null || confirmationStatus.trim().isEmpty()) {
+            if (caseId != null) {
+                page = claimConfirmationRepository.findByCaseId(caseId, pageable);
+            } else {
+                page = claimConfirmationRepository.findAll(pageable);
+            }
         } else {
-            page = claimConfirmationRepository.findAll(pageable);
+            if (caseId != null && confirmationStatus != null) {
+                page = claimConfirmationRepository.findByCaseIdAndConfirmationStatus(caseId, confirmationStatus, pageable);
+            } else if (caseId != null) {
+                page = claimConfirmationRepository.findByCaseId(caseId, pageable);
+            } else if (confirmationStatus != null) {
+                page = claimConfirmationRepository.findByConfirmationStatus(confirmationStatus, pageable);
+            } else {
+                page = claimConfirmationRepository.findAll(pageable);
+            }
         }
         return page.getContent();
     }
@@ -318,6 +334,14 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
 
     @Override
     public Long getConfirmationCount(Long caseId, String confirmationStatus) {
+        if (confirmationStatus == null || confirmationStatus.trim().isEmpty()) {
+            if (caseId != null) {
+                return claimConfirmationRepository.countByCaseId(caseId);
+            } else {
+                return claimConfirmationRepository.count();
+            }
+        }
+
         if (caseId != null && confirmationStatus != null) {
             return claimConfirmationRepository.countByCaseIdAndConfirmationStatus(caseId, confirmationStatus);
         } else if (caseId != null) {

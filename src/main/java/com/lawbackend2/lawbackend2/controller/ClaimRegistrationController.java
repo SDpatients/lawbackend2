@@ -5,15 +5,19 @@ import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.ClaimDetailResponse;
 import com.lawbackend2.lawbackend2.dto.ClaimRegistrationCreateRequest;
 import com.lawbackend2.lawbackend2.dto.ClaimRegistrationUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.ExcelImportResponse;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
 import com.lawbackend2.lawbackend2.service.ClaimRegistrationService;
+import com.lawbackend2.lawbackend2.service.ExcelParseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.List;
@@ -27,9 +31,11 @@ import java.util.Map;
 public class ClaimRegistrationController {
 
     private final ClaimRegistrationService claimRegistrationService;
+    private final ExcelParseService excelParseService;
 
-    public ClaimRegistrationController(ClaimRegistrationService claimRegistrationService) {
+    public ClaimRegistrationController(ClaimRegistrationService claimRegistrationService, ExcelParseService excelParseService) {
         this.claimRegistrationService = claimRegistrationService;
+        this.excelParseService = excelParseService;
     }
 
     @Operation(summary = "创建债权申报登记")
@@ -109,6 +115,81 @@ public class ClaimRegistrationController {
         Long userId = getCurrentUserId();
         claimRegistrationService.receiveMaterial(claimId, receiver, completeness, userId);
         return Result.success();
+    }
+
+    @Operation(summary = "Excel导入债权登记")
+    @PostMapping("/import")
+    public Result<ExcelImportResponse> importFromExcel(
+            @Parameter(description = "Excel文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "案件ID") @RequestParam("caseId") Long caseId) {
+        Long userId = getCurrentUserId();
+        ExcelImportResponse response = claimRegistrationService.importFromExcel(file, caseId, userId);
+        return Result.success(response);
+    }
+
+    @Operation(summary = "EasyExcel导入债权登记")
+    @PostMapping("/import-easy")
+    public Result<ExcelImportResponse> importFromExcelEasy(
+            @Parameter(description = "Excel文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "案件ID") @RequestParam("caseId") Long caseId) {
+        Long userId = getCurrentUserId();
+        ExcelImportResponse response = claimRegistrationService.importFromExcelEasy(file, caseId, userId);
+        return Result.success(response);
+    }
+
+    @Operation(summary = "导入已申报债权登记簿格式")
+    @PostMapping("/import-declared-claims")
+    public Result<ExcelImportResponse> importFromDeclaredClaimsRegister(
+            @Parameter(description = "Excel文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "案件ID") @RequestParam("caseId") Long caseId) {
+        Long userId = getCurrentUserId();
+        ExcelImportResponse response = claimRegistrationService.importFromDeclaredClaimsRegister(file, caseId, userId);
+        return Result.success(response);
+    }
+
+    @Operation(summary = "解析Excel文件并返回字段映射")
+    @PostMapping("/parse-excel")
+    public Result<Map<String, Object>> parseExcel(
+            @Parameter(description = "Excel文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "Sheet索引（从0开始）") @RequestParam(value = "sheetIndex", required = false, defaultValue = "0") Integer sheetIndex,
+            @Parameter(description = "模板编码") @RequestParam(value = "templateCode", required = false) String templateCode) {
+        try {
+            Map<String, Object> parsedData = excelParseService.parseExcelWithSheet(file, sheetIndex, templateCode);
+            return Result.success(parsedData);
+        } catch (Exception e) {
+            log.error("解析Excel失败", e);
+            return Result.error("解析Excel失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "导出债权登记到Excel")
+    @GetMapping("/export")
+    public void exportToExcel(
+            @Parameter(description = "案件ID") @RequestParam(required = false) Long caseId,
+            @Parameter(description = "登记状态") @RequestParam(required = false) String registrationStatus,
+            HttpServletResponse response) {
+        claimRegistrationService.exportToExcel(response, caseId, registrationStatus);
+    }
+
+    @Operation(summary = "下载Excel导入模板")
+    @GetMapping("/template")
+    public void downloadTemplate(HttpServletResponse response) {
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("utf-8");
+            String fileName = "债权登记导入模板";
+            String encodedFileName = java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8.toString()).replaceAll("\\+", "%20");
+            response.setHeader("Content-disposition", "attachment;filename*=utf-8''" + encodedFileName + ".xlsx");
+
+            com.alibaba.excel.EasyExcel.write(response.getOutputStream(), com.lawbackend2.lawbackend2.dto.ClaimRegistrationExcelDTO.class)
+                    .sheet("债权登记")
+                    .doWrite(new java.util.ArrayList<>());
+
+            log.info("下载Excel模板成功");
+        } catch (Exception e) {
+            log.error("下载Excel模板失败", e);
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("下载Excel模板失败: " + e.getMessage());
+        }
     }
 
     private Long getCurrentUserId() {

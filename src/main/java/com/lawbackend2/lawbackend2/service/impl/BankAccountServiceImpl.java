@@ -96,6 +96,31 @@ public class BankAccountServiceImpl implements BankAccountService {
         if (request.getCaseId() != null) {
             bankAccount.setCaseId(request.getCaseId());
         }
+        if (request.getAccountNumber() != null) {
+            bankAccount.setAccountNumber(request.getAccountNumber());
+        }
+        if (request.getAccountType() != null) {
+            bankAccount.setAccountType(request.getAccountType());
+        }
+        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+            bankAccount.setPassword(passwordUtil.encode(request.getPassword()));
+        }
+        if (request.getCurrency() != null) {
+            bankAccount.setCurrency(request.getCurrency());
+        }
+        if (request.getOpeningDate() != null) {
+            bankAccount.setOpeningDate(request.getOpeningDate());
+        }
+        if (request.getClosingDate() != null) {
+            bankAccount.setClosingDate(request.getClosingDate());
+        }
+        if (request.getStatus() != null) {
+            bankAccount.setStatus(request.getStatus());
+        }
+        if (request.getBankName() != null) {
+            bankAccount.setBankName(request.getBankName());
+        }
+        bankAccount.setUpdateUserId(userId);
         bankAccountRepository.save(bankAccount);
     }
 

@@ -63,10 +63,11 @@ public class ClaimConfirmationController {
     public Result<PageResult<ClaimConfirmation>> getConfirmationListByCaseId(
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "确认状态") @RequestParam(required = false) String confirmationStatus) {
 
-        List<ClaimConfirmation> list = claimConfirmationService.getConfirmationListByCaseId(caseId, pageNum, pageSize);
-        Long total = claimConfirmationService.getConfirmationCount(caseId, null);
+        List<ClaimConfirmation> list = claimConfirmationService.getConfirmationListByCaseId(caseId, pageNum, pageSize, confirmationStatus);
+        Long total = claimConfirmationService.getConfirmationCount(caseId, confirmationStatus);
 
         return Result.success(PageResult.of(total, list));
     }
@@ -203,10 +204,11 @@ public class ClaimConfirmationController {
     @GetMapping("/list")
     public Result<PageResult<ClaimConfirmation>> getConfirmationList(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
-        
-        List<ClaimConfirmation> list = claimConfirmationService.getConfirmationListByCaseId(null, pageNum, pageSize);
-        Long total = claimConfirmationService.getConfirmationCount(null, null);
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "确认状态") @RequestParam(required = false) String confirmationStatus) {
+
+        List<ClaimConfirmation> list = claimConfirmationService.getConfirmationListByCaseId(null, pageNum, pageSize, confirmationStatus);
+        Long total = claimConfirmationService.getConfirmationCount(null, confirmationStatus);
 
         return Result.success(PageResult.of(total, list));
     }

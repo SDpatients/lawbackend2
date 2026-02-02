@@ -32,10 +32,14 @@ public class DocumentDeliveryApprovalRequest {
 
     private String deliveryContent;
 
+    private String documentAttachment;
+
     @NotBlank(message = "审批标题不能为空")
     private String approvalTitle;
 
     private String approvalContent;
+
+    private String approvalAttachment;
 
     private String remark;
 }

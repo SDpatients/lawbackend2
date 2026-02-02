@@ -39,7 +39,7 @@ public class CaseTaskServiceImpl implements CaseTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<CaseTask> createTasksForCase(Long caseId) {
-        log.info("为案件创建23个核心任务, caseId: {}", caseId);
+        log.info("为案件创建25个核心任务, caseId: {}", caseId);
 
         List<CaseTask> tasks = new ArrayList<>();
 
@@ -59,14 +59,16 @@ public class CaseTaskServiceImpl implements CaseTaskService {
             {"TASK_013", "筹备第一次债权人会议", "管理人"},
             {"TASK_014", "召开会议核查债权与议决事项", "债权人会议"},
             {"TASK_015", "表决通过财产变价/分配方案", "债权人会议、法院"},
-            {"TASK_016", "审查宣告破产条件", "法院"},
-            {"TASK_017", "裁定宣告债务人破产", "法院"},
-            {"TASK_018", "拟定并执行财产变价方案", "管理人"},
-            {"TASK_019", "执行破产财产分配", "管理人"},
-            {"TASK_020", "提请终结破产程序", "管理人"},
-            {"TASK_021", "法院裁定并公告", "法院"},
-            {"TASK_022", "办理企业注销登记", "管理人"},
-            {"TASK_023", "管理人终止执行职务并归档", "管理人"}
+            {"TASK_016", "宣告重整与和解", "法院"},
+            {"TASK_017", "审查宣告破产条件", "法院"},
+            {"TASK_018", "裁定宣告债务人破产", "法院"},
+            {"TASK_019", "拟定并执行财产变价方案", "管理人"},
+            {"TASK_020", "执行破产财产分配", "管理人"},
+            {"TASK_021", "破产费用与共益债务", "管理人"},
+            {"TASK_022", "提请终结破产程序", "管理人"},
+            {"TASK_023", "法院裁定并公告", "法院"},
+            {"TASK_024", "办理企业注销登记", "管理人"},
+            {"TASK_025", "管理人终止执行职务并归档", "管理人"}
         };
 
         for (int i = 0; i < taskDefinitions.length; i++) {

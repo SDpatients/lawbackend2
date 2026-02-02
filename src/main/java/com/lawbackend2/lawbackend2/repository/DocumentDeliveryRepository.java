@@ -121,6 +121,9 @@ public interface DocumentDeliveryRepository extends JpaRepository<DocumentDelive
     @Query(value = "SELECT d.abbreviation FROM tb_document_delivery d WHERE d.abbreviation IS NOT NULL AND d.is_deleted = false ORDER BY d.create_time DESC LIMIT 1", nativeQuery = true)
     Optional<String> findLatestAbbreviation();
 
+    @Query(value = "SELECT d.abbreviation FROM tb_document_delivery d WHERE d.case_id = :caseId AND d.abbreviation IS NOT NULL AND d.is_deleted = false ORDER BY d.create_time DESC LIMIT 1", nativeQuery = true)
+    Optional<String> findLatestAbbreviationByCaseId(@Param("caseId") Long caseId);
+
     @Query(value = "SELECT MAX(CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(d.document_number, '破管字第', -1), '号', 1) AS UNSIGNED)) FROM tb_document_delivery d WHERE d.document_number LIKE :prefix AND d.is_deleted = false", nativeQuery = true)
     Long findMaxDocumentNumberByPrefix(@Param("prefix") String prefix);
 }

@@ -96,7 +96,7 @@ class CreditorInfoServiceTest {
         when(creditorInfoRepository.findAll(any(Specification.class), any(PageRequest.class)))
                 .thenReturn(page);
 
-        List<CreditorInfo> result = creditorInfoService.getCreditorList(1, 10, 1L, null, null, null, null);
+        List<CreditorInfo> result = creditorInfoService.getCreditorList(1, 10, 1L, null, null, null, null, null);
 
         assertNotNull(result);
         assertEquals(1, result.size());

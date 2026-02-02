@@ -131,24 +131,24 @@ class AnnouncementViewRecordServiceTest {
 
     @Test
     void testGetViewRecordList_WithAnnouncementId() {
-        when(viewRecordRepository.findByAnnouncementId(1L, any())).thenReturn(
+        when(viewRecordRepository.findByAnnouncementId(eq(1L), any())).thenReturn(
                 org.springframework.data.domain.Page.empty());
 
         List<AnnouncementViewRecord> result = viewRecordService.getViewRecordList(1, 10, 1L, null, null);
 
         assertNotNull(result);
-        verify(viewRecordRepository, times(1)).findByAnnouncementId(1L, any());
+        verify(viewRecordRepository, times(1)).findByAnnouncementId(eq(1L), any());
     }
 
     @Test
     void testGetViewRecordList_WithCaseId() {
-        when(viewRecordRepository.findByCaseId(1L, any())).thenReturn(
+        when(viewRecordRepository.findByCaseId(eq(1L), any())).thenReturn(
                 org.springframework.data.domain.Page.empty());
 
         List<AnnouncementViewRecord> result = viewRecordService.getViewRecordList(1, 10, null, 1L, null);
 
         assertNotNull(result);
-        verify(viewRecordRepository, times(1)).findByCaseId(1L, any());
+        verify(viewRecordRepository, times(1)).findByCaseId(eq(1L), any());
     }
 
     @Test

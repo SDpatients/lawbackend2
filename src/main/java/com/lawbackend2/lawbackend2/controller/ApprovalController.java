@@ -103,8 +103,8 @@ public class ApprovalController {
     public Result<Void> approveApproval(
             @Parameter(description = "审批ID") @PathVariable Long approvalId,
             @Valid @RequestBody ApprovalRequest request) {
-
-        approvalService.approveApproval(approvalId, request);
+        Long currentUserId = getCurrentUserId();
+        approvalService.approveApproval(approvalId, request, currentUserId);
         return Result.success();
     }
 
@@ -172,6 +172,17 @@ public class ApprovalController {
 
         ApprovalHistory result = approvalHistoryService.createApprovalHistory(approvalHistory);
         return Result.success(result);
+    }
+
+    @Operation(summary = "批量获取审批附件")
+    @GetMapping("/{approvalId}/attachments")
+    public Result<Map<String, Object>> getApprovalAttachments(
+            @Parameter(description = "审批ID") @PathVariable Long approvalId,
+            @Parameter(description = "是否包含图片二进制数据，默认false") @RequestParam(required = false) Boolean includeImages,
+            @Parameter(description = "是否包含所有文件信息，默认true") @RequestParam(required = false) Boolean includeFiles) {
+
+        Map<String, Object> data = approvalService.getApprovalAttachments(approvalId, includeImages, includeFiles);
+        return Result.success(data);
     }
 
     @Operation(summary = "获取审批历史详情")

@@ -123,7 +123,7 @@ public class AnnouncementViewRecordServiceImpl implements AnnouncementViewRecord
                 page, size, announcementId, caseId, viewerId);
 
         try {
-            Pageable pageable = PageRequest.of(page - 1, size);
+            Pageable pageable = PageRequest.of(page, size);
             Page<AnnouncementViewRecord> recordPage;
 
             if (announcementId != null && caseId != null) {

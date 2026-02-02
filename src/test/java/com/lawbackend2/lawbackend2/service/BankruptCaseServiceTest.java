@@ -6,7 +6,7 @@ import com.lawbackend2.lawbackend2.dto.CaseStatusUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
-import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
+import com.lawbackend2.lawbackend2.repository.*;
 import com.lawbackend2.lawbackend2.service.impl.BankruptCaseServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +25,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,6 +33,76 @@ class BankruptCaseServiceTest {
 
     @Mock
     private BankruptCaseRepository bankruptCaseRepository;
+    @Mock
+    private WorkTeamMemberRepository workTeamMemberRepository;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private CaseTaskService caseTaskService;
+    @Mock
+    private ApprovalRepository approvalRepository;
+    @Mock
+    private ApprovalHistoryRepository approvalHistoryRepository;
+    @Mock
+    private CaseProcessStageRepository caseProcessStageRepository;
+    @Mock
+    private DocumentDeliveryRepository documentDeliveryRepository;
+    @Mock
+    private ArchiveRecordRepository archiveRecordRepository;
+    @Mock
+    private CaseAnnouncementRepository caseAnnouncementRepository;
+    @Mock
+    private AnnouncementViewRecordRepository announcementViewRecordRepository;
+    @Mock
+    private FundReimbursementRepository fundReimbursementRepository;
+    @Mock
+    private FundFlowRepository fundFlowRepository;
+    @Mock
+    private FundOperationLogRepository fundOperationLogRepository;
+    @Mock
+    private FundBudgetRepository fundBudgetRepository;
+    @Mock
+    private EscrowManagementRepository escrowManagementRepository;
+    @Mock
+    private FundAccountRepository fundAccountRepository;
+    @Mock
+    private FundApprovalRepository fundApprovalRepository;
+    @Mock
+    private DistributionDetailRepository distributionDetailRepository;
+    @Mock
+    private DistributionExecutionRepository distributionExecutionRepository;
+    @Mock
+    private CommonDebtRepository commonDebtRepository;
+    @Mock
+    private ClaimConfirmationRepository claimConfirmationRepository;
+    @Mock
+    private BankruptcyExpenseRepository bankruptcyExpenseRepository;
+    @Mock
+    private AdministratorRepository administratorRepository;
+    @Mock
+    private CreditorClaimRepository creditorClaimRepository;
+    @Mock
+    private WorkTeamRepository workTeamRepository;
+    @Mock
+    private WorkPlanRepository workPlanRepository;
+    @Mock
+    private DebtorEnterpriseRepository debtorEnterpriseRepository;
+    @Mock
+    private CaseProgressRepository caseProgressRepository;
+    @Mock
+    private CreditorInfoRepository creditorInfoRepository;
+    @Mock
+    private CaseTaskRepository caseTaskRepository;
+    @Mock
+    private CaseTaskSubmissionRepository caseTaskSubmissionRepository;
+    @Mock
+    private WorkLogRepository workLogRepository;
+    @Mock
+    private BankAccountRepository bankAccountRepository;
+    @Mock
+    private ClaimRegistrationRepository claimRegistrationRepository;
+    @Mock
+    private ClaimReviewRepository claimReviewRepository;
 
     @InjectMocks
     private BankruptCaseServiceImpl bankruptCaseService;
@@ -158,7 +229,7 @@ class BankruptCaseServiceTest {
 
         verify(bankruptCaseRepository, times(1)).save(any(BankruptCase.class));
         assertEquals("APPROVED", mockCase.getReviewStatus());
-        assertEquals("IN_PROGRESS", mockCase.getCaseStatus());
+        assertEquals("COMPLETED", mockCase.getCaseStatus());
         assertEquals(2L, mockCase.getReviewerId());
         assertEquals("审核通过", mockCase.getReviewOpinion());
     }
@@ -176,7 +247,7 @@ class BankruptCaseServiceTest {
 
         verify(bankruptCaseRepository, times(1)).save(any(BankruptCase.class));
         assertEquals("REJECTED", mockCase.getReviewStatus());
-        assertEquals("PENDING", mockCase.getCaseStatus());
+        assertEquals("ONGOING", mockCase.getCaseStatus());
         assertEquals(2L, mockCase.getReviewerId());
         assertEquals("审核驳回", mockCase.getReviewOpinion());
     }

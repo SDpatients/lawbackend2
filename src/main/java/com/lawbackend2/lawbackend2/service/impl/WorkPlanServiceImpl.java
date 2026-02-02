@@ -4,11 +4,14 @@ import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.dto.request.WorkPlanCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkPlanStatusRequest;
 import com.lawbackend2.lawbackend2.dto.request.WorkPlanUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.WorkPlanResponse;
 import com.lawbackend2.lawbackend2.entity.Role;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.entity.WorkPlan;
 import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
 import com.lawbackend2.lawbackend2.repository.WorkPlanRepository;
 import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
@@ -23,8 +26,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.criteria.Predicate;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -34,18 +40,32 @@ public class WorkPlanServiceImpl implements WorkPlanService {
     private final WorkTeamMemberRepository workTeamMemberRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
+    private final UserRepository userRepository;
 
-    public WorkPlanServiceImpl(WorkPlanRepository workPlanRepository, WorkTeamMemberRepository workTeamMemberRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository) {
+    public WorkPlanServiceImpl(WorkPlanRepository workPlanRepository, WorkTeamMemberRepository workTeamMemberRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository, UserRepository userRepository) {
         this.workPlanRepository = workPlanRepository;
         this.workTeamMemberRepository = workTeamMemberRepository;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
     public Long createWorkPlan(WorkPlanCreateRequest request, Long userId) {
         WorkPlan workPlan = new WorkPlan();
         BeanUtils.copyProperties(request, workPlan);
+        
+        // 自动生成计划编号
+        if (workPlan.getPlanNumber() == null || workPlan.getPlanNumber().isEmpty()) {
+            String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String prefix = "WP" + today;
+            
+            // 查询当天已有的计划数量
+            int count = workPlanRepository.countByPlanNumberStartingWith(prefix);
+            String sequence = String.format("%04d", count + 1);
+            workPlan.setPlanNumber(prefix + sequence);
+        }
+        
         workPlan.setExecutionStatus("NOT_STARTED");
         workPlan.setStatus("ACTIVE");
         workPlan.setCreateUserId(userId);
@@ -55,16 +75,30 @@ public class WorkPlanServiceImpl implements WorkPlanService {
         return saved.getId();
     }
 
+    private WorkPlanResponse convertToResponse(WorkPlan workPlan) {
+        WorkPlanResponse response = new WorkPlanResponse();
+        BeanUtils.copyProperties(workPlan, response);
+        
+        if (workPlan.getResponsibleUserId() != null) {
+            Optional<User> userOpt = userRepository.findById(workPlan.getResponsibleUserId());
+            if (userOpt.isPresent()) {
+                response.setResponsibleUserName(userOpt.get().getRealName());
+            }
+        }
+        
+        return response;
+    }
+
     @Override
-    public PageResult<WorkPlan> getWorkPlanList(Integer pageNum, Integer pageSize, Long caseId, String planType, String executionStatus, String status, Long userId) {
+    public PageResult<WorkPlanResponse> getWorkPlanList(Integer pageNum, Integer pageSize, Long caseId, String planType, String executionStatus, String status, Long userId) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         
         Specification<WorkPlan> spec = buildSpecificationWithPermission(caseId, planType, executionStatus, status, userId);
         Page<WorkPlan> page = workPlanRepository.findAll(spec, pageable);
 
-        PageResult<WorkPlan> result = new PageResult<>();
+        PageResult<WorkPlanResponse> result = new PageResult<>();
         result.setTotal(page.getTotalElements());
-        result.setList(page.getContent());
+        result.setList(page.getContent().stream().map(this::convertToResponse).collect(java.util.stream.Collectors.toList()));
         return result;
     }
 
@@ -104,6 +138,19 @@ public class WorkPlanServiceImpl implements WorkPlanService {
         workPlanRepository.deleteById(planId);
     }
 
+    @Override
+    public PageResult<WorkPlanResponse> getWorkPlanListByTimeRange(Integer pageNum, Integer pageSize, String startDate, String endDate, Long userId) {
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        
+        Specification<WorkPlan> spec = buildTimeRangeSpecification(startDate, endDate, userId);
+        Page<WorkPlan> page = workPlanRepository.findAll(spec, pageable);
+
+        PageResult<WorkPlanResponse> result = new PageResult<>();
+        result.setTotal(page.getTotalElements());
+        result.setList(page.getContent().stream().map(this::convertToResponse).collect(java.util.stream.Collectors.toList()));
+        return result;
+    }
+
     private Specification<WorkPlan> buildSpecificationWithPermission(Long caseId, String planType, String executionStatus, String status, Long userId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -128,6 +175,7 @@ public class WorkPlanServiceImpl implements WorkPlanService {
                 List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
                 predicates.add(cb.or(
                     cb.equal(root.get("createUserId"), userId),
+                    cb.equal(root.get("responsibleUserId"), userId),
                     root.get("caseId").in(accessibleCaseIds)
                 ));
             }
@@ -142,6 +190,10 @@ public class WorkPlanServiceImpl implements WorkPlanService {
         }
         
         if (workPlan.getCreateUserId().equals(userId)) {
+            return;
+        }
+        
+        if (workPlan.getResponsibleUserId() != null && workPlan.getResponsibleUserId().equals(userId)) {
             return;
         }
         
@@ -164,5 +216,34 @@ public class WorkPlanServiceImpl implements WorkPlanService {
             }
         }
         return false;
+    }
+
+    private Specification<WorkPlan> buildTimeRangeSpecification(String startDateStr, String endDateStr, Long userId) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 解析时间字符串为LocalDate
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            LocalDate startDate = LocalDate.parse(startDateStr, formatter);
+            LocalDate endDate = LocalDate.parse(endDateStr, formatter);
+
+            // 添加时间区间查询条件：开始时间或结束时间在传入的时间范围内
+            predicates.add(cb.or(
+                cb.between(root.get("startDate"), startDate, endDate),
+                cb.between(root.get("endDate"), startDate, endDate)
+            ));
+
+            // 添加权限控制条件
+            if (!isAdminOrSuperAdmin(userId)) {
+                List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+                predicates.add(cb.or(
+                    cb.equal(root.get("createUserId"), userId),
+                    cb.equal(root.get("responsibleUserId"), userId),
+                    root.get("caseId").in(accessibleCaseIds)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 }

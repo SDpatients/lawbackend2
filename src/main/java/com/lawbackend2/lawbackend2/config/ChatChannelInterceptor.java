@@ -3,6 +3,7 @@ package com.lawbackend2.lawbackend2.config;
 import com.lawbackend2.lawbackend2.service.WebSocketService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -17,8 +18,12 @@ import java.util.List;
 @Component
 public class ChatChannelInterceptor implements ChannelInterceptor {
 
+    private final WebSocketService webSocketService;
+
     @Autowired
-    private WebSocketService webSocketService;
+    public ChatChannelInterceptor(@Lazy WebSocketService webSocketService) {
+        this.webSocketService = webSocketService;
+    }
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {

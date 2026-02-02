@@ -7,7 +7,7 @@ import javax.persistence.*;
 @Data
 @Entity
 @Table(name = "tb_approval", indexes = {
-        @Index(name = "uk_case_type", columnList = "case_id, approval_type", unique = true),
+        @Index(name = "idx_case_type", columnList = "case_id, approval_type"),
         @Index(name = "idx_lawyer_id", columnList = "lawyer_id"),
         @Index(name = "idx_approval_status", columnList = "approval_status"),
         @Index(name = "idx_approver_id", columnList = "approver_id"),
@@ -32,7 +32,7 @@ public class Approval extends BaseEntity {
     @Column(name = "approval_content", columnDefinition = "TEXT")
     private String approvalContent;
 
-    @Column(name = "approval_attachment", length = 500)
+    @Column(name = "approval_attachment", length = 4000)
     private String approvalAttachment;
 
     @Column(name = "approval_result", length = 20)
