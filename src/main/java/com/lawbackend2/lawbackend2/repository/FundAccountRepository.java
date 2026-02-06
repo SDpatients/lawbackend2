@@ -22,5 +22,6 @@ public interface FundAccountRepository extends JpaRepository<FundAccount, Long> 
                                         Pageable pageable);
 
     List<FundAccount> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    FundAccount findByAccountName(String accountName);
     void deleteByCaseId(Long caseId);
 }

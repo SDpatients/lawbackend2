@@ -14,6 +14,8 @@ public interface WorkPlanService {
     PageResult<WorkPlanResponse> getWorkPlanList(Integer pageNum, Integer pageSize, Long caseId, String planType, String executionStatus, String status, Long userId);
 
     WorkPlan getWorkPlanDetail(Long planId, Long userId);
+    
+    WorkPlanResponse getWorkPlanDetailResponse(Long planId, Long userId);
 
     void updateWorkPlan(Long planId, WorkPlanUpdateRequest request, Long userId);
 

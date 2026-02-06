@@ -4,9 +4,13 @@ import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimStagesResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CreditorInfoResponse;
+import com.lawbackend2.lawbackend2.dto.CreditorSimpleResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.CreditorInfo;
+import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
+import com.lawbackend2.lawbackend2.entity.ClaimReview;
+import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
 import com.lawbackend2.lawbackend2.enums.CreditorStatus;
 import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
@@ -87,6 +91,9 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         CreditorInfoResponse response = new CreditorInfoResponse();
         BeanUtils.copyProperties(creditorInfo, response);
         response.setCreditorStatus(creditorInfo.getCreditorStatus());
+        if (creditorInfo.getCreditorStatus() != null) {
+            response.setStatus(creditorInfo.getCreditorStatus().name());
+        }
         
         if (creditorInfo.getCaseId() != null) {
             BankruptCase bankruptCase = bankruptCaseService.getCaseById(creditorInfo.getCaseId());
@@ -263,11 +270,47 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteCreditor(Long creditorId) {
-        if (!creditorInfoRepository.existsById(creditorId)) {
-            throw new BusinessException("债权人不存在");
+    public void deleteCreditor(Long creditorId, Long userId) {
+        CreditorInfo creditorInfo = getCreditorById(creditorId);
+        
+        // 检查权限
+        checkPermission(creditorInfo, userId);
+        
+        // 级联删除：债权确认 → 债权审查 → 债权申报
+        // 1. 查找该债权人的所有债权申报
+        List<ClaimRegistration> registrations = claimRegistrationRepository.findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName());
+        for (ClaimRegistration registration : registrations) {
+            // 删除相关的确认记录
+            List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(registration.getId());
+            for (ClaimConfirmation confirmation : confirmations) {
+                confirmation.setIsDeleted(true);
+                confirmation.setUpdateUserId(userId);
+                claimConfirmationRepository.save(confirmation);
+                log.info("级联删除债权确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), registration.getId());
+            }
+            
+            // 删除相关的审查记录
+            List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationIdAndIsDeletedFalse(registration.getId());
+            for (ClaimReview review : reviews) {
+                review.setIsDeleted(true);
+                review.setUpdateUserId(userId);
+                claimReviewRepository.save(review);
+                log.info("级联删除债权审查记录, reviewId: {}, claimRegistrationId: {}", review.getId(), registration.getId());
+            }
+            
+            // 删除债权申报
+            registration.setIsDeleted(true);
+            registration.setUpdateUserId(userId);
+            claimRegistrationRepository.save(registration);
+            log.info("级联删除债权申报记录, claimId: {}, creditorName: {}", registration.getId(), creditorInfo.getCreditorName());
         }
-        creditorInfoRepository.deleteById(creditorId);
+        
+        // 逻辑删除债权人
+        creditorInfo.setIsDeleted(true);
+        creditorInfo.setUpdateUserId(userId);
+        creditorInfoRepository.save(creditorInfo);
+        
+        log.info("债权人删除成功, creditorId: {}, creditorName: {}", creditorId, creditorInfo.getCreditorName());
     }
 
     @Override
@@ -299,6 +342,9 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                     CreditorInfoResponse response = new CreditorInfoResponse();
                     BeanUtils.copyProperties(creditor, response);
                     response.setCreditorStatus(creditor.getCreditorStatus());
+                    if (creditor.getCreditorStatus() != null) {
+                        response.setStatus(creditor.getCreditorStatus().name());
+                    }
                     
                     if (creditor.getCaseId() != null) {
                         BankruptCase bankruptCase = caseMap.get(creditor.getCaseId());
@@ -326,8 +372,9 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         response.setCreditorName(creditorInfo.getCreditorName());
         
         List<CreditorClaimStagesResponse.ClaimRegistrationInfo> claimRegistrations = claimRegistrationRepository
-                .findAllByCreditorName(creditorInfo.getCreditorName())
+                .findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName())
                 .stream()
+                .filter(reg -> "PENDING".equals(reg.getRegistrationStatus())) // 只返回PENDING状态的债权申报
                 .map(reg -> {
                     CreditorClaimStagesResponse.ClaimRegistrationInfo info = new CreditorClaimStagesResponse.ClaimRegistrationInfo();
                     BeanUtils.copyProperties(reg, info);
@@ -335,10 +382,11 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                 })
                 .collect(Collectors.toList());
         response.setClaimRegistrations(claimRegistrations);
-        
+
         List<CreditorClaimStagesResponse.ClaimReviewInfo> claimReviews = claimReviewRepository
-                .findAllByCreditorName(creditorInfo.getCreditorName())
+                .findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName())
                 .stream()
+                .filter(review -> "IN_PROGRESS".equals(review.getReviewStatus())) // 只返回IN_PROGRESS状态的债权审查
                 .map(review -> {
                     CreditorClaimStagesResponse.ClaimReviewInfo info = new CreditorClaimStagesResponse.ClaimReviewInfo();
                     BeanUtils.copyProperties(review, info);
@@ -346,9 +394,9 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                 })
                 .collect(Collectors.toList());
         response.setClaimReviews(claimReviews);
-        
+
         List<CreditorClaimStagesResponse.ClaimConfirmationInfo> claimConfirmations = claimConfirmationRepository
-                .findAllByCreditorName(creditorInfo.getCreditorName())
+                .findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName())
                 .stream()
                 .map(confirmation -> {
                     CreditorClaimStagesResponse.ClaimConfirmationInfo info = new CreditorClaimStagesResponse.ClaimConfirmationInfo();
@@ -359,5 +407,51 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         response.setClaimConfirmations(claimConfirmations);
         
         return response;
+    }
+
+    @Override
+    public List<CreditorSimpleResponse> searchCreditorsByName(Long caseId, String creditorName, Integer limit, Long userId) {
+        Pageable pageable = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "createTime"));
+
+        Specification<CreditorInfo> spec = buildSearchSpecification(caseId, creditorName, userId);
+        Page<CreditorInfo> page = creditorInfoRepository.findAll(spec, pageable);
+        
+        List<CreditorInfo> creditorList = page.getContent();
+
+        return creditorList.stream()
+                .map(creditor -> {
+                    CreditorSimpleResponse response = new CreditorSimpleResponse();
+                    response.setId(creditor.getId());
+                    response.setCaseId(creditor.getCaseId());
+                    response.setCreditorName(creditor.getCreditorName());
+                    response.setIdNumber(creditor.getIdNumber());
+                    response.setCreditorType(creditor.getCreditorType());
+                    return response;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private Specification<CreditorInfo> buildSearchSpecification(Long caseId, String creditorName, Long userId) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (caseId != null) {
+                predicates.add(cb.equal(root.get("caseId"), caseId));
+            }
+
+            if (creditorName != null && !creditorName.trim().isEmpty()) {
+                predicates.add(cb.like(root.get("creditorName"), "%" + creditorName + "%"));
+            }
+
+            if (!isAdminOrSuperAdmin(userId)) {
+                List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+                predicates.add(cb.or(
+                    cb.equal(root.get("createUserId"), userId),
+                    root.get("caseId").in(accessibleCaseIds)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
     }
 }

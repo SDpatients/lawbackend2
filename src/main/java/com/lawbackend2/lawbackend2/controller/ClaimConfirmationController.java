@@ -6,6 +6,7 @@ import com.lawbackend2.lawbackend2.dto.ClaimConfirmationCreateRequest;
 import com.lawbackend2.lawbackend2.dto.ClaimConfirmationUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
 import com.lawbackend2.lawbackend2.service.ClaimConfirmationService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -214,6 +215,6 @@ public class ClaimConfirmationController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        return SecurityUtil.getCurrentUserId();
     }
 }

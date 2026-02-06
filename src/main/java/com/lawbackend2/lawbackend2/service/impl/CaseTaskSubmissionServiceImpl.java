@@ -363,19 +363,19 @@ public class CaseTaskSubmissionServiceImpl implements CaseTaskSubmissionService 
         }
         try {
             int taskNum = Integer.parseInt(taskCode.substring(5));
-            if (taskNum >= 1 && taskNum <= 5) {
+            if (taskNum >= 1 && taskNum <= 2) {
                 return 1;
-            } else if (taskNum >= 6 && taskNum <= 9) {
+            } else if (taskNum >= 3 && taskNum <= 6) {
                 return 2;
-            } else if (taskNum >= 10 && taskNum <= 14) {
+            } else if (taskNum >= 7 && taskNum <= 11) {
                 return 3;
-            } else if (taskNum >= 15 && taskNum <= 17) {
+            } else if (taskNum >= 12 && taskNum <= 14) {
                 return 4;
-            } else if (taskNum >= 18 && taskNum <= 19) {
+            } else if (taskNum >= 15 && taskNum <= 16) {
                 return 5;
-            } else if (taskNum >= 20 && taskNum <= 21) {
+            } else if (taskNum >= 17 && taskNum <= 18) {
                 return 6;
-            } else if (taskNum >= 22 && taskNum <= 23) {
+            } else if (taskNum >= 19 && taskNum <= 20) {
                 return 7;
             }
         } catch (Exception e) {

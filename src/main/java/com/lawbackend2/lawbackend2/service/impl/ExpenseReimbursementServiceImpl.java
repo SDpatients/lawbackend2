@@ -11,7 +11,6 @@ import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementItemResponse
 import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.BankAccount;
-import com.lawbackend2.lawbackend2.entity.BankAccountTransaction;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursement;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementAttachment;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementItem;
@@ -19,7 +18,6 @@ import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.BankAccountRepository;
-import com.lawbackend2.lawbackend2.repository.BankAccountTransactionRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementAttachmentRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementItemRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementRepository;
@@ -52,7 +50,6 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
     private final BankruptCaseRepository bankruptCaseRepository;
     private final BankAccountRepository bankAccountRepository;
     private final UserRepository userRepository;
-    private final BankAccountTransactionRepository bankAccountTransactionRepository;
     private final BankAccountTransactionService bankAccountTransactionService;
 
     public ExpenseReimbursementServiceImpl(ExpenseReimbursementRepository expenseReimbursementRepository,
@@ -61,7 +58,6 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
                                         BankruptCaseRepository bankruptCaseRepository,
                                         BankAccountRepository bankAccountRepository,
                                         UserRepository userRepository,
-                                        BankAccountTransactionRepository bankAccountTransactionRepository,
                                         BankAccountTransactionService bankAccountTransactionService) {
         this.expenseReimbursementRepository = expenseReimbursementRepository;
         this.expenseReimbursementItemRepository = expenseReimbursementItemRepository;
@@ -69,7 +65,6 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         this.bankruptCaseRepository = bankruptCaseRepository;
         this.bankAccountRepository = bankAccountRepository;
         this.userRepository = userRepository;
-        this.bankAccountTransactionRepository = bankAccountTransactionRepository;
         this.bankAccountTransactionService = bankAccountTransactionService;
     }
 
@@ -233,26 +228,20 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
     }
 
     private void createTransactionForApprovedReimbursement(ExpenseReimbursement reimbursement) {
-        BankAccount bankAccount = bankAccountRepository.findById(reimbursement.getFundAccountId())
-                .orElseThrow(() -> new BusinessException("银行账户不存在"));
+        BankAccountTransactionCreateRequest request = new BankAccountTransactionCreateRequest();
+        request.setAccountId(reimbursement.getFundAccountId());
+        request.setTransactionType("OUT");
+        request.setAmount(reimbursement.getTotalAmount());
+        request.setTransactionDate(reimbursement.getReimbursementDate());
+        request.setSummary("费用报销：" + reimbursement.getReimbursementNumber());
+        request.setBusinessType("付款");
+        request.setCounterpartyAccount(reimbursement.getBankAccount());
+        request.setCounterpartyName(reimbursement.getApplicantName());
+        request.setRelatedBusinessId(reimbursement.getId());
+        request.setCaseId(reimbursement.getCaseId());
+        request.setRemark(reimbursement.getDescription());
 
-        BankAccountTransaction transaction = new BankAccountTransaction();
-        transaction.setAccountId(reimbursement.getFundAccountId());
-        transaction.setTransactionType("OUT");
-        transaction.setAmount(reimbursement.getTotalAmount());
-        transaction.setTransactionDate(reimbursement.getReimbursementDate());
-        transaction.setSummary("费用报销：" + reimbursement.getReimbursementNumber());
-        transaction.setBusinessType("付款");
-        transaction.setCounterpartyAccount(reimbursement.getBankAccount());
-        transaction.setCounterpartyName(reimbursement.getApplicantName());
-        transaction.setRelatedBusinessId(reimbursement.getId());
-        transaction.setCaseId(reimbursement.getCaseId());
-        transaction.setRemark(reimbursement.getDescription());
-        transaction.setStatus("ACTIVE");
-        transaction.setCreateUserId(reimbursement.getApproverId());
-        transaction.setUpdateUserId(reimbursement.getApproverId());
-
-        bankAccountTransactionRepository.save(transaction);
+        bankAccountTransactionService.createTransaction(request, reimbursement.getApproverId());
     }
 
     @Override

@@ -5,6 +5,7 @@ import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimStagesResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CreditorInfoResponse;
+import com.lawbackend2.lawbackend2.dto.CreditorSimpleResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CreditorInfo;
 import com.lawbackend2.lawbackend2.service.CreditorInfoService;
@@ -86,7 +87,8 @@ public class CreditorInfoController {
     @Operation(summary = "删除债权人")
     @DeleteMapping("/{creditorId}")
     public Result<Void> deleteCreditor(@Parameter(description = "债权人ID") @PathVariable Long creditorId) {
-        creditorInfoService.deleteCreditor(creditorId);
+        Long userId = getCurrentUserId();
+        creditorInfoService.deleteCreditor(creditorId, userId);
         return Result.success();
     }
 
@@ -96,6 +98,18 @@ public class CreditorInfoController {
         Long userId = getCurrentUserId();
         CreditorClaimStagesResponse response = creditorInfoService.getCreditorClaimStages(creditorId, userId);
         return Result.success(response);
+    }
+
+    @Operation(summary = "模糊查询债权人", description = "根据案件ID和债权人名称模糊查询债权人信息，用于搜索建议/自动补全场景")
+    @GetMapping("/search")
+    public Result<List<CreditorSimpleResponse>> searchCreditors(
+            @Parameter(description = "案件ID，精确查询", example = "1", required = true) @RequestParam Long caseId,
+            @Parameter(description = "债权人名称，模糊查询", example = "张三", required = true) @RequestParam String creditorName,
+            @Parameter(description = "返回数量限制", example = "10") @RequestParam(defaultValue = "10") Integer limit) {
+
+        Long userId = getCurrentUserId();
+        List<CreditorSimpleResponse> result = creditorInfoService.searchCreditorsByName(caseId, creditorName, limit, userId);
+        return Result.success(result);
     }
 
     private Long getCurrentUserId() {

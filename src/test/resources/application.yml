@@ -1,13 +1,16 @@
 spring:
+  main:
+    allow-bean-definition-overriding: true
+  
   datasource:
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;INIT=classpath:schema.sql
+    url: jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password: 
   
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create-drop
     show-sql: true
     properties:
       hibernate:
@@ -26,11 +29,16 @@ spring:
       - org.springframework.boot.autoconfigure.websocket.reactive.WebSocketReactiveAutoConfiguration
   
 jwt:
-  secret: test-secret-key-for-jwt-token-generation-in-tests
+  secret: test-secret-key-for-jwt-token-generation-in-tests-must-be-at-least-64-characters-long-for-hs512
   access-token-expiration: 36000000
   refresh-token-expiration: 2592000000
   header: Authorization
   prefix: Bearer
+
+token:
+  blacklist:
+    prefix: "blacklist:token:"
+    ttl: 86400
 
 logging:
   level:

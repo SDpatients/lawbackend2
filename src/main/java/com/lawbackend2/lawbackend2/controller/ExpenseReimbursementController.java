@@ -8,6 +8,7 @@ import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementItemCreateReq
 import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementResponse;
 import com.lawbackend2.lawbackend2.service.ExpenseReimbursementService;
+import com.lawbackend2.lawbackend2.service.UserRoleService;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -36,12 +38,14 @@ import java.util.Map;
 public class ExpenseReimbursementController {
 
     private final ExpenseReimbursementService expenseReimbursementService;
+    private final UserRoleService userRoleService;
     
     // 文件上传根路径，从文档中得知默认是C:\law-upload
     private static final String UPLOAD_ROOT_PATH = "C:\\law-upload";
 
-    public ExpenseReimbursementController(ExpenseReimbursementService expenseReimbursementService) {
+    public ExpenseReimbursementController(ExpenseReimbursementService expenseReimbursementService, UserRoleService userRoleService) {
         this.expenseReimbursementService = expenseReimbursementService;
+        this.userRoleService = userRoleService;
     }
 
     @Operation(summary = "创建报销单")
@@ -73,6 +77,14 @@ public class ExpenseReimbursementController {
             @Parameter(description = "申请人ID") @RequestParam(required = false) Long applicantId,
             @Parameter(description = "审批状态") @RequestParam(required = false) String approvalStatus,
             @Parameter(description = "报销日期") @RequestParam(required = false) java.time.LocalDate reimbursementDate) {
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        List<String> roleCodes = userRoleService.getUserRoleCodes(currentUserId);
+
+        // 权限校验：如果不是ADMIN或SUPER_ADMIN，只能看到自己申请的报销单
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("SUPER_ADMIN")) {
+            applicantId = currentUserId;
+        }
 
         PageResult<ExpenseReimbursementResponse> result = expenseReimbursementService.getExpenseReimbursementList(
                 page, size, caseId, applicantId, approvalStatus, reimbursementDate);

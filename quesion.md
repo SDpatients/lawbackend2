@@ -1,4 +1,5 @@
-CREATE TABLE `tb_claim_confirmation` (
+
+CREATE TABLE `tb_creditor_info` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `create_time` datetime(6) NOT NULL COMMENT '创建时间',
   `create_user_id` bigint DEFAULT NULL COMMENT '创建用户ID',
@@ -6,41 +7,21 @@ CREATE TABLE `tb_claim_confirmation` (
   `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '状态',
   `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
   `update_user_id` bigint DEFAULT NULL COMMENT '更新用户ID',
+  `address` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '地址',
   `case_id` bigint DEFAULT NULL COMMENT '案件ID',
-  `claim_registration_id` bigint NOT NULL COMMENT '债权申报ID',
-  `confirmation_attachments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '确认附件',
-  `confirmation_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '确认状态',
-  `court_ruling_amount` decimal(18,2) DEFAULT NULL COMMENT '法院裁定金额',
-  `court_ruling_date` datetime(6) DEFAULT NULL COMMENT '法院裁定日期',
-  `court_ruling_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '法院裁定文号',
-  `court_ruling_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '法院裁定备注',
-  `court_ruling_result` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '法院裁定结果',
+  `contact_email` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '联系邮箱',
+  `contact_phone` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '联系电话',
   `creditor_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '债权人名称',
-  `final_confirmation_basis` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '最终确认依据',
-  `final_confirmation_date` datetime(6) DEFAULT NULL COMMENT '最终确认日期',
-  `final_confirmed_amount` decimal(18,2) DEFAULT NULL COMMENT '最终确认金额',
-  `has_lawsuit` bit(1) DEFAULT NULL COMMENT '是否有诉讼',
-  `has_objection` bit(1) DEFAULT NULL COMMENT '是否有异议',
-  `lawsuit_amount` decimal(18,2) DEFAULT NULL COMMENT '诉讼金额',
-  `lawsuit_case_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '诉讼案号',
-  `lawsuit_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '诉讼备注',
-  `lawsuit_result` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '诉讼结果',
-  `lawsuit_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '诉讼状态',
-  `meeting_date` datetime(6) DEFAULT NULL COMMENT '会议日期',
-  `meeting_location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '会议地点',
-  `meeting_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '会议类型',
-  `negotiation_date` datetime(6) DEFAULT NULL COMMENT '协商日期',
-  `negotiation_participants` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '协商参与人',
-  `negotiation_result` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '协商结果',
-  `objection_amount` decimal(18,2) DEFAULT NULL COMMENT '异议金额',
-  `objection_date` datetime(6) DEFAULT NULL COMMENT '异议日期',
-  `objection_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '异议原因',
-  `objector` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '异议人',
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '备注',
-  `vote_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '投票备注',
-  `vote_result` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '投票结果',
+  `creditor_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '债权人类型',
+  `id_number` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '身份证号/统一社会信用代码',
+  `legal_representative` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '法定代表人',
+  `registered_capital` decimal(22,4) DEFAULT NULL COMMENT '注册资本',
+  `creditor_status` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+
+
 
 CREATE TABLE `tb_claim_registration` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '债权申报ID',
@@ -100,7 +81,8 @@ CREATE TABLE `tb_claim_registration` (
   KEY `idx_status` (`status`),
   KEY `idx_create_time` (`create_time`),
   CONSTRAINT `fk_claim_registration_case` FOREIGN KEY (`case_id`) REFERENCES `tb_bankrupt_case` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='债权申报登记表';
+) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='债权申报登记表';
+
 
 CREATE TABLE `tb_claim_review` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -156,4 +138,50 @@ CREATE TABLE `tb_claim_review` (
   `unconfirmed_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '未确认原因',
   `unconfirmed_total_amount` decimal(18,2) DEFAULT NULL COMMENT '未确认总金额',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+
+
+CREATE TABLE `tb_claim_confirmation` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `create_time` datetime(6) NOT NULL COMMENT '创建时间',
+  `create_user_id` bigint DEFAULT NULL COMMENT '创建用户ID',
+  `is_deleted` bit(1) DEFAULT NULL COMMENT '是否删除',
+  `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '状态',
+  `update_time` datetime(6) DEFAULT NULL COMMENT '更新时间',
+  `update_user_id` bigint DEFAULT NULL COMMENT '更新用户ID',
+  `case_id` bigint DEFAULT NULL COMMENT '案件ID',
+  `claim_registration_id` bigint NOT NULL COMMENT '债权申报ID',
+  `confirmation_attachments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '确认附件',
+  `confirmation_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '确认状态',
+  `court_ruling_amount` decimal(18,2) DEFAULT NULL COMMENT '法院裁定金额',
+  `court_ruling_date` datetime(6) DEFAULT NULL COMMENT '法院裁定日期',
+  `court_ruling_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '法院裁定文号',
+  `court_ruling_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '法院裁定备注',
+  `court_ruling_result` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '法院裁定结果',
+  `creditor_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '债权人名称',
+  `final_confirmation_basis` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '最终确认依据',
+  `final_confirmation_date` datetime(6) DEFAULT NULL COMMENT '最终确认日期',
+  `final_confirmed_amount` decimal(18,2) DEFAULT NULL COMMENT '最终确认金额',
+  `has_lawsuit` bit(1) DEFAULT NULL COMMENT '是否有诉讼',
+  `has_objection` bit(1) DEFAULT NULL COMMENT '是否有异议',
+  `lawsuit_amount` decimal(18,2) DEFAULT NULL COMMENT '诉讼金额',
+  `lawsuit_case_no` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '诉讼案号',
+  `lawsuit_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '诉讼备注',
+  `lawsuit_result` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '诉讼结果',
+  `lawsuit_status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '诉讼状态',
+  `meeting_date` datetime(6) DEFAULT NULL COMMENT '会议日期',
+  `meeting_location` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '会议地点',
+  `meeting_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '会议类型',
+  `negotiation_date` datetime(6) DEFAULT NULL COMMENT '协商日期',
+  `negotiation_participants` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '协商参与人',
+  `negotiation_result` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '协商结果',
+  `objection_amount` decimal(18,2) DEFAULT NULL COMMENT '异议金额',
+  `objection_date` datetime(6) DEFAULT NULL COMMENT '异议日期',
+  `objection_reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '异议原因',
+  `objector` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '异议人',
+  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '备注',
+  `vote_notes` text CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT '投票备注',
+  `vote_result` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '投票结果',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=54 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

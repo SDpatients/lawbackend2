@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.controller;
 
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.FileRecordInfo;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -120,6 +121,15 @@ public class FileController {
         return Result.success(fileRecord);
     }
 
+    @Operation(summary = "文件重命名（通过存储文件名）")
+    @PutMapping("/rename-by-stored-name")
+    public Result<FileRecord> renameFileByStoredName(
+            @Parameter(description = "存储文件名") @RequestParam("storedFileName") String storedFileName,
+            @Parameter(description = "新文件名") @RequestParam("newFileName") String newFileName) {
+        FileRecord fileRecord = fileService.renameFileByStoredName(storedFileName, newFileName);
+        return Result.success(fileRecord);
+    }
+
     @Operation(summary = "更新文件状态")
     @PutMapping("/{fileId}/status")
     public Result<FileRecord> updateFileStatus(
@@ -208,11 +218,11 @@ public class FileController {
 
     @Operation(summary = "根据业务类型和业务ID查询所有文件列表")
     @GetMapping("/all")
-    public Result<List<FileRecord>> getAllFilesByBizTypeAndBizId(
+    public Result<List<FileRecordInfo>> getAllFilesByBizTypeAndBizId(
             @Parameter(description = "业务类型") @RequestParam("bizType") String bizType,
             @Parameter(description = "业务ID") @RequestParam("bizId") String bizId) {
 
-        List<FileRecord> fileRecords = fileService.getAllFilesByBizTypeAndBizId(bizType, bizId);
+        List<FileRecordInfo> fileRecords = fileService.getAllFilesInfoByBizTypeAndBizId(bizType, bizId);
         return Result.success(fileRecords);
     }
 

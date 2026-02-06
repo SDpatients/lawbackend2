@@ -6,6 +6,7 @@ import com.lawbackend2.lawbackend2.dto.CourtCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CourtUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.Court;
 import com.lawbackend2.lawbackend2.service.CourtService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -86,6 +87,6 @@ public class CourtController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        return SecurityUtil.getCurrentUserId();
     }
 }

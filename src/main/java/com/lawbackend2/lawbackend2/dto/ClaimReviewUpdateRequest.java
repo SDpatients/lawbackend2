@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ClaimReviewUpdateRequest {
@@ -74,7 +75,7 @@ public class ClaimReviewUpdateRequest {
 
     private String reviewReport;
 
-    private String reviewAttachments;
+    private List<String> reviewAttachments;
 
     private String reviewStatus;
 

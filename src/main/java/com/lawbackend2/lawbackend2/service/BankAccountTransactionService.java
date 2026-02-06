@@ -18,5 +18,5 @@ public interface BankAccountTransactionService {
 
     void updateTransaction(Long transactionId, BankAccountTransactionUpdateRequest request, Long userId);
 
-    void deleteTransaction(Long transactionId);
+    void deleteTransaction(Long transactionId, Long userId);
 }

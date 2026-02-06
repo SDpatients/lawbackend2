@@ -6,6 +6,7 @@ import com.lawbackend2.lawbackend2.dto.ClaimReviewCreateRequest;
 import com.lawbackend2.lawbackend2.dto.ClaimReviewUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.ClaimReview;
 import com.lawbackend2.lawbackend2.service.ClaimReviewService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -86,7 +87,8 @@ public class ClaimReviewController {
     @Operation(summary = "删除债权审查记录")
     @DeleteMapping("/{reviewId}")
     public Result<Void> deleteReview(@Parameter(description = "审查记录ID") @PathVariable Long reviewId) {
-        claimReviewService.deleteReview(reviewId);
+        Long userId = getCurrentUserId();
+        claimReviewService.deleteReview(reviewId, userId);
         return Result.success();
     }
 
@@ -96,6 +98,17 @@ public class ClaimReviewController {
         Long userId = getCurrentUserId();
         claimReviewService.submitReview(reviewId, userId);
         log.info("债权审查提交成功, reviewId: {}, reviewerId: {}", reviewId, userId);
+        return Result.success();
+    }
+
+    @Operation(summary = "驳回债权审查")
+    @PutMapping("/{reviewId}/reject")
+    public Result<Void> rejectReview(
+            @Parameter(description = "审查记录ID") @PathVariable Long reviewId,
+            @Parameter(description = "驳回理由") @RequestParam String rejectReason) {
+        Long userId = getCurrentUserId();
+        claimReviewService.rejectReview(reviewId, rejectReason, userId);
+        log.info("债权审查驳回成功, reviewId: {}, reviewerId: {}", reviewId, userId);
         return Result.success();
     }
 
@@ -142,6 +155,6 @@ public class ClaimReviewController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        return SecurityUtil.getCurrentUserId();
     }
 }

@@ -12,6 +12,7 @@ import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
+import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
 import com.lawbackend2.lawbackend2.repository.WorkPlanRepository;
 import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
@@ -41,13 +42,15 @@ public class WorkPlanServiceImpl implements WorkPlanService {
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final BankruptCaseRepository bankruptCaseRepository;
 
-    public WorkPlanServiceImpl(WorkPlanRepository workPlanRepository, WorkTeamMemberRepository workTeamMemberRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository, UserRepository userRepository) {
+    public WorkPlanServiceImpl(WorkPlanRepository workPlanRepository, WorkTeamMemberRepository workTeamMemberRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository, UserRepository userRepository, BankruptCaseRepository bankruptCaseRepository) {
         this.workPlanRepository = workPlanRepository;
         this.workTeamMemberRepository = workTeamMemberRepository;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
+        this.bankruptCaseRepository = bankruptCaseRepository;
     }
 
     @Override
@@ -86,6 +89,14 @@ public class WorkPlanServiceImpl implements WorkPlanService {
             }
         }
         
+        if (workPlan.getCaseId() != null) {
+            Optional<com.lawbackend2.lawbackend2.entity.BankruptCase> caseOpt = bankruptCaseRepository.findById(workPlan.getCaseId());
+            if (caseOpt.isPresent()) {
+                response.setCaseNumber(caseOpt.get().getCaseNumber());
+                response.setCaseName(caseOpt.get().getCaseName());
+            }
+        }
+        
         return response;
     }
 
@@ -110,6 +121,12 @@ public class WorkPlanServiceImpl implements WorkPlanService {
         checkPermission(workPlan, userId);
         
         return workPlan;
+    }
+    
+    @Override
+    public WorkPlanResponse getWorkPlanDetailResponse(Long planId, Long userId) {
+        WorkPlan workPlan = getWorkPlanDetail(planId, userId);
+        return convertToResponse(workPlan);
     }
 
     @Override

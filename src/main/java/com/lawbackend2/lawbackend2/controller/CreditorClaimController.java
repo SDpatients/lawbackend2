@@ -7,6 +7,7 @@ import com.lawbackend2.lawbackend2.dto.CreditorClaimReviewRequest;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CreditorClaim;
 import com.lawbackend2.lawbackend2.service.CreditorClaimService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -95,6 +96,6 @@ public class CreditorClaimController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        return SecurityUtil.getCurrentUserId();
     }
 }

@@ -63,10 +63,10 @@ public class WorkPlanController {
 
     @Operation(summary = "获取工作计划详情")
     @GetMapping("/{planId}")
-    public Result<WorkPlan> getWorkPlanDetail(@Parameter(description = "计划ID") @PathVariable Long planId) {
+    public Result<WorkPlanResponse> getWorkPlanDetail(@Parameter(description = "计划ID") @PathVariable Long planId) {
         Long userId = getCurrentUserId();
-        WorkPlan workPlan = workPlanService.getWorkPlanDetail(planId, userId);
-        return Result.success(workPlan);
+        WorkPlanResponse response = workPlanService.getWorkPlanDetailResponse(planId, userId);
+        return Result.success(response);
     }
 
     @Operation(summary = "更新工作计划")

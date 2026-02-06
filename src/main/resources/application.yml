@@ -8,8 +8,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 50MB
-      max-request-size: 50MB
+      max-file-size: 500MB
+      max-request-size: 500MB
 
   datasource:
     url: jdbc:mysql://localhost:3306/law?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
@@ -72,6 +72,11 @@ sms:
 login:
   max-fail-count: 5
   lock-minutes: 30
+
+file:
+  upload:
+    path: C:\\law-upload
+    temp-token-expire-minutes: 30
 
 springdoc:
   api-docs:

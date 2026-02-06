@@ -295,6 +295,19 @@ public class DocumentDeliveryController {
         return Result.success(result);
     }
 
+    @Operation(summary = "获取所有带审批ID的文书送达列表(支持模糊查询)")
+    @GetMapping("/all-with-approval")
+    public Result<PageResult<DocumentDelivery>> getAllDocumentDeliveryWithApprovalIdList(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "文书类型(模糊查询)") @RequestParam(required = false) String documentType,
+            @Parameter(description = "状态(模糊查询)") @RequestParam(required = false) String status,
+            @Parameter(description = "案号(模糊查询)") @RequestParam(required = false) String caseNumber) {
+
+        PageResult<DocumentDelivery> result = documentDeliveryService.getAllDocumentDeliveryWithApprovalIdList(pageNum, pageSize, documentType, status, caseNumber, "SENT");
+        return Result.success(result);
+    }
+
     @Operation(summary = "更新状态和备注")
     @PutMapping("/{deliveryId}/status-remark")
     public Result<Void> updateStatusAndRemark(

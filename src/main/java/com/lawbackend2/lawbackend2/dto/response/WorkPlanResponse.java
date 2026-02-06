@@ -23,4 +23,6 @@ public class WorkPlanResponse {
     private String responsibleUserName;
     private String executionStatus;
     private Long caseId;
+    private String caseNumber;
+    private String caseName;
 }

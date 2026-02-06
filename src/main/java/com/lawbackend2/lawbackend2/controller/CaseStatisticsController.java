@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.CaseStatisticsRequest;
 import com.lawbackend2.lawbackend2.dto.CaseStatisticsResponse;
 import com.lawbackend2.lawbackend2.service.CaseStatisticsService;
+import com.lawbackend2.lawbackend2.util.StatisticsPermissionUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,6 +22,9 @@ public class CaseStatisticsController {
 
     @Autowired
     private CaseStatisticsService caseStatisticsService;
+
+    @Autowired
+    private StatisticsPermissionUtil statisticsPermissionUtil;
 
     @GetMapping
     @Operation(summary = "获取案件统计数据", description = "根据条件获取案件统计数据，支持按日期范围、法院、状态等条件筛选")
@@ -46,6 +50,13 @@ public class CaseStatisticsController {
             request.setCourtId(courtId);
             request.setCaseStatus(caseStatus);
             request.setCaseProgress(caseProgress);
+
+            // 获取当前用户ID，非管理员只能查看自己的案件统计数据
+            if (!statisticsPermissionUtil.isAdmin()) {
+                Long userId = statisticsPermissionUtil.getCurrentUserId();
+                request.setUserId(userId);
+                log.info("非管理员用户，设置用户ID：{}", userId);
+            }
 
             CaseStatisticsResponse response = caseStatisticsService.getCaseStatistics(request);
 

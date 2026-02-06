@@ -87,7 +87,8 @@ public class BankAccountTransactionController {
     @Operation(summary = "删除交易记录")
     @DeleteMapping("/{transactionId}")
     public Result<Void> deleteTransaction(@Parameter(description = "交易记录ID") @PathVariable Long transactionId) {
-        transactionService.deleteTransaction(transactionId);
+        Long userId = getCurrentUserId();
+        transactionService.deleteTransaction(transactionId, userId);
         return Result.success();
     }
 

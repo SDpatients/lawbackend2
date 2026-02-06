@@ -116,6 +116,19 @@ public interface DocumentDeliveryRepository extends JpaRepository<DocumentDelive
                                              @Param("caseNumber") String caseNumber,
                                              @Param("sendStatus") String sendStatus,
                                              Pageable pageable);
+
+    @Query("SELECT d FROM DocumentDelivery d WHERE " +
+            "d.approvalId IS NOT NULL AND " +
+            "(:documentType IS NULL OR d.documentType LIKE %:documentType%) AND " +
+            "(:status IS NULL OR d.status LIKE %:status%) AND " +
+            "(:caseNumber IS NULL OR d.caseNumber LIKE %:caseNumber%) AND " +
+            "(:sendStatus IS NULL OR d.sendStatus = :sendStatus) AND " +
+            "d.isDeleted = false ORDER BY d.createTime DESC")
+    Page<DocumentDelivery> findByApprovalIdNotNull(@Param("documentType") String documentType,
+                                                 @Param("status") String status,
+                                                 @Param("caseNumber") String caseNumber,
+                                                 @Param("sendStatus") String sendStatus,
+                                                 Pageable pageable);
     void deleteByCaseId(Long caseId);
 
     @Query(value = "SELECT d.abbreviation FROM tb_document_delivery d WHERE d.abbreviation IS NOT NULL AND d.is_deleted = false ORDER BY d.create_time DESC LIMIT 1", nativeQuery = true)

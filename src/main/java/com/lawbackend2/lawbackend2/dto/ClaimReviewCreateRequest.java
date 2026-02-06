@@ -6,6 +6,7 @@ import lombok.Data;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ClaimReviewCreateRequest {
@@ -94,7 +95,7 @@ public class ClaimReviewCreateRequest {
 
     private String reviewReport;
 
-    private String reviewAttachments;
+    private List<String> reviewAttachments;
 
     private String reviewStatus = "PENDING";
 

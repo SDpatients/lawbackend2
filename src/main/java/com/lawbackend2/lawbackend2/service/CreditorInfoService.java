@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimStagesResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CreditorInfoResponse;
+import com.lawbackend2.lawbackend2.dto.CreditorSimpleResponse;
 import com.lawbackend2.lawbackend2.dto.CreditorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CreditorInfo;
 
@@ -22,9 +23,11 @@ public interface CreditorInfoService {
 
     CreditorInfo updateCreditor(Long creditorId, CreditorUpdateRequest request);
 
-    void deleteCreditor(Long creditorId);
+    void deleteCreditor(Long creditorId, Long userId);
 
     PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId);
 
     CreditorClaimStagesResponse getCreditorClaimStages(Long creditorId, Long userId);
+
+    List<CreditorSimpleResponse> searchCreditorsByName(Long caseId, String creditorName, Integer limit, Long userId);
 }

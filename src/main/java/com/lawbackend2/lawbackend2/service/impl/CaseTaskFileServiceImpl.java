@@ -81,6 +81,7 @@ public class CaseTaskFileServiceImpl implements CaseTaskFileService {
 
             file.transferTo(filePath.toFile());
 
+            LocalDateTime now = LocalDateTime.now();
             FileRecord fileRecord = new FileRecord();
             fileRecord.setOriginalFileName(originalFileName);
             fileRecord.setStoredFileName(storedFileName);
@@ -90,11 +91,14 @@ public class CaseTaskFileServiceImpl implements CaseTaskFileService {
             fileRecord.setMimeType(file.getContentType());
             fileRecord.setBizType("CASE_TASK");
             fileRecord.setBizId(taskId.toString());
-            fileRecord.setUploadTime(LocalDateTime.now());
+            fileRecord.setUploadTime(now);
             fileRecord.setUploadUserId(userId);
             fileRecord.setCreateUserId(userId);
+            fileRecord.setUpdateUserId(userId);
             fileRecord.setFileStatus(1);
             fileRecord.setStatus("ACTIVE");
+            fileRecord.setCreateTime(now);
+            fileRecord.setUpdateTime(now);
 
             FileRecord savedFile = fileRecordRepository.save(fileRecord);
             log.info("文件上传成功, fileId: {}", savedFile.getId());
@@ -140,6 +144,7 @@ public class CaseTaskFileServiceImpl implements CaseTaskFileService {
 
             file.transferTo(filePath.toFile());
 
+            LocalDateTime now = LocalDateTime.now();
             FileRecord fileRecord = new FileRecord();
             fileRecord.setOriginalFileName(originalFileName);
             fileRecord.setStoredFileName(storedFileName);
@@ -149,12 +154,15 @@ public class CaseTaskFileServiceImpl implements CaseTaskFileService {
             fileRecord.setMimeType(file.getContentType());
             fileRecord.setBizType("CASE_TASK_SUBMISSION");
             fileRecord.setBizId(submissionId.toString());
-            fileRecord.setUploadTime(LocalDateTime.now());
+            fileRecord.setUploadTime(now);
             fileRecord.setUploadUserId(userId);
             fileRecord.setCreateUserId(userId);
+            fileRecord.setUpdateUserId(userId);
             fileRecord.setFileStatus(1);
             fileRecord.setStatus("ACTIVE");
             fileRecord.setDescription(description);
+            fileRecord.setCreateTime(now);
+            fileRecord.setUpdateTime(now);
 
             if (sortOrder != null) {
                 fileRecord.setSortOrder(sortOrder);

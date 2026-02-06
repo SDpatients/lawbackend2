@@ -423,18 +423,18 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public TimeTrendStatistics getCaseTrend(String period, Long userId) {
         List<TrendData> trendDataList = new ArrayList<>();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate now = LocalDate.now();
         int periods = 12;
 
         for (int i = periods - 1; i >= 0; i--) {
-            LocalDateTime startDate;
-            LocalDateTime endDate;
+            LocalDate startDate;
+            LocalDate endDate;
             String periodLabel;
 
             if ("month".equals(period)) {
                 YearMonth yearMonth = YearMonth.now().minusMonths(i);
-                startDate = yearMonth.atDay(1).atStartOfDay();
-                endDate = yearMonth.atEndOfMonth().atTime(23, 59, 59);
+                startDate = yearMonth.atDay(1);
+                endDate = yearMonth.atEndOfMonth();
                 periodLabel = yearMonth.format(DateTimeFormatter.ofPattern("yyyy-MM"));
             } else if ("quarter".equals(period)) {
                 int currentQuarter = (now.getMonthValue() - 1) / 3 + 1;
@@ -444,30 +444,30 @@ public class StatisticsServiceImpl implements StatisticsService {
                     targetQuarter += 4;
                     targetYear--;
                 }
-                startDate = LocalDate.of(targetYear, (targetQuarter - 1) * 3 + 1, 1).atStartOfDay();
-                endDate = LocalDate.of(targetYear, targetQuarter * 3, 1).plusMonths(1).minusDays(1).atTime(23, 59, 59);
+                startDate = LocalDate.of(targetYear, (targetQuarter - 1) * 3 + 1, 1);
+                endDate = LocalDate.of(targetYear, targetQuarter * 3, 1).plusMonths(1).minusDays(1);
                 periodLabel = targetYear + "-Q" + targetQuarter;
             } else {
                 int targetYear = now.getYear() - i;
-                startDate = LocalDate.of(targetYear, 1, 1).atStartOfDay();
-                endDate = LocalDate.of(targetYear, 12, 31).atTime(23, 59, 59);
+                startDate = LocalDate.of(targetYear, 1, 1);
+                endDate = LocalDate.of(targetYear, 12, 31);
                 periodLabel = String.valueOf(targetYear);
             }
 
             Long count;
             if (userId != null) {
-                count = bankruptCaseRepository.countByUserIdAndCreateTimeBetween(userId, startDate, endDate);
+                count = bankruptCaseRepository.countByUserIdAndAcceptanceDateBetween(userId, startDate, endDate);
             } else {
-                count = bankruptCaseRepository.countByCreateTimeBetween(startDate, endDate);
+                count = bankruptCaseRepository.countByAcceptanceDateBetween(startDate, endDate);
             }
 
-            LocalDateTime prevStartDate = startDate.minusDays(1);
-            LocalDateTime prevEndDate = startDate.minusMonths(1).plusDays(1);
+            LocalDate prevStartDate = startDate.minusDays(1);
+            LocalDate prevEndDate = startDate.minusMonths(1).plusDays(1);
             Long previousCount;
             if (userId != null) {
-                previousCount = bankruptCaseRepository.countByUserIdAndCreateTimeBetween(userId, prevStartDate, prevEndDate);
+                previousCount = bankruptCaseRepository.countByUserIdAndAcceptanceDateBetween(userId, prevStartDate, prevEndDate);
             } else {
-                previousCount = bankruptCaseRepository.countByCreateTimeBetween(prevStartDate, prevEndDate);
+                previousCount = bankruptCaseRepository.countByAcceptanceDateBetween(prevStartDate, prevEndDate);
             }
 
             Double growthRate = null;
@@ -478,8 +478,8 @@ public class StatisticsServiceImpl implements StatisticsService {
 
             TrendData trendData = new TrendData();
             trendData.setPeriod(periodLabel);
-            trendData.setStartDate(startDate.toLocalDate());
-            trendData.setEndDate(endDate.toLocalDate());
+            trendData.setStartDate(startDate);
+            trendData.setEndDate(endDate);
             trendData.setCount(count);
             trendData.setAmount(BigDecimal.ZERO);
             trendData.setPreviousCount(previousCount);

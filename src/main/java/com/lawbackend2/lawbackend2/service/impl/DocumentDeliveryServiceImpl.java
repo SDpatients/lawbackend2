@@ -806,6 +806,17 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
     }
 
     @Override
+    public PageResult<DocumentDelivery> getAllDocumentDeliveryWithApprovalIdList(Integer pageNum, Integer pageSize, String documentType, String status, String caseNumber, String sendStatus) {
+        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Page<DocumentDelivery> page = documentDeliveryRepository.findByApprovalIdNotNull(documentType, status, caseNumber, sendStatus, pageable);
+
+        PageResult<DocumentDelivery> result = new PageResult<>();
+        result.setTotal(page.getTotalElements());
+        result.setList(page.getContent());
+        return result;
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateStatusAndRemark(Long deliveryId, String status, String remark) {
         DocumentDelivery documentDelivery = getDocumentDeliveryDetail(deliveryId);
@@ -856,7 +867,7 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
         }
 
         int currentYear = Year.now().getValue();
-        String prefix = currentYear + abbreviation + "破管字第";
+        String prefix = "(" + currentYear + ") " + abbreviation + "破管字第";
         
         Long maxNumber = documentDeliveryRepository.findMaxDocumentNumberByPrefix(prefix + "%");
         int nextNumber = (maxNumber != null) ? maxNumber.intValue() + 1 : 1;

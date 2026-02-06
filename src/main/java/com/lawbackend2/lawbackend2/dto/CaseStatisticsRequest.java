@@ -15,4 +15,6 @@ public class CaseStatisticsRequest {
     private String caseStatus;
 
     private String caseProgress;
+
+    private Long userId;
 }

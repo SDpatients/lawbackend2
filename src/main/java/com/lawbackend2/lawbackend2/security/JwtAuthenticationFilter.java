@@ -58,6 +58,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // 对于文件上传请求，确保从请求头中提取token，不读取请求体
         String token = extractToken(request);
 
         if (StringUtils.hasText(token) && jwtTokenUtil.validateToken(token)) {
@@ -76,13 +77,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
 
-            UsernamePasswordAuthenticationToken authentication =
+            UsernamePasswordAuthenticationToken authentication = 
                     new UsernamePasswordAuthenticationToken(
                             userId,
                             null,
                             authorities
                     );
 
+            // 只设置基本信息，不读取请求体
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -92,6 +94,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.warn("Token验证失败 - URI: {}", requestURI);
         }
 
+        // 继续执行过滤器链
         filterChain.doFilter(request, response);
     }
 
@@ -106,11 +109,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isPublicEndpoint(String requestURI) {
-        // /auth/current-user 需要认证，所以排除在公共端点之外
+        // /auth/current-user 和 /auth/change-password 需要认证，所以排除在公共端点之外
         // /auth/statistics, /auth/recent-failed, /auth/login-history 也需要认证
         return (requestURI.contains("/auth/") && 
                 !requestURI.equals("/auth/current-user") && 
                 !requestURI.equals("/api/v1/auth/current-user") &&
+                !requestURI.equals("/auth/change-password") &&
+                !requestURI.equals("/api/v1/auth/change-password") &&
                 !requestURI.equals("/auth/statistics") &&
                 !requestURI.equals("/api/v1/auth/statistics") &&
                 !requestURI.equals("/auth/recent-failed") &&

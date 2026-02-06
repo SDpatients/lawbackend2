@@ -20,14 +20,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -75,10 +76,10 @@ class CaseTaskServiceTest {
         List<CaseTask> result = caseTaskService.createTasksForCase(1L);
 
         assertNotNull(result);
-        assertEquals(23, result.size());
+        assertEquals(25, result.size());
         assertEquals(1L, result.get(0).getCaseId());
         assertEquals("TASK_001", result.get(0).getTaskCode());
-        assertEquals("TASK_023", result.get(22).getTaskCode());
+        assertEquals("TASK_025", result.get(24).getTaskCode());
         assertEquals(CaseTaskStatus.IN_PROGRESS.name(), result.get(0).getStatus());
         verify(caseTaskRepository, times(1)).saveAll(any(List.class));
     }
@@ -88,6 +89,8 @@ class CaseTaskServiceTest {
         List<CaseTask> tasks = Arrays.asList(mockTask);
         Page<CaseTask> page = new PageImpl<>(tasks);
         when(caseTaskRepository.findByCaseId(eq(1L), any(PageRequest.class))).thenReturn(page);
+        when(fileRecordRepository.findByConditions(eq("CASE_TASK"), anyString(), eq("ACTIVE"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         Page<CaseTaskResponse> result = caseTaskService.getTasksByCaseId(1L, null, null, PageRequest.of(0, 10));
 
@@ -101,6 +104,8 @@ class CaseTaskServiceTest {
     void testGetTasksByCaseId_WithStatus() {
         List<CaseTask> tasks = Arrays.asList(mockTask);
         when(caseTaskRepository.findByCaseIdAndStatus(1L, CaseTaskStatus.IN_PROGRESS.name())).thenReturn(tasks);
+        when(fileRecordRepository.findByConditions(eq("CASE_TASK"), anyString(), eq("ACTIVE"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         Page<CaseTaskResponse> result = caseTaskService.getTasksByCaseId(1L, CaseTaskStatus.IN_PROGRESS.name(), null, PageRequest.of(0, 10));
 
@@ -137,6 +142,8 @@ class CaseTaskServiceTest {
     void testUpdateTask_Success() {
         when(caseTaskRepository.findById(1L)).thenReturn(Optional.of(mockTask));
         when(caseTaskRepository.save(any(CaseTask.class))).thenReturn(mockTask);
+        when(fileRecordRepository.findByConditions(eq("CASE_TASK"), anyString(), eq("ACTIVE"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
 
         CaseTaskUpdateRequest request = new CaseTaskUpdateRequest();
         request.setTaskDescription("更新后的描述");
@@ -213,7 +220,7 @@ class CaseTaskServiceTest {
         );
 
         when(caseTaskRepository.findByCaseIdOrderBySortOrder(1L)).thenReturn(tasks);
-        when(fileRecordRepository.findByConditions(eq("CASE_TASK"), any(String.class), eq("ACTIVE"), any()))
+        when(fileRecordRepository.findByConditions(eq("CASE_TASK"), anyString(), eq("ACTIVE"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(Arrays.asList(mockFile)));
 
         CaseTaskStatistics result = caseTaskService.getStatistics(1L);

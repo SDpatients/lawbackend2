@@ -711,17 +711,17 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         debtData.setCommonDebtCount(commonDebtRepository.findByCaseIdAndIsDeleted(caseId, false).size());
         response.setDebtData(debtData);
 
-        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.ClaimData claimData = 
+        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.ClaimData claimData =
             new com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.ClaimData();
-        claimData.setClaimConfirmationCount((int) claimConfirmationRepository.findByCaseId(caseId, 
+        claimData.setClaimConfirmationCount((int) claimConfirmationRepository.findByCaseIdAndIsDeletedFalse(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        claimData.setCreditorClaimCount((int) creditorClaimRepository.findByCaseId(caseId, 
+        claimData.setCreditorClaimCount((int) creditorClaimRepository.findByCaseId(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        claimData.setCreditorInfoCount((int) creditorInfoRepository.findByCaseId(caseId, 
+        claimData.setCreditorInfoCount((int) creditorInfoRepository.findByCaseId(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        claimData.setClaimRegistrationCount((int) claimRegistrationRepository.findByCaseId(caseId, 
+        claimData.setClaimRegistrationCount((int) claimRegistrationRepository.findByCaseIdAndIsDeletedFalse(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        claimData.setClaimReviewCount((int) claimReviewRepository.findByCaseId(caseId, 
+        claimData.setClaimReviewCount((int) claimReviewRepository.findByCaseIdAndIsDeletedFalse(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
         response.setClaimData(claimData);
 

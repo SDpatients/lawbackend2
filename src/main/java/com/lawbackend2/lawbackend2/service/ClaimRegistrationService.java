@@ -23,11 +23,13 @@ public interface ClaimRegistrationService {
 
     ClaimRegistration updateClaim(Long claimId, ClaimRegistrationUpdateRequest request);
 
-    void deleteClaim(Long claimId);
+    void deleteClaim(Long claimId, Long userId);
 
     void updateRegistrationStatus(Long claimId, String status, Long userId);
 
     void receiveMaterial(Long claimId, String receiver, String completeness, Long userId);
+
+    void rejectClaim(Long claimId, String rejectReason, Long userId);
 
     ExcelImportResponse importFromExcel(MultipartFile file, Long caseId, Long userId);
 

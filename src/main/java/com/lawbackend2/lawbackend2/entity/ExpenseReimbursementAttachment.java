@@ -25,7 +25,7 @@ public class ExpenseReimbursementAttachment extends BaseEntity {
     @Column(name = "file_size")
     private Long fileSize;
 
-    @Column(name = "file_type", length = 50)
+    @Column(name = "file_type", length = 255)
     private String fileType;
 
     @Column(name = "upload_time")

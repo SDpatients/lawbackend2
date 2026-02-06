@@ -225,4 +225,16 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
 
     @Query("SELECT c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId GROUP BY c.caseProgress")
     List<Object[]> countByUserIdAndProgressGroup(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.acceptanceDate BETWEEN :startDate AND :endDate")
+    Long countByAcceptanceDateBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId AND c.acceptanceDate BETWEEN :startDate AND :endDate")
+    Long countByUserIdAndAcceptanceDateBetween(@Param("userId") Long userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT c.caseStatus, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId GROUP BY c.caseStatus")
+    List<Object[]> countByUserIdAndCaseStatusGroup(@Param("userId") Long userId);
+
+    @Query("SELECT c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.isDeleted = false AND c.createUserId = :userId GROUP BY c.caseProgress")
+    List<Object[]> countByUserIdAndCaseProgressGroup(@Param("userId") Long userId);
 }

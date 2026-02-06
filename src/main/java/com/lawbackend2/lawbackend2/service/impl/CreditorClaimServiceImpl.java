@@ -5,8 +5,10 @@ import com.lawbackend2.lawbackend2.dto.CreditorClaimReviewRequest;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.CreditorClaim;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.dto.request.FundAccountCreateRequest;
 import com.lawbackend2.lawbackend2.repository.CreditorClaimRepository;
 import com.lawbackend2.lawbackend2.service.CreditorClaimService;
+import com.lawbackend2.lawbackend2.service.FundAccountService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -23,14 +25,40 @@ import java.util.List;
 public class CreditorClaimServiceImpl implements CreditorClaimService {
 
     private final CreditorClaimRepository creditorClaimRepository;
+    private final FundAccountService fundAccountService;
 
-    public CreditorClaimServiceImpl(CreditorClaimRepository creditorClaimRepository) {
+    public CreditorClaimServiceImpl(CreditorClaimRepository creditorClaimRepository, FundAccountService fundAccountService) {
         this.creditorClaimRepository = creditorClaimRepository;
+        this.fundAccountService = fundAccountService;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CreditorClaim createClaim(CreditorClaimCreateRequest request, Long userId) {
+        // Check and create fund account if needed
+        if (request.getAccountName() != null && !request.getAccountName().trim().isEmpty()) {
+            // Check if fund account exists
+            try {
+                // Try to find fund account by name
+                // Note: This will throw an exception if not found, which we'll catch
+                fundAccountService.getFundAccountDetailByAccountName(request.getAccountName());
+            } catch (Exception e) {
+                // Fund account not found, create a new one
+                FundAccountCreateRequest fundAccountRequest = new FundAccountCreateRequest();
+                fundAccountRequest.setCaseId(request.getCaseId());
+                fundAccountRequest.setCaseName(request.getCaseName() != null ? request.getCaseName() : "未知");
+                fundAccountRequest.setAccountName(request.getAccountName());
+                fundAccountRequest.setBankAccount(request.getCreditorBankAccount() != null ? request.getCreditorBankAccount() : "未知");
+                fundAccountRequest.setBankName(request.getBankName() != null ? request.getBankName() : "未知");
+                fundAccountRequest.setAccountType("未知");
+                fundAccountRequest.setInitialBalance(java.math.BigDecimal.ZERO);
+                
+                // Create the fund account
+                fundAccountService.createFundAccount(fundAccountRequest, userId);
+                log.info("Created new fund account: {}", request.getAccountName());
+            }
+        }
+
         CreditorClaim creditorClaim = new CreditorClaim();
         BeanUtils.copyProperties(request, creditorClaim);
         creditorClaim.setCreateUserId(userId);

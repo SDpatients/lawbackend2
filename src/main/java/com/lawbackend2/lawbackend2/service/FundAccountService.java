@@ -67,4 +67,18 @@ public interface FundAccountService {
      * @param userId 用户ID
      */
     void deleteFundAccount(Long fundAccountId, Long userId);
+
+    /**
+     * 获取案件的资金账户简单列表
+     * @param caseId 案件ID
+     * @return 资金账户简单列表
+     */
+    java.util.List<com.lawbackend2.lawbackend2.dto.response.FundAccountSimpleResponse> getSimpleFundAccountListByCaseId(Long caseId);
+
+    /**
+     * 根据账户名称获取资金账户详情
+     * @param accountName 账户名称
+     * @return 资金账户详情
+     */
+    FundAccount getFundAccountDetailByAccountName(String accountName);
 }

@@ -19,6 +19,7 @@ public class CreditorInfoResponse {
     private String legalRepresentative;
     private BigDecimal registeredCapital;
     private CreditorStatus creditorStatus;
+    private String status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long createUserId;

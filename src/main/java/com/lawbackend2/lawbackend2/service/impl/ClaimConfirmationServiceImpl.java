@@ -69,7 +69,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
 
     @Override
     public ClaimConfirmation getConfirmationByClaimId(Long claimRegistrationId) {
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
         if (confirmations.isEmpty()) {
             throw new BusinessException("债权确认记录不存在");
         }
@@ -83,17 +83,17 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
         Page<ClaimConfirmation> page;
         if (confirmationStatus == null || confirmationStatus.trim().isEmpty()) {
             if (caseId != null) {
-                page = claimConfirmationRepository.findByCaseId(caseId, pageable);
+                page = claimConfirmationRepository.findByCaseIdAndIsDeletedFalse(caseId, pageable);
             } else {
                 page = claimConfirmationRepository.findAll(pageable);
             }
         } else {
             if (caseId != null && confirmationStatus != null) {
-                page = claimConfirmationRepository.findByCaseIdAndConfirmationStatus(caseId, confirmationStatus, pageable);
+                page = claimConfirmationRepository.findByCaseIdAndConfirmationStatusAndIsDeletedFalse(caseId, confirmationStatus, pageable);
             } else if (caseId != null) {
-                page = claimConfirmationRepository.findByCaseId(caseId, pageable);
+                page = claimConfirmationRepository.findByCaseIdAndIsDeletedFalse(caseId, pageable);
             } else if (confirmationStatus != null) {
-                page = claimConfirmationRepository.findByConfirmationStatus(confirmationStatus, pageable);
+                page = claimConfirmationRepository.findByConfirmationStatusAndIsDeletedFalse(confirmationStatus, pageable);
             } else {
                 page = claimConfirmationRepository.findAll(pageable);
             }
@@ -292,7 +292,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
 
         if (confirmation.getFinalConfirmedAmount() == null) {
             Optional<ClaimReview> reviewOpt = claimReviewRepository
-                    .findFirstByClaimRegistrationIdOrderByReviewRoundDesc(confirmation.getClaimRegistrationId());
+                    .findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(confirmation.getClaimRegistrationId());
             if (reviewOpt.isPresent()) {
                 ClaimReview review = reviewOpt.get();
                 confirmation.setFinalConfirmedAmount(review.getConfirmedTotalAmount());

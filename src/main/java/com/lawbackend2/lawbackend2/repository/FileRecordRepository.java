@@ -12,6 +12,8 @@ import java.util.List;
 @Repository
 public interface FileRecordRepository extends JpaRepository<FileRecord, Long> {
 
+    FileRecord findByStoredFileName(String storedFileName);
+
     @Query("SELECT fr FROM FileRecord fr WHERE fr.isDeleted = false " +
            "AND (:bizType IS NULL OR fr.bizType = :bizType) " +
            "AND (:bizId IS NULL OR fr.bizId = :bizId) " +
@@ -29,4 +31,11 @@ public interface FileRecordRepository extends JpaRepository<FileRecord, Long> {
     List<FileRecord> findByBizTypeAndBizIds(@Param("bizType") String bizType,
                                             @Param("bizIds") List<String> bizIds,
                                             @Param("status") String status);
+
+    @Query("SELECT fr FROM FileRecord fr WHERE fr.isDeleted = false " +
+           "AND fr.bizType = :bizType " +
+           "AND fr.bizId = :bizId " +
+           "AND fr.status = 'ACTIVE' " +
+           "ORDER BY fr.sortOrder, fr.createTime")
+    List<FileRecord> findByBizTypeAndBizId(@Param("bizType") String bizType, @Param("bizId") String bizId);
 }

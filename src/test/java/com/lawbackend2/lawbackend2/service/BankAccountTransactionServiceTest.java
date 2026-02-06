@@ -14,6 +14,7 @@ import com.lawbackend2.lawbackend2.service.impl.BankAccountTransactionServiceImp
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -97,7 +98,6 @@ class BankAccountTransactionServiceTest {
         createRequest.setBusinessType("收款");
         createRequest.setCounterpartyAccount("6222029876543210");
         createRequest.setCounterpartyName("李四");
-        createRequest.setBalanceAfter(new BigDecimal("1600000.00"));
         createRequest.setRemark("新测试备注");
         createRequest.setCaseId(1L);
 
@@ -110,16 +110,80 @@ class BankAccountTransactionServiceTest {
     }
 
     @Test
-    void testCreateTransaction_Success() {
+    void testCreateTransaction_Success_Inflow() {
         when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
         when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
 
+        BigDecimal initialBalance = mockAccount.getCurrentBalance();
         Long transactionId = transactionService.createTransaction(createRequest, 1L);
 
         assertNotNull(transactionId);
         assertEquals(1L, transactionId);
-        verify(bankAccountRepository, times(1)).findById(1L);
-        verify(transactionRepository, times(1)).save(any(BankAccountTransaction.class));
+
+        ArgumentCaptor<BankAccountTransaction> transactionCaptor = ArgumentCaptor.forClass(BankAccountTransaction.class);
+        verify(transactionRepository, times(1)).save(transactionCaptor.capture());
+        BankAccountTransaction savedTransaction = transactionCaptor.getValue();
+
+        BigDecimal expectedBalanceAfter = initialBalance.add(createRequest.getAmount());
+        assertEquals(expectedBalanceAfter, savedTransaction.getBalanceAfter());
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository, times(1)).save(accountCaptor.capture());
+        BankAccount savedAccount = accountCaptor.getValue();
+        assertEquals(expectedBalanceAfter, savedAccount.getCurrentBalance());
+    }
+
+    @Test
+    void testCreateTransaction_Success_Outflow() {
+        createRequest.setTransactionType("OUT");
+        createRequest.setAmount(new BigDecimal("500000.00"));
+
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
+
+        BigDecimal initialBalance = mockAccount.getCurrentBalance();
+        Long transactionId = transactionService.createTransaction(createRequest, 1L);
+
+        assertNotNull(transactionId);
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository, times(1)).save(accountCaptor.capture());
+        BankAccount savedAccount = accountCaptor.getValue();
+
+        BigDecimal expectedBalance = initialBalance.subtract(createRequest.getAmount());
+        assertEquals(expectedBalance, savedAccount.getCurrentBalance());
+    }
+
+    @Test
+    void testCreateTransaction_Outflow_InsufficientBalance() {
+        createRequest.setTransactionType("OUT");
+        createRequest.setAmount(new BigDecimal("2000000.00"));
+
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            transactionService.createTransaction(createRequest, 1L);
+        });
+
+        assertEquals("账户余额不足，无法完成流出交易", exception.getMessage());
+        verify(transactionRepository, never()).save(any(BankAccountTransaction.class));
+        verify(bankAccountRepository, never()).save(any(BankAccount.class));
+    }
+
+    @Test
+    void testCreateTransaction_InvalidTransactionType() {
+        createRequest.setTransactionType("INVALID");
+
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            transactionService.createTransaction(createRequest, 1L);
+        });
+
+        assertEquals("无效的交易类型，必须是 IN(流入) 或 OUT(流出)", exception.getMessage());
+        verify(transactionRepository, never()).save(any(BankAccountTransaction.class));
     }
 
     @Test
@@ -140,11 +204,30 @@ class BankAccountTransactionServiceTest {
         createRequest.setCaseId(null);
         when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
         when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
 
         Long transactionId = transactionService.createTransaction(createRequest, 1L);
 
         assertNotNull(transactionId);
         verify(transactionRepository, times(1)).save(any(BankAccountTransaction.class));
+        verify(bankAccountRepository, times(1)).save(any(BankAccount.class));
+    }
+
+    @Test
+    void testCreateTransaction_WithNullBalance() {
+        mockAccount.setCurrentBalance(null);
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
+
+        Long transactionId = transactionService.createTransaction(createRequest, 1L);
+
+        assertNotNull(transactionId);
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository, times(1)).save(accountCaptor.capture());
+        BankAccount savedAccount = accountCaptor.getValue();
+        assertEquals(createRequest.getAmount(), savedAccount.getCurrentBalance());
     }
 
     @Test
@@ -160,7 +243,7 @@ class BankAccountTransactionServiceTest {
         Page<BankAccountTransactionResponse> page = new PageImpl<>(responseList, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "transactionDate", "createTime")), 1L);
 
         lenient().when(transactionRepository.findTransactionsWithDetails(
-            anyLong(), anyString(), anyString(), any(LocalDate.class), any(LocalDate.class), anyLong(), any(Pageable.class)
+            any(), any(), any(), any(), any(), any(), any(Pageable.class)
         )).thenReturn(page);
 
         com.lawbackend2.lawbackend2.common.PageResult<BankAccountTransactionResponse> result =
@@ -169,10 +252,10 @@ class BankAccountTransactionServiceTest {
         assertNotNull(result);
         assertNotNull(result.getTotal());
         assertNotNull(result.getList());
-        assertEquals(1, result.getTotal());
+        assertEquals(1L, result.getTotal());
         assertEquals(1, result.getList().size());
         verify(transactionRepository, times(1)).findTransactionsWithDetails(
-            anyLong(), anyString(), anyString(), any(LocalDate.class), any(LocalDate.class), anyLong(), any(Pageable.class)
+            any(), any(), any(), any(), any(), any(), any(Pageable.class)
         );
     }
 
@@ -220,17 +303,101 @@ class BankAccountTransactionServiceTest {
     }
 
     @Test
-    void testUpdateTransaction_Success() {
+    void testUpdateTransaction_Success_NoBalanceChange() {
+        updateRequest.setTransactionType(null);
+        updateRequest.setAmount(null);
+
         when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
         when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
         when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
         when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
+
+        BigDecimal initialBalance = mockAccount.getCurrentBalance();
 
         transactionService.updateTransaction(1L, updateRequest, 1L);
 
         verify(transactionRepository, times(1)).findById(1L);
         verify(bankAccountRepository, times(1)).findById(1L);
         verify(transactionRepository, times(1)).save(any(BankAccountTransaction.class));
+        verify(bankAccountRepository, never()).save(any(BankAccount.class));
+
+        assertEquals(initialBalance, mockAccount.getCurrentBalance());
+    }
+
+    @Test
+    void testUpdateTransaction_Success_AmountChanged() {
+        mockTransaction.setTransactionType("IN");
+        mockTransaction.setAmount(new BigDecimal("100000.00"));
+        mockAccount.setCurrentBalance(new BigDecimal("1100000.00"));
+
+        updateRequest.setAmount(new BigDecimal("200000.00"));
+
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
+        when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
+
+        transactionService.updateTransaction(1L, updateRequest, 1L);
+
+        verify(transactionRepository, times(1)).save(any(BankAccountTransaction.class));
+        verify(bankAccountRepository, times(1)).save(any(BankAccount.class));
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository).save(accountCaptor.capture());
+
+        BigDecimal expectedBalance = new BigDecimal("1100000.00")
+            .subtract(new BigDecimal("100000.00"))
+            .add(new BigDecimal("200000.00"));
+        assertEquals(expectedBalance, accountCaptor.getValue().getCurrentBalance());
+    }
+
+    @Test
+    void testUpdateTransaction_Success_TypeChanged() {
+        mockTransaction.setTransactionType("IN");
+        mockTransaction.setAmount(new BigDecimal("100000.00"));
+        mockAccount.setCurrentBalance(new BigDecimal("1100000.00"));
+
+        updateRequest.setTransactionType("OUT");
+        updateRequest.setAmount(new BigDecimal("100000.00"));
+
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
+        when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
+
+        transactionService.updateTransaction(1L, updateRequest, 1L);
+
+        verify(bankAccountRepository, times(1)).save(any(BankAccount.class));
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository).save(accountCaptor.capture());
+
+        BigDecimal expectedBalance = new BigDecimal("1100000.00")
+            .subtract(new BigDecimal("100000.00"))
+            .subtract(new BigDecimal("100000.00"));
+        assertEquals(expectedBalance, accountCaptor.getValue().getCurrentBalance());
+    }
+
+    @Test
+    void testUpdateTransaction_Outflow_InsufficientBalance() {
+        mockTransaction.setTransactionType("IN");
+        mockTransaction.setAmount(new BigDecimal("100000.00"));
+        mockAccount.setCurrentBalance(new BigDecimal("50000.00"));
+
+        updateRequest.setTransactionType("OUT");
+
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            transactionService.updateTransaction(1L, updateRequest, 1L);
+        });
+
+        assertEquals("账户余额不足，无法完成流出交易", exception.getMessage());
+        verify(bankAccountRepository, never()).save(any(BankAccount.class));
     }
 
     @Test
@@ -247,40 +414,109 @@ class BankAccountTransactionServiceTest {
     }
 
     @Test
-    void testUpdateTransaction_WithNullFields() {
-        BankAccountTransactionUpdateRequest nullRequest = new BankAccountTransactionUpdateRequest();
+    void testUpdateTransaction_AccountNotFound() {
         when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
-        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
-        when(transactionRepository.save(any(BankAccountTransaction.class))).thenReturn(mockTransaction);
-        when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.empty());
 
-        transactionService.updateTransaction(1L, nullRequest, 1L);
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            transactionService.updateTransaction(1L, updateRequest, 1L);
+        });
 
-        verify(transactionRepository, times(1)).findById(1L);
-        verify(transactionRepository, times(1)).save(any(BankAccountTransaction.class));
+        assertEquals("关联银行账户不存在", exception.getMessage());
     }
 
     @Test
-    void testDeleteTransaction_Success() {
-        when(transactionRepository.existsById(anyLong())).thenReturn(true);
+    void testDeleteTransaction_Success_Inflow() {
+        mockTransaction.setTransactionType("IN");
+        mockTransaction.setAmount(new BigDecimal("100000.00"));
+        mockAccount.setCurrentBalance(new BigDecimal("1100000.00"));
+
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
         doNothing().when(transactionRepository).deleteById(anyLong());
+        when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
 
-        transactionService.deleteTransaction(1L);
+        transactionService.deleteTransaction(1L, 1L);
 
-        verify(transactionRepository, times(1)).existsById(1L);
+        verify(transactionRepository, times(1)).findById(1L);
+        verify(bankAccountRepository, times(1)).findById(1L);
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository).save(accountCaptor.capture());
+
+        BigDecimal expectedBalance = new BigDecimal("1100000.00").subtract(new BigDecimal("100000.00"));
+        assertEquals(expectedBalance, accountCaptor.getValue().getCurrentBalance());
+
+        verify(transactionRepository, times(1)).deleteById(1L);
+    }
+
+    @Test
+    void testDeleteTransaction_Success_Outflow() {
+        mockTransaction.setTransactionType("OUT");
+        mockTransaction.setAmount(new BigDecimal("100000.00"));
+        mockAccount.setCurrentBalance(new BigDecimal("900000.00"));
+
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
+        doNothing().when(transactionRepository).deleteById(anyLong());
+        when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
+
+        transactionService.deleteTransaction(1L, 1L);
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository).save(accountCaptor.capture());
+
+        BigDecimal expectedBalance = new BigDecimal("900000.00").add(new BigDecimal("100000.00"));
+        assertEquals(expectedBalance, accountCaptor.getValue().getCurrentBalance());
+
         verify(transactionRepository, times(1)).deleteById(1L);
     }
 
     @Test
     void testDeleteTransaction_TransactionNotFound() {
-        when(transactionRepository.existsById(anyLong())).thenReturn(false);
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.empty());
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
-            transactionService.deleteTransaction(1L);
+            transactionService.deleteTransaction(1L, 1L);
         });
 
         assertEquals("交易记录不存在", exception.getMessage());
-        verify(transactionRepository, times(1)).existsById(1L);
+        verify(transactionRepository, times(1)).findById(1L);
         verify(transactionRepository, never()).deleteById(anyLong());
+    }
+
+    @Test
+    void testDeleteTransaction_AccountNotFound() {
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.empty());
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            transactionService.deleteTransaction(1L, 1L);
+        });
+
+        assertEquals("关联银行账户不存在", exception.getMessage());
+    }
+
+    @Test
+    void testDeleteTransaction_WithNullBalance() {
+        mockTransaction.setTransactionType("IN");
+        mockTransaction.setAmount(new BigDecimal("100000.00"));
+        mockAccount.setCurrentBalance(null);
+
+        when(transactionRepository.findById(anyLong())).thenReturn(Optional.of(mockTransaction));
+        when(bankAccountRepository.findById(anyLong())).thenReturn(Optional.of(mockAccount));
+        when(bankAccountRepository.save(any(BankAccount.class))).thenReturn(mockAccount);
+        doNothing().when(transactionRepository).deleteById(anyLong());
+        when(userRoleRepository.findRoleIdsByUserId(anyLong())).thenReturn(Arrays.asList(1L));
+
+        transactionService.deleteTransaction(1L, 1L);
+
+        ArgumentCaptor<BankAccount> accountCaptor = ArgumentCaptor.forClass(BankAccount.class);
+        verify(bankAccountRepository).save(accountCaptor.capture());
+
+        assertEquals(new BigDecimal("-100000.00"), accountCaptor.getValue().getCurrentBalance());
+        verify(transactionRepository, times(1)).deleteById(1L);
     }
 }

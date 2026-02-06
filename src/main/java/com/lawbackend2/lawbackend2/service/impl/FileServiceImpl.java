@@ -1,9 +1,13 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.common.PageResult;
+import com.lawbackend2.lawbackend2.constant.VideoConstants;
+import com.lawbackend2.lawbackend2.dto.FileRecordInfo;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.FileRecordRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.FileService;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,18 +31,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class FileServiceImpl implements FileService {
 
     private final FileRecordRepository fileRecordRepository;
+    private final UserRepository userRepository;
 
     @Value("${file.upload.path:C:\\law-upload}")
     private String uploadPath;
 
-    public FileServiceImpl(FileRecordRepository fileRecordRepository) {
+    public FileServiceImpl(FileRecordRepository fileRecordRepository, UserRepository userRepository) {
         this.fileRecordRepository = fileRecordRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -84,6 +91,9 @@ public class FileServiceImpl implements FileService {
             fileRecord.setFileStatus(1);
             fileRecord.setStatus("ACTIVE");
             fileRecord.setCreateUserId(currentUserId);
+            fileRecord.setUpdateUserId(currentUserId);
+            fileRecord.setCreateTime(now);
+            fileRecord.setUpdateTime(now);
 
             return fileRecordRepository.save(fileRecord);
         } catch (IOException e) {
@@ -169,6 +179,27 @@ public class FileServiceImpl implements FileService {
 
         FileRecord fileRecord = getFileInfo(fileId);
 
+        return renameFileInternal(fileRecord, newFileName);
+    }
+
+    @Override
+    public FileRecord renameFileByStoredName(String storedFileName, String newFileName) {
+        if (storedFileName == null || storedFileName.trim().isEmpty()) {
+            throw new BusinessException("存储文件名不能为空");
+        }
+        if (newFileName == null || newFileName.trim().isEmpty()) {
+            throw new BusinessException("新文件名不能为空");
+        }
+
+        FileRecord fileRecord = fileRecordRepository.findByStoredFileName(storedFileName);
+        if (fileRecord == null) {
+            throw new BusinessException("文件不存在");
+        }
+
+        return renameFileInternal(fileRecord, newFileName);
+    }
+
+    private FileRecord renameFileInternal(FileRecord fileRecord, String newFileName) {
         String oldFilePath = fileRecord.getFilePath();
         Path parentPath = Paths.get(oldFilePath).getParent();
         String directoryPath = parentPath.toString();
@@ -271,12 +302,77 @@ public class FileServiceImpl implements FileService {
             mimeType = "application/octet-stream";
         }
 
-        if (!mimeType.startsWith("image/") && !mimeType.startsWith("text/") && 
-            !mimeType.equals("application/pdf")) {
+        if (!mimeType.startsWith("image/") && !mimeType.startsWith("text/") &&
+            !mimeType.equals("application/pdf") && !mimeType.startsWith("video/")) {
             throw new BusinessException("该文件类型不支持预览");
         }
 
         return fileRecord;
+    }
+
+    @Override
+    public FileRecord uploadVideo(MultipartFile file, String bizType, String bizId) {
+        if (file.isEmpty()) {
+            throw new BusinessException("视频文件不能为空");
+        }
+
+        long fileSize = file.getSize();
+        if (fileSize > VideoConstants.MAX_VIDEO_SIZE) {
+            throw new BusinessException("视频文件大小不能超过500MB");
+        }
+
+        String originalFileName = file.getOriginalFilename();
+        String fileExtension = getFileExtension(originalFileName);
+        String contentType = file.getContentType();
+
+        if (!VideoConstants.isVideoFile(contentType, fileExtension)) {
+            throw new BusinessException("不支持的视频格式，仅支持: MP4, AVI, MOV, WMV, FLV, MKV, WEBM, MPEG, 3GP");
+        }
+
+        String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        String modulePath = bizType != null ? bizType : VideoConstants.BIZ_TYPE_VIDEO;
+        String datePath = Paths.get(uploadPath, modulePath, dateStr).toString();
+
+        try {
+            Files.createDirectories(Paths.get(datePath));
+
+            String storedFileName = generateUniqueFileName(datePath, originalFileName);
+            Path filePath = Paths.get(datePath, storedFileName);
+
+            file.transferTo(filePath.toFile());
+
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            LocalDateTime now = LocalDateTime.now();
+
+            FileRecord fileRecord = new FileRecord();
+            fileRecord.setOriginalFileName(originalFileName);
+            fileRecord.setStoredFileName(storedFileName);
+            fileRecord.setFilePath(filePath.toString());
+            fileRecord.setFileSize(fileSize);
+            fileRecord.setFileExtension(fileExtension);
+            fileRecord.setMimeType(contentType);
+            fileRecord.setBizType(bizType);
+            fileRecord.setBizId(bizId);
+            fileRecord.setUploadTime(now);
+            fileRecord.setUploadUserId(currentUserId);
+            fileRecord.setFileStatus(1);
+            fileRecord.setStatus("ACTIVE");
+            fileRecord.setVideoStatus(VideoConstants.VIDEO_STATUS_PENDING);
+            fileRecord.setCreateUserId(currentUserId);
+            fileRecord.setUpdateUserId(currentUserId);
+            fileRecord.setCreateTime(now);
+            fileRecord.setUpdateTime(now);
+
+            return fileRecordRepository.save(fileRecord);
+        } catch (IOException e) {
+            throw new BusinessException("视频上传失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public boolean isVideoFile(Long fileId) {
+        FileRecord fileRecord = getFileInfo(fileId);
+        return VideoConstants.isVideoFile(fileRecord.getMimeType(), fileRecord.getFileExtension());
     }
 
     private String getFileExtension(String fileName) {
@@ -354,5 +450,49 @@ public class FileServiceImpl implements FileService {
         Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "uploadTime"));
         Page<FileRecord> page = fileRecordRepository.findByConditions(bizType, bizId, null, pageable);
         return page.getContent();
+    }
+
+    @Override
+    public List<FileRecordInfo> getAllFilesInfoByBizTypeAndBizId(String bizType, String bizId) {
+        if (bizType == null || bizType.trim().isEmpty()) {
+            throw new BusinessException("业务类型不能为空");
+        }
+        if (bizId == null || bizId.trim().isEmpty()) {
+            throw new BusinessException("业务ID不能为空");
+        }
+
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "uploadTime"));
+        Page<FileRecord> page = fileRecordRepository.findByConditions(bizType, bizId, null, pageable);
+        List<FileRecord> files = page.getContent();
+
+        // Collect all uploadUserIds
+        List<Long> userIds = files.stream()
+                .map(FileRecord::getUploadUserId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Get users from repository
+        Map<Long, String> userIdToNameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            List<User> users = userRepository.findAllById(userIds);
+            users.stream()
+                    .forEach(user -> userIdToNameMap.put(user.getId(), user.getRealName()));
+        }
+
+        // Convert to FileRecordInfo with uploadUserName
+        return files.stream().map(file -> {
+            FileRecordInfo info = new FileRecordInfo();
+            info.setId(file.getId());
+            info.setOriginalFileName(file.getOriginalFileName());
+            info.setFilePath(file.getFilePath());
+            info.setFileSize(file.getFileSize());
+            info.setFileExtension(file.getFileExtension());
+            info.setMimeType(file.getMimeType());
+            info.setUploadTime(file.getUploadTime());
+            info.setUploadUserName(userIdToNameMap.getOrDefault(file.getUploadUserId(), ""));
+            info.setSortOrder(file.getSortOrder());
+            return info;
+        }).collect(Collectors.toList());
     }
 }

@@ -9,6 +9,7 @@ import com.lawbackend2.lawbackend2.dto.ExcelImportResponse;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
 import com.lawbackend2.lawbackend2.service.ClaimRegistrationService;
 import com.lawbackend2.lawbackend2.service.ExcelParseService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -92,7 +93,8 @@ public class ClaimRegistrationController {
     @Operation(summary = "删除债权申报")
     @DeleteMapping("/{claimId}")
     public Result<Void> deleteClaim(@Parameter(description = "债权申报ID") @PathVariable Long claimId) {
-        claimRegistrationService.deleteClaim(claimId);
+        Long userId = getCurrentUserId();
+        claimRegistrationService.deleteClaim(claimId, userId);
         return Result.success();
     }
 
@@ -103,6 +105,16 @@ public class ClaimRegistrationController {
             @Parameter(description = "状态") @RequestParam String status) {
         Long userId = getCurrentUserId();
         claimRegistrationService.updateRegistrationStatus(claimId, status, userId);
+        return Result.success();
+    }
+
+    @Operation(summary = "驳回债权申报")
+    @PutMapping("/{claimId}/reject")
+    public Result<Void> rejectClaim(
+            @Parameter(description = "债权申报ID") @PathVariable Long claimId,
+            @Parameter(description = "驳回理由") @RequestParam String rejectReason) {
+        Long userId = getCurrentUserId();
+        claimRegistrationService.rejectClaim(claimId, rejectReason, userId);
         return Result.success();
     }
 
@@ -193,6 +205,6 @@ public class ClaimRegistrationController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        return SecurityUtil.getCurrentUserId();
     }
 }

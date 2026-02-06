@@ -49,6 +49,8 @@ public interface DocumentDeliveryService {
 
     PageResult<DocumentDelivery> getAllDocumentDeliveryList(Integer pageNum, Integer pageSize, String documentType, String status, String caseNumber, String sendStatus);
 
+    PageResult<DocumentDelivery> getAllDocumentDeliveryWithApprovalIdList(Integer pageNum, Integer pageSize, String documentType, String status, String caseNumber, String sendStatus);
+
     void updateStatusAndRemark(Long deliveryId, String status, String remark);
 
     DocumentDeliveryWithFilesResponse updateDocumentDeliveryWithFiles(Long deliveryId, DocumentDeliveryWithFilesCreateRequest request);

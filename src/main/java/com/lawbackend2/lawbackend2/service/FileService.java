@@ -1,6 +1,7 @@
 package com.lawbackend2.lawbackend2.service;
 
 import com.lawbackend2.lawbackend2.common.PageResult;
+import com.lawbackend2.lawbackend2.dto.FileRecordInfo;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +22,8 @@ public interface FileService {
 
     FileRecord renameFile(Long fileId, String newFileName);
 
+    FileRecord renameFileByStoredName(String storedFileName, String newFileName);
+
     FileRecord updateFileStatus(Long fileId, String status);
 
     void updateFilesStatus(List<Long> fileIds, String status);
@@ -36,4 +39,10 @@ public interface FileService {
     void deleteCaseTaskFiles(List<Long> fileIds, Long caseId, Integer stageNum, String taskCode);
 
     List<FileRecord> getAllFilesByBizTypeAndBizId(String bizType, String bizId);
+
+    List<FileRecordInfo> getAllFilesInfoByBizTypeAndBizId(String bizType, String bizId);
+
+    FileRecord uploadVideo(MultipartFile file, String bizType, String bizId);
+
+    boolean isVideoFile(Long fileId);
 }

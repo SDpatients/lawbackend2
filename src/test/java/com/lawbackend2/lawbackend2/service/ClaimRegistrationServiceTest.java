@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.util.Collections;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.mock.web.MockMultipartFile;
@@ -139,7 +140,7 @@ class ClaimRegistrationServiceTest {
     void testGetClaimList() {
         List<ClaimRegistration> claims = Arrays.asList(mockClaim);
         Page<ClaimRegistration> page = new PageImpl<>(claims);
-        when(claimRegistrationRepository.findByCaseId(eq(1L), any(PageRequest.class)))
+        when(claimRegistrationRepository.findByCaseIdAndIsDeletedFalse(eq(1L), any(Pageable.class)))
                 .thenReturn(page);
 
         List<ClaimRegistration> result = claimRegistrationService.getClaimList(1, 10, 1L, null);
@@ -169,7 +170,7 @@ class ClaimRegistrationServiceTest {
         when(claimRegistrationRepository.findById(1L)).thenReturn(Optional.of(mockClaim));
         when(claimRegistrationRepository.save(any(ClaimRegistration.class))).thenReturn(mockClaim);
 
-        claimRegistrationService.deleteClaim(1L);
+        claimRegistrationService.deleteClaim(1L, 1L);
 
         verify(claimRegistrationRepository, times(1)).save(any(ClaimRegistration.class));
         assertTrue(mockClaim.getIsDeleted());
@@ -373,7 +374,7 @@ class ClaimRegistrationServiceTest {
     void testUpdateRegistrationStatus_ToReviewing_CreateReviewRecord() {
         when(claimRegistrationRepository.findById(1L)).thenReturn(Optional.of(mockClaim));
         when(claimRegistrationRepository.save(any(ClaimRegistration.class))).thenReturn(mockClaim);
-        when(claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(1L))
+        when(claimReviewRepository.findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(1L))
                 .thenReturn(Optional.empty());
 
         claimRegistrationService.updateRegistrationStatus(1L, "REVIEWING", 2L);
@@ -388,7 +389,7 @@ class ClaimRegistrationServiceTest {
     void testUpdateRegistrationStatus_ToConfirming_CreateConfirmationRecord() {
         when(claimRegistrationRepository.findById(1L)).thenReturn(Optional.of(mockClaim));
         when(claimRegistrationRepository.save(any(ClaimRegistration.class))).thenReturn(mockClaim);
-        when(claimConfirmationRepository.findByClaimRegistrationId(1L))
+        when(claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(1L))
                 .thenReturn(Collections.emptyList());
 
         claimRegistrationService.updateRegistrationStatus(1L, "CONFIRMING", 2L);
@@ -409,7 +410,7 @@ class ClaimRegistrationServiceTest {
         mockReview.setClaimRegistrationId(1L);
         mockReview.setReviewStatus("IN_PROGRESS");
 
-        when(claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(1L))
+        when(claimReviewRepository.findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(1L))
                 .thenReturn(Optional.of(mockReview));
 
         claimRegistrationService.updateRegistrationStatus(1L, "REVIEW_COMPLETED", 2L);
@@ -431,7 +432,7 @@ class ClaimRegistrationServiceTest {
         mockConfirmation.setClaimRegistrationId(1L);
         mockConfirmation.setConfirmationStatus("IN_PROGRESS");
 
-        when(claimConfirmationRepository.findByClaimRegistrationId(1L))
+        when(claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(1L))
                 .thenReturn(Collections.singletonList(mockConfirmation));
 
         claimRegistrationService.updateRegistrationStatus(1L, "CONFIRMED", 2L);
@@ -453,7 +454,7 @@ class ClaimRegistrationServiceTest {
         mockReview.setClaimRegistrationId(1L);
         mockReview.setReviewStatus("PENDING");
 
-        when(claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(1L))
+        when(claimReviewRepository.findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(1L))
                 .thenReturn(Optional.of(mockReview));
 
         claimRegistrationService.updateRegistrationStatus(1L, "REVIEWING", 2L);

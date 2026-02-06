@@ -69,4 +69,19 @@ public class FileRecord extends BaseEntity {
 
     @Column(name = "sort_order")
     private Integer sortOrder;
+
+    @Column(name = "video_duration")
+    private Long videoDuration;
+
+    @Column(name = "video_width")
+    private Integer videoWidth;
+
+    @Column(name = "video_height")
+    private Integer videoHeight;
+
+    @Column(name = "thumbnail_path", length = 500)
+    private String thumbnailPath;
+
+    @Column(name = "video_status", length = 20)
+    private String videoStatus;
 }

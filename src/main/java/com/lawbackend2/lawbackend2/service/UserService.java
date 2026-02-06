@@ -25,6 +25,8 @@ public interface UserService {
 
     void changePassword(Long userId, String oldPassword, String newPassword);
 
+    void forgotPassword(String mobile, String smsCode, String newPassword);
+
     void updateUserStatus(Long userId, String status);
 
     void deleteUser(Long userId);

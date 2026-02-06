@@ -155,7 +155,7 @@ public class ArchiveController {
             HttpServletResponse response) throws IOException {
 
         var fileRecord = archiveService.getArchiveRecord(fileId);
-        java.io.File file = new java.io.File(fileRecord.getFile().getOriginalFileName());
+        java.io.File file = new java.io.File(fileRecord.getFile().getFilePath());
 
         if (!file.exists()) {
             throw new RuntimeException("文件不存在");
@@ -183,7 +183,7 @@ public class ArchiveController {
             @Parameter(description = "文件ID") @PathVariable Long fileId) throws IOException {
 
         var fileRecord = archiveService.getArchiveRecord(fileId);
-        java.io.File file = new java.io.File(fileRecord.getFile().getOriginalFileName());
+        java.io.File file = new java.io.File(fileRecord.getFile().getFilePath());
 
         if (!file.exists()) {
             throw new RuntimeException("文件不存在");

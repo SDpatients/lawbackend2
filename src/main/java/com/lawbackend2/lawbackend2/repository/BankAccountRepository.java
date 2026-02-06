@@ -43,12 +43,12 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long>,
            "AND (:status IS NULL OR ba.status = :status) " +
            "AND (:accountName IS NULL OR ba.accountName LIKE %:accountName%) " +
            "AND (:caseId IS NULL OR ba.caseId = :caseId) " +
-           "AND (:userId IS NULL OR ba.createUserId = :userId OR :isAdmin = true)")
+           "AND (:accessibleCaseIds IS NULL OR ba.caseId IN :accessibleCaseIds OR :isAdmin = true)")
     Page<BankAccountResponse> findBankAccountsWithCaseInfo(@Param("accountType") String accountType,
                                                             @Param("status") String status,
                                                             @Param("accountName") String accountName,
                                                             @Param("caseId") Long caseId,
-                                                            @Param("userId") Long userId,
+                                                            @Param("accessibleCaseIds") java.util.List<Long> accessibleCaseIds,
                                                             @Param("isAdmin") Boolean isAdmin,
                                                             Pageable pageable);
 }

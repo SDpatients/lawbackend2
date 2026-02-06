@@ -3,10 +3,12 @@ package com.lawbackend2.lawbackend2.util;
 import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.entity.UserRole;
+import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.exception.PermissionDeniedException;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
+import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -20,11 +22,13 @@ public class StatisticsPermissionUtil {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
+    private final WorkTeamMemberRepository workTeamMemberRepository;
 
-    public StatisticsPermissionUtil(UserRepository userRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository) {
+    public StatisticsPermissionUtil(UserRepository userRepository, UserRoleRepository userRoleRepository, RoleRepository roleRepository, WorkTeamMemberRepository workTeamMemberRepository) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
+        this.workTeamMemberRepository = workTeamMemberRepository;
     }
 
     public Long getCurrentUserId() {
@@ -85,6 +89,12 @@ public class StatisticsPermissionUtil {
             throw new PermissionDeniedException("用户不存在");
         }
 
+        // 检查是否是工作团队成员
+        List<WorkTeamMember> teamMembers = workTeamMemberRepository.findByCaseIdAndUserId(caseId, userId);
+        if (!teamMembers.isEmpty()) {
+            return;
+        }
+
         throw new PermissionDeniedException("您没有权限访问该案件的统计数据");
     }
 
@@ -99,9 +109,18 @@ public class StatisticsPermissionUtil {
             throw new PermissionDeniedException("用户不存在");
         }
 
-        if (!userId.equals(caseCreateUserId)) {
-            throw new PermissionDeniedException("您没有权限访问该案件的统计数据");
+        // 检查是否是案件创建者
+        if (userId.equals(caseCreateUserId)) {
+            return;
         }
+
+        // 检查是否是工作团队成员
+        List<WorkTeamMember> teamMembers = workTeamMemberRepository.findByCaseIdAndUserId(caseId, userId);
+        if (!teamMembers.isEmpty()) {
+            return;
+        }
+
+        throw new PermissionDeniedException("您没有权限访问该案件的统计数据");
     }
 
     public Long getCurrentUserCaseId(Long caseId) {
@@ -129,6 +148,9 @@ public class StatisticsPermissionUtil {
             throw new PermissionDeniedException("用户不存在");
         }
 
-        return List.of(userId);
+        // 获取用户作为工作团队成员的案件ID列表
+        List<Long> teamCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+        
+        return teamCaseIds;
     }
 }

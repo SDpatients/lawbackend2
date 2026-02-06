@@ -15,6 +15,7 @@ import com.lawbackend2.lawbackend2.repository.BankAccountRepository;
 import com.lawbackend2.lawbackend2.repository.BankAccountTransactionRepository;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
+import com.lawbackend2.lawbackend2.repository.WorkTeamMemberRepository;
 import com.lawbackend2.lawbackend2.service.BankAccountService;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import org.springframework.beans.BeanUtils;
@@ -39,14 +40,16 @@ public class BankAccountServiceImpl implements BankAccountService {
     private final com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
+    private final WorkTeamMemberRepository workTeamMemberRepository;
 
     @Autowired
-    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, BankAccountTransactionRepository transactionRepository, com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil, UserRoleRepository userRoleRepository, RoleRepository roleRepository) {
+    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, BankAccountTransactionRepository transactionRepository, com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil, UserRoleRepository userRoleRepository, RoleRepository roleRepository, WorkTeamMemberRepository workTeamMemberRepository) {
         this.bankAccountRepository = bankAccountRepository;
         this.transactionRepository = transactionRepository;
         this.passwordUtil = passwordUtil;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
+        this.workTeamMemberRepository = workTeamMemberRepository;
     }
 
     @Override
@@ -71,8 +74,15 @@ public class BankAccountServiceImpl implements BankAccountService {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         
         boolean isAdmin = isAdminOrSuperAdmin(userId);
+        
+        // 当用户不是管理员时，获取该用户所在工作团队对应的所有 caseId
+        List<Long> accessibleCaseIds = null;
+        if (!isAdmin) {
+            accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+        }
+        
         Page<BankAccountResponse> page = bankAccountRepository.findBankAccountsWithCaseInfo(
-            accountType, status, accountName, caseId, isAdmin ? null : userId, isAdmin, pageable);
+            accountType, status, accountName, caseId, accessibleCaseIds, isAdmin, pageable);
 
         PageResult<BankAccountResponse> result = new PageResult<>();
         result.setTotal(page.getTotalElements());
@@ -159,6 +169,14 @@ public class BankAccountServiceImpl implements BankAccountService {
         
         if (bankAccount.getCreateUserId().equals(userId)) {
             return;
+        }
+        
+        // 检查用户是否是该银行账户所属案件的工作团队成员
+        if (bankAccount.getCaseId() != null) {
+            List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+            if (accessibleCaseIds.contains(bankAccount.getCaseId())) {
+                return;
+            }
         }
         
         throw new BusinessException("无权访问该银行账户");

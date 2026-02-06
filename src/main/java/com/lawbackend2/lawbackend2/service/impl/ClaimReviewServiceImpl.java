@@ -1,11 +1,15 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawbackend2.lawbackend2.dto.ClaimReviewCreateRequest;
 import com.lawbackend2.lawbackend2.dto.ClaimReviewUpdateRequest;
+import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
 import com.lawbackend2.lawbackend2.entity.ClaimReview;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
@@ -30,18 +34,24 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
 
     private final ClaimReviewRepository claimReviewRepository;
     private final ClaimRegistrationRepository claimRegistrationRepository;
+    private final ClaimConfirmationRepository claimConfirmationRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public ClaimReviewServiceImpl(ClaimReviewRepository claimReviewRepository,
                                 ClaimRegistrationRepository claimRegistrationRepository,
+                                ClaimConfirmationRepository claimConfirmationRepository,
                                 UserRepository userRepository,
-                                NotificationService notificationService) {
+                                NotificationService notificationService,
+                                ObjectMapper objectMapper) {
         this.claimReviewRepository = claimReviewRepository;
         this.claimRegistrationRepository = claimRegistrationRepository;
+        this.claimConfirmationRepository = claimConfirmationRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -65,6 +75,17 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
         if (review.getReviewDate() == null) {
             review.setReviewDate(LocalDateTime.now());
         }
+        
+        // 处理reviewAttachments（List<String>转JSON字符串）
+        if (request.getReviewAttachments() != null) {
+            try {
+                String attachmentsJson = objectMapper.writeValueAsString(request.getReviewAttachments());
+                review.setReviewAttachments(attachmentsJson);
+            } catch (JsonProcessingException e) {
+                log.error("Failed to convert reviewAttachments to JSON", e);
+                throw new BusinessException("附件处理失败");
+            }
+        }
 
         ClaimReview saved = claimReviewRepository.save(review);
         log.info("债权审查创建成功, reviewId: {}, claimRegistrationId: {}, reviewRound: {}", 
@@ -85,23 +106,64 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
 
     @Override
     public List<ClaimReview> getReviewListByCaseId(Long caseId, Integer pageNum, Integer pageSize, String reviewStatus) {
-        Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "reviewDate"));
-
-        if (reviewStatus == null || reviewStatus.trim().isEmpty()) {
-            reviewStatus = "IN_PROGRESS";
+        if (reviewStatus != null && reviewStatus.trim().isEmpty()) {
+            reviewStatus = null;
         }
 
-        Page<ClaimReview> page;
+        // 直接使用带条件的查询，避免获取所有记录后再过滤
+        List<ClaimReview> allReviews;
         if (caseId != null && reviewStatus != null) {
-            page = claimReviewRepository.findByCaseIdAndReviewStatus(caseId, reviewStatus, pageable);
+            // 当明确指定了状态时，查询该状态的记录（但排除CONFIRMED）
+            if (!"CONFIRMED".equals(reviewStatus)) {
+                allReviews = claimReviewRepository.findByCaseIdAndReviewStatus(caseId, reviewStatus);
+            } else {
+                // 如果指定的是CONFIRMED，返回空列表
+                allReviews = java.util.Collections.emptyList();
+            }
         } else if (caseId != null) {
-            page = claimReviewRepository.findByCaseId(caseId, pageable);
+            // 当没有指定状态时，查询所有状态的记录（但排除CONFIRMED）
+            allReviews = claimReviewRepository.findByCaseIdAndReviewStatusNot(caseId, "CONFIRMED");
         } else if (reviewStatus != null) {
-            page = claimReviewRepository.findByReviewStatus(reviewStatus, pageable);
+            // 当明确指定了状态时，查询该状态的记录（但排除CONFIRMED）
+            if (!"CONFIRMED".equals(reviewStatus)) {
+                allReviews = claimReviewRepository.findByReviewStatus(reviewStatus);
+            } else {
+                // 如果指定的是CONFIRMED，返回空列表
+                allReviews = java.util.Collections.emptyList();
+            }
         } else {
-            page = claimReviewRepository.findAll(pageable);
+            // 当没有指定状态时，查询所有状态的记录（但排除CONFIRMED）
+            allReviews = claimReviewRepository.findByReviewStatusNot("CONFIRMED");
         }
-        return page.getContent();
+
+        // 当明确指定状态为COMPLETED时，进一步过滤出registration_status=REVIEW_COMPLETED的记录
+        if ("COMPLETED".equals(reviewStatus)) {
+            allReviews = allReviews.stream()
+                .filter(review -> {
+                    ClaimRegistration registration = claimRegistrationRepository.findById(review.getClaimRegistrationId()).orElse(null);
+                    return registration != null && "REVIEW_COMPLETED".equals(registration.getRegistrationStatus());
+                })
+                .collect(java.util.stream.Collectors.toList());
+        }
+
+        // 对结果进行排序和分页（处理null值）
+        allReviews.sort((r1, r2) -> {
+            if (r1.getReviewDate() == null && r2.getReviewDate() == null) {
+                return 0;
+            } else if (r1.getReviewDate() == null) {
+                return 1; // 把null值放在后面
+            } else if (r2.getReviewDate() == null) {
+                return -1; // 把非null值放在前面
+            } else {
+                return r2.getReviewDate().compareTo(r1.getReviewDate());
+            }
+        });
+        int start = (pageNum - 1) * pageSize;
+        int end = Math.min(start + pageSize, allReviews.size());
+        if (start >= allReviews.size()) {
+            return java.util.Collections.emptyList();
+        }
+        return allReviews.subList(start, end);
     }
 
     @Override
@@ -209,7 +271,13 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
             review.setReviewReport(request.getReviewReport());
         }
         if (request.getReviewAttachments() != null) {
-            review.setReviewAttachments(request.getReviewAttachments());
+            try {
+                String attachmentsJson = objectMapper.writeValueAsString(request.getReviewAttachments());
+                review.setReviewAttachments(attachmentsJson);
+            } catch (JsonProcessingException e) {
+                log.error("Failed to convert reviewAttachments to JSON", e);
+                throw new BusinessException("附件处理失败");
+            }
         }
         if (request.getReviewStatus() != null) {
             review.setReviewStatus(request.getReviewStatus());
@@ -223,9 +291,22 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteReview(Long reviewId) {
+    public void deleteReview(Long reviewId, Long userId) {
         ClaimReview review = getReviewById(reviewId);
+        Long claimRegistrationId = review.getClaimRegistrationId();
+        
+        // 级联删除：检查并删除相关的债权确认记录
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        for (ClaimConfirmation confirmation : confirmations) {
+            confirmation.setIsDeleted(true);
+            confirmation.setUpdateUserId(userId);
+            claimConfirmationRepository.save(confirmation);
+            log.info("级联删除债权确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimRegistrationId);
+        }
+        
+        // 删除债权审查
         review.setIsDeleted(true);
+        review.setUpdateUserId(userId);
         claimReviewRepository.save(review);
         log.info("债权审查记录删除成功, reviewId: {}", reviewId);
     }
@@ -261,20 +342,107 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectReview(Long reviewId, String rejectReason, Long userId) {
+        ClaimReview review = getReviewById(reviewId);
+        Long claimRegistrationId = review.getClaimRegistrationId();
+        
+        // 设置审查结论为驳回
+        review.setReviewConclusion("REJECTED");
+        review.setReviewStatus("REJECTED");
+        
+        // 保存驳回理由到备注字段
+        String remarks = review.getRemarks();
+        String newRemarks = "驳回理由: " + rejectReason;
+        if (remarks != null && !remarks.trim().isEmpty()) {
+            newRemarks = remarks + "\n" + newRemarks;
+        }
+        review.setRemarks(newRemarks);
+        
+        review.setUpdateUserId(userId);
+        claimReviewRepository.save(review);
+        
+        // 级联处理相关的债权确认记录
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        for (ClaimConfirmation confirmation : confirmations) {
+            confirmation.setIsDeleted(true);
+            confirmation.setUpdateUserId(userId);
+            claimConfirmationRepository.save(confirmation);
+            log.info("级联处理审查驳回 - 删除确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimRegistrationId);
+        }
+        
+        // 更新债权申报状态为驳回
+        ClaimRegistration claimRegistration = claimRegistrationRepository.findById(claimRegistrationId).orElse(null);
+        if (claimRegistration != null && !"REJECTED".equals(claimRegistration.getRegistrationStatus())) {
+            claimRegistration.setRegistrationStatus("REJECTED");
+            claimRegistration.setUpdateUserId(userId);
+            claimRegistrationRepository.save(claimRegistration);
+            log.info("更新债权申报状态为驳回, claimId: {}", claimRegistrationId);
+        }
+        
+        // 发送通知
+        User user = userRepository.findById(userId).orElse(null);
+        String realName = user != null ? user.getRealName() : "未知用户";
+        String content = String.format("%s 驳回了债权审查：%s\n驳回理由：%s", realName, review.getCreditorName(), rejectReason);
+        notificationService.sendNotificationToAdminAndSuperAdmin(
+                "债权审查驳回通知",
+                content,
+                "CLAIM_REVIEW_REJECT",
+                review.getId(),
+                "ClaimReview",
+                userId,
+                realName
+        );
+        
+        log.info("债权审查驳回成功, reviewId: {}, creditorName: {}, rejectReason: {}", reviewId, review.getCreditorName(), rejectReason);
+    }
+
+    @Override
     public List<ClaimReview> getPendingReviews(Long caseId) {
         return claimReviewRepository.findPendingReviewsByCaseId(caseId);
     }
 
     @Override
     public Long getReviewCount(Long caseId, String reviewStatus) {
-        if (caseId != null && reviewStatus != null) {
-            return claimReviewRepository    .countByCaseIdAndReviewStatus(caseId, reviewStatus);
-        } else if (caseId != null) {
-            return claimReviewRepository.countByCaseId(caseId);
-        } else if (reviewStatus != null) {
-            return claimReviewRepository.countByReviewStatus(reviewStatus);
-        } else {
-            return claimReviewRepository.count();
+        if (reviewStatus != null && reviewStatus.trim().isEmpty()) {
+            reviewStatus = null;
         }
+
+        List<ClaimReview> allReviews;
+        if (caseId != null && reviewStatus != null) {
+            // 当明确指定了状态时，查询该状态的记录（但排除CONFIRMED）
+            if (!"CONFIRMED".equals(reviewStatus)) {
+                allReviews = claimReviewRepository.findByCaseIdAndReviewStatus(caseId, reviewStatus);
+            } else {
+                // 如果指定的是CONFIRMED，返回0
+                return 0L;
+            }
+        } else if (caseId != null) {
+            // 当没有指定状态时，查询所有状态的记录（但排除CONFIRMED）
+            allReviews = claimReviewRepository.findByCaseIdAndReviewStatusNot(caseId, "CONFIRMED");
+        } else if (reviewStatus != null) {
+            // 当明确指定了状态时，查询该状态的记录（但排除CONFIRMED）
+            if (!"CONFIRMED".equals(reviewStatus)) {
+                allReviews = claimReviewRepository.findByReviewStatus(reviewStatus);
+            } else {
+                // 如果指定的是CONFIRMED，返回0
+                return 0L;
+            }
+        } else {
+            // 当没有指定状态时，查询所有状态的记录（但排除CONFIRMED）
+            allReviews = claimReviewRepository.findByReviewStatusNot("CONFIRMED");
+        }
+
+        // 当明确指定状态为COMPLETED时，进一步过滤出registration_status=REVIEW_COMPLETED的记录数
+        if ("COMPLETED".equals(reviewStatus)) {
+            return allReviews.stream()
+                .filter(review -> {
+                    ClaimRegistration registration = claimRegistrationRepository.findById(review.getClaimRegistrationId()).orElse(null);
+                    return registration != null && "REVIEW_COMPLETED".equals(registration.getRegistrationStatus());
+                })
+                .count();
+        }
+
+        return (long) allReviews.size();
     }
 }

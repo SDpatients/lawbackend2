@@ -17,9 +17,11 @@ public interface ClaimReviewService {
 
     ClaimReview updateReview(Long reviewId, ClaimReviewUpdateRequest request);
 
-    void deleteReview(Long reviewId);
+    void deleteReview(Long reviewId, Long userId);
 
     void submitReview(Long reviewId, Long userId);
+
+    void rejectReview(Long reviewId, String rejectReason, Long userId);
 
     List<ClaimReview> getPendingReviews(Long caseId);
 

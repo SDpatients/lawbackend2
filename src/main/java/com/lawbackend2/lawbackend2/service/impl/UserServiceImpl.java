@@ -366,6 +366,45 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public void forgotPassword(String mobile, String smsCode, String newPassword) {
+        // 验证短信验证码
+        boolean smsValid = smsService.verifySmsCode(mobile, smsCode, "3");
+        if (!smsValid) {
+            throw new BusinessException(400, "短信验证码错误或已过期");
+        }
+
+        // 查找用户
+        Optional<User> userOpt = userRepository.findByMobile(mobile);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "该手机号未注册");
+        }
+
+        User user = userOpt.get();
+
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        if (!"ACTIVE".equals(user.getStatus())) {
+            throw new BusinessException(400, "账号已被禁用或锁定");
+        }
+
+        // 加密新密码
+        String encodedNewPassword = passwordEncoder.encode(newPassword);
+        user.setPassword(encodedNewPassword);
+        user.setPwdErrorCount(0);
+        user.setPwdErrorTime(null);
+
+        userRepository.save(user);
+
+        // 撤销该用户的所有Token
+        tokenRepository.revokeAllTokensByUserId(user.getId(), LocalDateTime.now());
+
+        log.info("用户通过忘记密码重置密码成功 - 用户ID: {}, 手机号: {}", user.getId(), mobile);
+    }
+
+    @Override
+    @Transactional
     public void updateUserStatus(Long userId, String status) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {

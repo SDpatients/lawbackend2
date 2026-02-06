@@ -1,29 +1,28 @@
 package com.lawbackend2.lawbackend2.service;
 
+import com.lawbackend2.lawbackend2.dto.request.BankAccountTransactionCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementApprovalRequest;
 import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementItemCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementResponse;
 import com.lawbackend2.lawbackend2.entity.BankAccount;
-import com.lawbackend2.lawbackend2.entity.BankAccountTransaction;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursement;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementItem;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankAccountRepository;
-import com.lawbackend2.lawbackend2.repository.BankAccountTransactionRepository;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementAttachmentRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementItemRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
-import com.lawbackend2.lawbackend2.service.BankAccountTransactionService;
 import com.lawbackend2.lawbackend2.service.impl.ExpenseReimbursementServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,7 +30,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -61,9 +59,6 @@ class ExpenseReimbursementServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private BankAccountTransactionRepository bankAccountTransactionRepository;
-
-    @Mock
     private BankAccountTransactionService bankAccountTransactionService;
 
     @InjectMocks
@@ -72,6 +67,7 @@ class ExpenseReimbursementServiceTest {
     private BankruptCase mockCase;
     private BankAccount mockBankAccount;
     private User mockUser;
+    private User mockApprover;
     private ExpenseReimbursementCreateRequest createRequest;
 
     @BeforeEach
@@ -89,6 +85,10 @@ class ExpenseReimbursementServiceTest {
         mockUser = new User();
         mockUser.setId(1L);
         mockUser.setRealName("张律师");
+
+        mockApprover = new User();
+        mockApprover.setId(100L);
+        mockApprover.setRealName("审批人");
 
         createRequest = new ExpenseReimbursementCreateRequest();
         createRequest.setCaseId(1L);
@@ -191,16 +191,18 @@ class ExpenseReimbursementServiceTest {
         mockReimbursement.setId(1L);
         mockReimbursement.setApprovalStatus("PENDING");
         mockReimbursement.setFundAccountId(1L);
-
-        BankAccount bankAccount = new BankAccount();
-        bankAccount.setId(1L);
-        bankAccount.setAccountName("测试账户");
-        bankAccount.setBankName("测试银行");
-        bankAccount.setAccountNumber("1234567890");
+        mockReimbursement.setTotalAmount(new BigDecimal("1300.00"));
+        mockReimbursement.setReimbursementDate(LocalDate.now());
+        mockReimbursement.setReimbursementNumber("BX202601240001");
+        mockReimbursement.setApplicantName("张律师");
+        mockReimbursement.setBankAccount("1234567890");
+        mockReimbursement.setDescription("测试报销");
+        mockReimbursement.setCaseId(1L);
 
         when(expenseReimbursementRepository.findById(1L)).thenReturn(Optional.of(mockReimbursement));
-        when(bankAccountRepository.findById(1L)).thenReturn(Optional.of(bankAccount));
+        when(userRepository.findById(100L)).thenReturn(Optional.of(mockApprover));
         when(expenseReimbursementRepository.save(any(ExpenseReimbursement.class))).thenReturn(mockReimbursement);
+        when(bankAccountTransactionService.createTransaction(any(BankAccountTransactionCreateRequest.class), anyLong())).thenReturn(1L);
 
         ExpenseReimbursementApprovalRequest request = new ExpenseReimbursementApprovalRequest();
         request.setApprovalStatus("APPROVED");
@@ -209,7 +211,7 @@ class ExpenseReimbursementServiceTest {
         expenseReimbursementService.approveExpenseReimbursement(1L, request, 100L);
 
         verify(expenseReimbursementRepository, times(1)).save(any(ExpenseReimbursement.class));
-        verify(bankAccountTransactionRepository, times(1)).save(any(BankAccountTransaction.class));
+        verify(bankAccountTransactionService, times(1)).createTransaction(any(BankAccountTransactionCreateRequest.class), eq(100L));
     }
 
     @Test
@@ -229,7 +231,7 @@ class ExpenseReimbursementServiceTest {
 
         assertEquals("报销单已审批", exception.getMessage());
         verify(expenseReimbursementRepository, never()).save(any(ExpenseReimbursement.class));
-        verify(bankAccountTransactionRepository, never()).save(any(BankAccountTransaction.class));
+        verify(bankAccountTransactionService, never()).createTransaction(any(BankAccountTransactionCreateRequest.class), anyLong());
     }
 
     @Test
@@ -360,15 +362,10 @@ class ExpenseReimbursementServiceTest {
         mockReimbursement.setBankAccount("1234567890");
         mockReimbursement.setDescription("测试报销");
 
-        BankAccount bankAccount = new BankAccount();
-        bankAccount.setId(1L);
-        bankAccount.setAccountName("测试账户");
-        bankAccount.setBankName("测试银行");
-        bankAccount.setAccountNumber("1234567890");
-
         when(expenseReimbursementRepository.findById(1L)).thenReturn(Optional.of(mockReimbursement));
-        when(bankAccountRepository.findById(1L)).thenReturn(Optional.of(bankAccount));
+        when(userRepository.findById(100L)).thenReturn(Optional.of(mockApprover));
         when(expenseReimbursementRepository.save(any(ExpenseReimbursement.class))).thenReturn(mockReimbursement);
+        when(bankAccountTransactionService.createTransaction(any(BankAccountTransactionCreateRequest.class), anyLong())).thenReturn(1L);
 
         ExpenseReimbursementApprovalRequest request = new ExpenseReimbursementApprovalRequest();
         request.setApprovalStatus("APPROVED");
@@ -377,7 +374,21 @@ class ExpenseReimbursementServiceTest {
         expenseReimbursementService.approveExpenseReimbursement(1L, request, 100L);
 
         verify(expenseReimbursementRepository, times(1)).save(any(ExpenseReimbursement.class));
-        verify(bankAccountTransactionRepository, times(1)).save(any(BankAccountTransaction.class));
+
+        ArgumentCaptor<BankAccountTransactionCreateRequest> captor = ArgumentCaptor.forClass(BankAccountTransactionCreateRequest.class);
+        verify(bankAccountTransactionService, times(1)).createTransaction(captor.capture(), eq(100L));
+
+        BankAccountTransactionCreateRequest capturedRequest = captor.getValue();
+        assertEquals(1L, capturedRequest.getAccountId());
+        assertEquals("OUT", capturedRequest.getTransactionType());
+        assertEquals(new BigDecimal("1300.00"), capturedRequest.getAmount());
+        assertEquals("费用报销：BX202601240001", capturedRequest.getSummary());
+        assertEquals("付款", capturedRequest.getBusinessType());
+        assertEquals("1234567890", capturedRequest.getCounterpartyAccount());
+        assertEquals("张律师", capturedRequest.getCounterpartyName());
+        assertEquals(1L, capturedRequest.getRelatedBusinessId());
+        assertEquals(1L, capturedRequest.getCaseId());
+        assertEquals("测试报销", capturedRequest.getRemark());
     }
 
     @Test
@@ -387,6 +398,7 @@ class ExpenseReimbursementServiceTest {
         mockReimbursement.setApprovalStatus("PENDING");
 
         when(expenseReimbursementRepository.findById(1L)).thenReturn(Optional.of(mockReimbursement));
+        when(userRepository.findById(100L)).thenReturn(Optional.of(mockApprover));
         when(expenseReimbursementRepository.save(any(ExpenseReimbursement.class))).thenReturn(mockReimbursement);
 
         ExpenseReimbursementApprovalRequest request = new ExpenseReimbursementApprovalRequest();
@@ -396,6 +408,35 @@ class ExpenseReimbursementServiceTest {
         expenseReimbursementService.approveExpenseReimbursement(1L, request, 100L);
 
         verify(expenseReimbursementRepository, times(1)).save(any(ExpenseReimbursement.class));
-        verify(bankAccountTransactionRepository, never()).save(any(BankAccountTransaction.class));
+        verify(bankAccountTransactionService, never()).createTransaction(any(BankAccountTransactionCreateRequest.class), anyLong());
+    }
+
+    @Test
+    void testApproveExpenseReimbursement_ApproverNotFound() {
+        ExpenseReimbursement mockReimbursement = new ExpenseReimbursement();
+        mockReimbursement.setId(1L);
+        mockReimbursement.setApprovalStatus("PENDING");
+        mockReimbursement.setFundAccountId(1L);
+        mockReimbursement.setTotalAmount(new BigDecimal("1300.00"));
+        mockReimbursement.setReimbursementDate(LocalDate.now());
+        mockReimbursement.setReimbursementNumber("BX202601240001");
+        mockReimbursement.setApplicantName("张律师");
+        mockReimbursement.setBankAccount("1234567890");
+        mockReimbursement.setDescription("测试报销");
+        mockReimbursement.setCaseId(1L);
+
+        when(expenseReimbursementRepository.findById(1L)).thenReturn(Optional.of(mockReimbursement));
+        when(userRepository.findById(100L)).thenReturn(Optional.empty());
+
+        ExpenseReimbursementApprovalRequest request = new ExpenseReimbursementApprovalRequest();
+        request.setApprovalStatus("APPROVED");
+        request.setApprovalOpinion("同意");
+
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            expenseReimbursementService.approveExpenseReimbursement(1L, request, 100L);
+        });
+
+        assertEquals("审批人不存在", exception.getMessage());
+        verify(bankAccountTransactionService, never()).createTransaction(any(BankAccountTransactionCreateRequest.class), anyLong());
     }
 }

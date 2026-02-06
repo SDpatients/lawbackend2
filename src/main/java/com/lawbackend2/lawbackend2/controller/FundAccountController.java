@@ -8,6 +8,7 @@ import com.lawbackend2.lawbackend2.dto.request.FundAccountStatusRequest;
 import com.lawbackend2.lawbackend2.dto.request.FundAccountUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.FundAccount;
 import com.lawbackend2.lawbackend2.service.FundAccountService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,6 +54,15 @@ public class FundAccountController {
             @Parameter(description = "状态") @RequestParam(required = false) String status) {
 
         PageResult<FundAccount> result = fundAccountService.getFundAccountList(pageNum, pageSize, caseId, status);
+        return Result.success(result);
+    }
+
+    @Operation(summary = "案件资金账户简单列表")
+    @GetMapping("/list/simple")
+    public Result<java.util.List<com.lawbackend2.lawbackend2.dto.response.FundAccountSimpleResponse>> getSimpleFundAccountList(
+            @Parameter(description = "案件ID") @RequestParam(required = true) Long caseId) {
+
+        java.util.List<com.lawbackend2.lawbackend2.dto.response.FundAccountSimpleResponse> result = fundAccountService.getSimpleFundAccountListByCaseId(caseId);
         return Result.success(result);
     }
 
@@ -105,6 +115,6 @@ public class FundAccountController {
     }
 
     private Long getCurrentUserId() {
-        return 1L;
+        return SecurityUtil.getCurrentUserId();
     }
 }

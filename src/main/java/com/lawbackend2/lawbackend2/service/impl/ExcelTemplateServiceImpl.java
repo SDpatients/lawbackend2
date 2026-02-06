@@ -78,6 +78,10 @@ public class ExcelTemplateServiceImpl implements ExcelTemplateService {
             }
         }
         
+        if (request.getIsActive() != null) {
+            template.setIsActive(request.getIsActive());
+        }
+        
         template.setUpdatedBy(userId);
         
         ExcelImportTemplate saved = templateRepository.save(template);

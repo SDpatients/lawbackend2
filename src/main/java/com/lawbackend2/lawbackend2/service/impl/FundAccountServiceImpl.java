@@ -5,6 +5,7 @@ import com.lawbackend2.lawbackend2.dto.request.FundAccountBalanceRequest;
 import com.lawbackend2.lawbackend2.dto.request.FundAccountCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.FundAccountStatusRequest;
 import com.lawbackend2.lawbackend2.dto.request.FundAccountUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.FundAccountSimpleResponse;
 import com.lawbackend2.lawbackend2.entity.FundAccount;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.FundAccountRepository;
@@ -87,5 +88,26 @@ public class FundAccountServiceImpl implements FundAccountService {
         FundAccount fundAccount = getFundAccountDetail(fundAccountId);
         fundAccount.setUpdateUserId(userId);
         fundAccountRepository.delete(fundAccount);
+    }
+
+    @Override
+    public java.util.List<FundAccountSimpleResponse> getSimpleFundAccountListByCaseId(Long caseId) {
+        java.util.List<FundAccount> fundAccounts = fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false);
+        return fundAccounts.stream().map(fundAccount -> {
+            FundAccountSimpleResponse response = new FundAccountSimpleResponse();
+            response.setId(fundAccount.getId());
+            response.setAccountName(fundAccount.getAccountName());
+            response.setBankAccount(fundAccount.getBankAccount());
+            return response;
+        }).collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public FundAccount getFundAccountDetailByAccountName(String accountName) {
+        FundAccount fundAccount = fundAccountRepository.findByAccountName(accountName);
+        if (fundAccount == null) {
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("资金账户不存在");
+        }
+        return fundAccount;
     }
 }
