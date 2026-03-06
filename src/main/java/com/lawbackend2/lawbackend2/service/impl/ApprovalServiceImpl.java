@@ -65,6 +65,13 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     public Long createApproval(ApprovalCreateRequest request, Long userId) {
+        // 校验：如果案件状态已为 COMPLETED，则不能再次提交审批
+        BankruptCase bankruptCase = bankruptCaseRepository.findById(request.getCaseId())
+                .orElseThrow(() -> new BusinessException("案件不存在"));
+        if ("COMPLETED".equals(bankruptCase.getCaseStatus())) {
+            throw new BusinessException("该案件已结案，无法再次提交审批");
+        }
+        
         Optional<Approval> existingApprovalOpt = approvalRepository.findByCaseIdAndApprovalType(request.getCaseId(), request.getApprovalType());
         
         if (existingApprovalOpt.isPresent()) {
@@ -84,12 +91,12 @@ public class ApprovalServiceImpl implements ApprovalService {
             existingApproval.setUpdateUserId(userId);
             existingApproval.setUpdateTime(LocalDateTime.now());
             
-            // 如果approvalType以TASK_开头，则重新查询相关任务、提交记录和文件信息
+            // 如果 approvalType 以 TASK_开头，则重新查询相关任务、提交记录和文件信息
             if (request.getApprovalType() != null && request.getApprovalType().startsWith("TASK_")) {
                 String taskCode = request.getApprovalType();
                 enrichApprovalWithTaskInfo(existingApproval, request.getCaseId(), taskCode, request.getApprovalAttachment());
             } else if ("CASE_SUBMIT".equals(request.getApprovalType())) {
-                // 如果approvalType为CASE_SUBMIT，则查询该案件的所有CASE_SUBMIT类型的文件
+                // 如果 approvalType 为 CASE_SUBMIT，则查询该案件的所有 CASE_SUBMIT 类型的文件
                 enrichApprovalWithCaseSubmitFiles(existingApproval, request.getCaseId(), request.getApprovalAttachment());
             }
             
@@ -105,13 +112,16 @@ public class ApprovalServiceImpl implements ApprovalService {
         approval.setStatus("ACTIVE");
         approval.setCreateUserId(userId);
         
-        // 如果approvalType以TASK_开头，则查询相关任务、提交记录和文件信息
+        // 如果 approvalType 以 TASK_开头，则查询相关任务、提交记录和文件信息
         if (request.getApprovalType() != null && request.getApprovalType().startsWith("TASK_")) {
             String taskCode = request.getApprovalType();
             enrichApprovalWithTaskInfo(approval, request.getCaseId(), taskCode, request.getApprovalAttachment());
         } else if ("CASE_SUBMIT".equals(request.getApprovalType())) {
-            // 如果approvalType为CASE_SUBMIT，则查询该案件的所有CASE_SUBMIT类型的文件
+            // 如果 approvalType 为 CASE_SUBMIT，则查询该案件的所有 CASE_SUBMIT 类型的文件
             enrichApprovalWithCaseSubmitFiles(approval, request.getCaseId(), request.getApprovalAttachment());
+            // 将案件状态改为 AWAITING
+            bankruptCase.setCaseStatus("AWAITING");
+            bankruptCaseRepository.save(bankruptCase);
         }
         
         Approval saved = approvalRepository.save(approval);
@@ -298,12 +308,16 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     @Override
     public PageResult<ApprovalResponse> getApprovalList(Integer pageNum, Integer pageSize, Long caseId, Long lawyerId, String approvalType, String approvalStatus, String status, String approvalTitle) {
+        return getApprovalList(pageNum, pageSize, caseId, lawyerId, approvalType, approvalStatus, status, approvalTitle, null);
+    }
+    
+    public PageResult<ApprovalResponse> getApprovalList(Integer pageNum, Integer pageSize, Long caseId, Long lawyerId, String approvalType, String approvalStatus, String status, String approvalTitle, Boolean onlyPending) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         
-        // 使用Spring Data JPA的查询方法根据条件过滤
+        // 使用 Spring Data JPA 的查询方法根据条件过滤
         List<Approval> approvals = approvalRepository.findAll();
         
-        // 手动过滤，实际项目中应使用Specification或自定义查询方法
+        // 手动过滤，实际项目中应使用 Specification 或自定义查询方法
         approvals = approvals.stream()
                 .filter(approval -> caseId == null || approval.getCaseId().equals(caseId))
                 .filter(approval -> lawyerId == null || approval.getLawyerId().equals(lawyerId))
@@ -311,7 +325,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                     if (approvalType == null || approvalType.isEmpty()) {
                         return true;
                     }
-                    // 特殊处理：如果approvalType为TASK_，则返回approval_type为TASK_前缀的所有数据
+                    // 特殊处理：如果 approvalType 为 TASK_，则返回 approval_type 为 TASK_前缀的所有数据
                     if ("TASK_".equals(approvalType)) {
                         return approval.getApprovalType().startsWith("TASK_");
                     }
@@ -325,7 +339,14 @@ public class ApprovalServiceImpl implements ApprovalService {
                     }
                     return approval.getApprovalTitle() != null && approval.getApprovalTitle().contains(approvalTitle);
                 })
-                // 按照createTime降序排序
+                .filter(approval -> {
+                    if (onlyPending == null || !onlyPending) {
+                        return true;
+                    }
+                    // 只筛选 approvalResult 为 null 的数据
+                    return approval.getApprovalResult() == null;
+                })
+                // 按照 createTime 降序排序
                 .sorted((a1, a2) -> a2.getCreateTime().compareTo(a1.getCreateTime()))
                 .collect(java.util.stream.Collectors.toList());
         
@@ -408,7 +429,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
         LocalDateTime now = LocalDateTime.now();
         
-        // 检查并截断approvalAttachment，避免长度超过限制
+        // 检查并截断 approvalAttachment，避免长度超过限制
         if (approval.getApprovalAttachment() != null && approval.getApprovalAttachment().length() > 3990) {
             approval.setApprovalAttachment(approval.getApprovalAttachment().substring(0, 3990) + "...");
         }
@@ -420,6 +441,23 @@ public class ApprovalServiceImpl implements ApprovalService {
         approval.setApprovalDate(now);
         approval.setApprovalCount(approval.getApprovalCount() + 1);
         
+        // 根据审批结果更新案件状态
+        if (approval.getCaseId() != null) {
+            BankruptCase bankruptCase = bankruptCaseRepository.findById(approval.getCaseId())
+                    .orElseThrow(() -> new BusinessException("案件不存在"));
+            
+            if ("PASS".equals(request.getApprovalResult())) {
+                // 审批通过：案件状态改为 COMPLETED，并设置结案日期为当天
+                bankruptCase.setCaseStatus("COMPLETED");
+                bankruptCase.setClosingDate(java.time.LocalDate.now());
+            } else if ("FAIL".equals(request.getApprovalResult())) {
+                // 审批不通过：案件状态改为 ONGOING
+                bankruptCase.setCaseStatus("ONGOING");
+            }
+            
+            bankruptCaseRepository.save(bankruptCase);
+        }
+        
         approvalRepository.save(approval);
         
         // 创建审批历史记录
@@ -429,7 +467,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         history.setApproverId(approverId);
         history.setApprovalType(approval.getApprovalType());
         history.setApprovalTitle(approval.getApprovalTitle());
-        // 检查并截断approvalAttachment，避免长度超过限制
+        // 检查并截断 approvalAttachment，避免长度超过限制
         if (approval.getApprovalAttachment() != null && approval.getApprovalAttachment().length() > 3990) {
             history.setApprovalAttachment(approval.getApprovalAttachment().substring(0, 3990) + "...");
         } else {

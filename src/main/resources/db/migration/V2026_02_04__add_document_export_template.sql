@@ -44,7 +44,7 @@ CREATE TABLE `tb_document_template_field` (
   `template_id` bigint NOT NULL COMMENT '模板ID',
   `field_name` varchar(50) COLLATE utf8mb4_bin NOT NULL COMMENT '字段名(占位符名称)',
   `field_label` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '字段标签(显示名称)',
-  `field_type` varchar(20) COLLATE utf8mb4_bin NOT NULL COMMENT '字段类型: TEXT-文本, NUMBER-数字, DATE-日期, LIST-列表, IMAGE-图片, TABLE-表格',
+  `field_type ` varchar(20) COLLATE utf8mb4_bin NOT NULL COMMENT '字段类型: TEXT-文本, NUMBER-数字, DATE-日期, LIST-列表, IMAGE-图片, TABLE-表格',
   `source_field` varchar(100) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '数据源字段(对应系统数据字段路径)',
   `default_value` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '默认值',
   `sort_order` int DEFAULT '0' COMMENT '排序顺序',

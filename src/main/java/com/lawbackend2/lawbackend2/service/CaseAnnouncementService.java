@@ -3,6 +3,8 @@ package com.lawbackend2.lawbackend2.service;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementPublishRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.request.CaseAnnouncementCreateWithFilesRequest;
+import com.lawbackend2.lawbackend2.dto.response.CaseAnnouncementWithFilesResponse;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
 
@@ -11,6 +13,8 @@ import java.util.List;
 public interface CaseAnnouncementService {
 
     CaseAnnouncement createAnnouncement(CaseAnnouncementCreateRequest request, Long userId);
+
+    CaseAnnouncementWithFilesResponse createAnnouncementWithFiles(CaseAnnouncementCreateWithFilesRequest request, Long userId);
 
     CaseAnnouncement getAnnouncementById(Long announcementId);
 

@@ -19,6 +19,8 @@ public interface DocumentExportService {
 
     DocumentExportTemplate getTemplate(Long id);
 
+    DocumentTemplateResponse getTemplateWithFields(Long id);
+
     DocumentExportTemplate getTemplateByCode(String templateCode);
 
     List<DocumentExportTemplate> getTemplatesByType(String templateType);
@@ -38,4 +40,13 @@ public interface DocumentExportService {
     List<com.lawbackend2.lawbackend2.dto.DocumentTemplateFieldDTO> getTemplateFields(Long templateId);
 
     void previewTemplate(Long templateId, javax.servlet.http.HttpServletResponse response, Long userId) throws java.io.IOException;
+
+    void previewTemplateAsPdf(Long templateId, javax.servlet.http.HttpServletResponse response, Long userId) throws java.io.IOException;
+
+    byte[] convertWordToPdf(byte[] wordBytes) throws java.io.IOException;
+
+    void exportWordAsPdf(Long templateId, Map<String, Object> data, String fileName, HttpServletResponse response, Long userId) throws IOException;
+
+    void batchExportExcel(Long templateId, List<Map<String, Object>> dataList, String fileName, 
+                         BatchExportRequest.ExportOptions options, HttpServletResponse response, Long userId) throws IOException;
 }

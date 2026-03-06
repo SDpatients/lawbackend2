@@ -273,6 +273,10 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     public void deleteCreditor(Long creditorId, Long userId) {
         CreditorInfo creditorInfo = getCreditorById(creditorId);
         
+        if (creditorInfo.getIsDeleted()) {
+            throw new BusinessException("该债权人已被删除，无法重复删除");
+        }
+        
         // 检查权限
         checkPermission(creditorInfo, userId);
         

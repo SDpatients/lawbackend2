@@ -5,6 +5,8 @@ import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementPublishRequest;
 import com.lawbackend2.lawbackend2.dto.CaseAnnouncementUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.request.CaseAnnouncementCreateWithFilesRequest;
+import com.lawbackend2.lawbackend2.dto.response.CaseAnnouncementWithFilesResponse;
 import com.lawbackend2.lawbackend2.entity.CaseAnnouncement;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.service.CaseAnnouncementService;
@@ -48,8 +50,19 @@ public class CaseAnnouncementController {
         Map<String, Object> data = new HashMap<>();
         data.put("announcementId", announcement.getId());
 
-        log.info("创建案件公告成功, ID: {}", announcement.getId());
+        log.info("创建案件公告成功，ID: {}", announcement.getId());
         return Result.success(data);
+    }
+
+    @Operation(summary = "创建案件公告（带文件上传）")
+    @PostMapping("/with-files")
+    public Result<CaseAnnouncementWithFilesResponse> createAnnouncementWithFiles(
+            @Parameter(description = "公告数据") @ModelAttribute @Valid CaseAnnouncementCreateWithFilesRequest request) {
+        Long userId = getCurrentUserId();
+        CaseAnnouncementWithFilesResponse response = caseAnnouncementService.createAnnouncementWithFiles(request, userId);
+
+        log.info("创建案件公告（带文件）成功，ID: {}, 文件数量：{}", response.getAnnouncementId(), response.getFiles().size());
+        return Result.success(response);
     }
 
     @Operation(summary = "案件公告列表")

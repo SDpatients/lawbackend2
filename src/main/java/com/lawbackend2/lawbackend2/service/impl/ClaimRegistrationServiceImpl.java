@@ -49,6 +49,8 @@ import java.util.Optional;
 @Service
 public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(ClaimRegistrationServiceImpl.class);
+
     private final ClaimRegistrationRepository claimRegistrationRepository;
     private final ClaimReviewRepository claimReviewRepository;
     private final ClaimConfirmationRepository claimConfirmationRepository;
@@ -111,7 +113,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                 realName
         );
 
-        log.info("债权申报创建成功, claimId: {}, claimNo: {}", saved.getId(), claimNo);
+        logger.info("债权申报创建成功, claimId: {}, claimNo: {}", saved.getId(), claimNo);
         return saved;
     }
 
@@ -138,7 +140,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         });
 
         if (!existingCreditors.isEmpty()) {
-            log.info("该案件下已存在相同名称的债权人，无需创建, caseId: {}, creditorName: {}", caseId, creditorName);
+            logger.info("该案件下已存在相同名称的债权人，无需创建, caseId: {}, creditorName: {}", caseId, creditorName);
             return;
         }
 
@@ -155,7 +157,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         creditorInfo.setUpdateUserId(userId);
 
         CreditorInfo savedCreditor = creditorInfoRepository.save(creditorInfo);
-        log.info("自动创建债权人成功, creditorId: {}, caseId: {}, creditorName: {}",
+        logger.info("自动创建债权人成功, creditorId: {}, caseId: {}, creditorName: {}",
                 savedCreditor.getId(), caseId, creditorName);
     }
 
@@ -357,7 +359,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             confirmation.setIsDeleted(true);
             confirmation.setUpdateUserId(userId);
             claimConfirmationRepository.save(confirmation);
-            log.info("级联删除债权确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimId);
+            logger.info("级联删除债权确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimId);
         }
         
         // 删除相关的审查记录
@@ -366,14 +368,14 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             review.setIsDeleted(true);
             review.setUpdateUserId(userId);
             claimReviewRepository.save(review);
-            log.info("级联删除债权审查记录, reviewId: {}, claimRegistrationId: {}", review.getId(), claimId);
+            logger.info("级联删除债权审查记录, reviewId: {}, claimRegistrationId: {}", review.getId(), claimId);
         }
         
         // 删除债权申报
         claimRegistration.setIsDeleted(true);
         claimRegistration.setUpdateUserId(userId);
         claimRegistrationRepository.save(claimRegistration);
-        log.info("债权申报删除成功, claimId: {}", claimId);
+        logger.info("债权申报删除成功, claimId: {}", claimId);
     }
 
     @Override
@@ -387,7 +389,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
         handleStatusChange(claimRegistration, oldStatus, status, userId);
 
-        log.info("债权申报状态更新成功, claimId: {}, oldStatus: {}, newStatus: {}", claimId, oldStatus, status);
+        logger.info("债权申报状态更新成功, claimId: {}, oldStatus: {}, newStatus: {}", claimId, oldStatus, status);
     }
 
     private void handleStatusChange(ClaimRegistration registration, String oldStatus, String newStatus, Long userId) {
@@ -412,7 +414,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             review.setIsDeleted(true);
             review.setUpdateUserId(userId);
             claimReviewRepository.save(review);
-            log.info("级联处理驳回状态 - 删除审查记录, reviewId: {}, claimId: {}", review.getId(), claimId);
+            logger.info("级联处理驳回状态 - 删除审查记录, reviewId: {}, claimId: {}", review.getId(), claimId);
         }
         
         List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimId);
@@ -420,7 +422,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             confirmation.setIsDeleted(true);
             confirmation.setUpdateUserId(userId);
             claimConfirmationRepository.save(confirmation);
-            log.info("级联处理驳回状态 - 删除确认记录, confirmationId: {}, claimId: {}", confirmation.getId(), claimId);
+            logger.info("级联处理驳回状态 - 删除确认记录, confirmationId: {}, claimId: {}", confirmation.getId(), claimId);
         }
     }
 
@@ -432,7 +434,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             review.setReviewStatus("IN_PROGRESS");
             review.setUpdateUserId(userId);
             claimReviewRepository.save(review);
-            log.info("更新审查记录状态为进行中, claimId: {}, reviewId: {}", registration.getId(), review.getId());
+            logger.info("更新审查记录状态为进行中, claimId: {}, reviewId: {}", registration.getId(), review.getId());
         } else {
             ClaimReview review = new ClaimReview();
             review.setClaimRegistrationId(registration.getId());
@@ -449,7 +451,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             review.setCreateUserId(userId);
             review.setUpdateUserId(userId);
             claimReviewRepository.save(review);
-            log.info("创建审查记录, claimId: {}, reviewId: {}", registration.getId(), review.getId());
+            logger.info("创建审查记录, claimId: {}, reviewId: {}", registration.getId(), review.getId());
         }
     }
 
@@ -462,7 +464,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             confirmation.setConfirmationStatus("IN_PROGRESS");
             confirmation.setUpdateUserId(userId);
             claimConfirmationRepository.save(confirmation);
-            log.info("更新确认记录状态为进行中, claimId: {}, confirmationId: {}", registration.getId(), confirmation.getId());
+            logger.info("更新确认记录状态为进行中, claimId: {}, confirmationId: {}", registration.getId(), confirmation.getId());
         } else {
             ClaimConfirmation confirmation = new ClaimConfirmation();
             confirmation.setClaimRegistrationId(registration.getId());
@@ -473,7 +475,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             confirmation.setCreateUserId(userId);
             confirmation.setUpdateUserId(userId);
             claimConfirmationRepository.save(confirmation);
-            log.info("创建确认记录, claimId: {}, confirmationId: {}", registration.getId(), confirmation.getId());
+            logger.info("创建确认记录, claimId: {}, confirmationId: {}", registration.getId(), confirmation.getId());
         }
     }
 
@@ -484,7 +486,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             review.setReviewStatus(status);
             review.setUpdateUserId(userId);
             claimReviewRepository.save(review);
-            log.info("更新审查记录状态, claimId: {}, reviewId: {}, status: {}", claimId, review.getId(), status);
+            logger.info("更新审查记录状态, claimId: {}, reviewId: {}, status: {}", claimId, review.getId(), status);
         }
     }
 
@@ -496,7 +498,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             confirmation.setConfirmationStatus(status);
             confirmation.setUpdateUserId(userId);
             claimConfirmationRepository.save(confirmation);
-            log.info("更新确认记录状态, claimId: {}, confirmationId: {}, status: {}", claimId, confirmation.getId(), status);
+            logger.info("更新确认记录状态, claimId: {}, confirmationId: {}, status: {}", claimId, confirmation.getId(), status);
         }
     }
 
@@ -509,7 +511,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         claimRegistration.setMaterialCompleteness(completeness);
         claimRegistration.setUpdateUserId(userId);
         claimRegistrationRepository.save(claimRegistration);
-        log.info("债权申报材料接收成功, claimId: {}, receiver: {}, completeness: {}", claimId, receiver, completeness);
+        logger.info("债权申报材料接收成功, claimId: {}, receiver: {}, completeness: {}", claimId, receiver, completeness);
     }
 
     @Override
@@ -549,7 +551,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                 realName
         );
         
-        log.info("债权申报驳回成功, claimId: {}, creditorName: {}, rejectReason: {}", claimId, claimRegistration.getCreditorName(), rejectReason);
+        logger.info("债权申报驳回成功, claimId: {}, creditorName: {}, rejectReason: {}", claimId, claimRegistration.getCreditorName(), rejectReason);
     }
 
     private String generateClaimNo() {
@@ -575,12 +577,12 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             }
 
             // 打印数据列表大小和表头信息
-            log.info("Excel解析完成，共{}行数据", dataList.size());
+            logger.info("Excel解析完成，共{}行数据", dataList.size());
             if (!dataList.isEmpty()) {
                 Map<String, Object> firstRow = dataList.get(0);
-                log.info("表头信息: {}", firstRow.keySet());
-                log.info("第一行数据: {}", firstRow);
-                log.info("第一行债权人名称: {}", ExcelImportUtil.getStringValue(firstRow, "债权人名称"));
+                logger.info("表头信息: {}", firstRow.keySet());
+                logger.info("第一行数据: {}", firstRow);
+                logger.info("第一行债权人名称: {}", ExcelImportUtil.getStringValue(firstRow, "债权人名称"));
                 
                 // 验证表头是否包含必需的列
                 boolean hasRequiredColumns = false;
@@ -593,7 +595,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                 
                 if (!hasRequiredColumns) {
                     response.setMessage("Excel文件表头格式不正确，无法识别列名");
-                    log.error("Excel文件表头格式不正确，无法识别列名");
+                    logger.error("Excel文件表头格式不正确，无法识别列名");
                     return response;
                 }
             }
@@ -603,13 +605,13 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                 int rowNum = i + 2;
 
                 // 打印当前行数据
-                log.info("处理行号: {}, 数据: {}", rowNum, row);
-                log.info("当前行债权人名称: {}", ExcelImportUtil.getStringValue(row, "债权人名称"));
+                logger.info("处理行号: {}, 数据: {}", rowNum, row);
+                logger.info("当前行债权人名称: {}", ExcelImportUtil.getStringValue(row, "债权人名称"));
 
                 // 检查债权人字段是否为空，如果为空则跳过该行
                 String creditorName = ExcelImportUtil.getStringValue(row, "债权人名称");
                 if (creditorName == null || creditorName.trim().isEmpty() || "空".equals(creditorName)) {
-                    log.info("跳过空行，行号: {}, 债权人名称为空", rowNum);
+                    logger.info("跳过空行，行号: {}, 债权人名称为空", rowNum);
                     continue;
                 }
 
@@ -620,19 +622,19 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                     ClaimRegistration claimRegistration = createClaim(request, userId);
                     response.setSuccessCount(response.getSuccessCount() + 1);
 
-                    log.info("Excel导入成功, 行号: {}, 债权人: {}, claimId: {}", rowNum, request.getCreditorName(), claimRegistration.getId());
+                    logger.info("Excel导入成功, 行号: {}, 债权人: {}, claimId: {}", rowNum, request.getCreditorName(), claimRegistration.getId());
                 } catch (Exception e) {
                     response.setFailCount(response.getFailCount() + 1);
                     ExcelImportResponse.ImportError error = new ExcelImportResponse.ImportError(rowNum, e.getMessage(), creditorName);
                     response.getErrors().add(error);
-                    log.error("Excel导入失败, 行号: {}, 错误: {}, 债权人名称: {}", rowNum, e.getMessage(), creditorName);
+                    logger.error("Excel导入失败, 行号: {}, 错误: {}, 债权人名称: {}", rowNum, e.getMessage(), creditorName);
                 }
             }
 
             response.setMessage(String.format("导入完成，成功%d条，失败%d条", response.getSuccessCount(), response.getFailCount()));
         } catch (IOException e) {
             response.setMessage("Excel文件解析失败: " + e.getMessage());
-            log.error("Excel文件解析失败", e);
+            logger.error("Excel文件解析失败", e);
         }
 
         return response;
@@ -904,15 +906,15 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                             request.getCreditorName()
                     );
                     response.getErrors().add(error);
-                    log.error("保存债权申报失败: {}", e.getMessage(), e);
+                    logger.error("保存债权申报失败: {}", e.getMessage(), e);
                 }
             }
 
             response.setMessage(String.format("导入完成，成功%d条，失败%d条", response.getSuccessCount(), response.getFailCount()));
-            log.info("EasyExcel导入完成，成功{}条，失败{}条", response.getSuccessCount(), response.getFailCount());
+            logger.info("EasyExcel导入完成，成功{}条，失败{}条", response.getSuccessCount(), response.getFailCount());
         } catch (IOException e) {
             response.setMessage("Excel文件解析失败: " + e.getMessage());
-            log.error("Excel文件解析失败", e);
+            logger.error("Excel文件解析失败", e);
         }
 
         return response;
@@ -927,28 +929,28 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         response.setErrors(new ArrayList<>());
 
         try {
-            log.info("开始导入已申报债权登记簿 - 文件名: {}, 大小: {}KB, 案件ID: {}, 用户ID: {}", 
+            logger.info("开始导入已申报债权登记簿 - 文件名: {}, 大小: {}KB, 案件ID: {}, 用户ID: {}", 
                     file.getOriginalFilename(), file.getSize()/1024, caseId, userId);
 
             DeclaredClaimsRegisterExcelListener listener = new DeclaredClaimsRegisterExcelListener(this, caseId, userId);
 
-            log.debug("开始解析Excel文件");
+            logger.debug("开始解析Excel文件");
             // 配置EasyExcel，设置表头行索引为0（默认），并添加更多的读取配置
             EasyExcel.read(file.getInputStream(), DeclaredClaimsRegisterExcelImportDTO.class, listener)
                     .sheet() // 读取第一个sheet
                     .headRowNumber(0) // 表头在第0行
                     .autoTrim(true) // 自动去除空格
                     .doRead();
-            log.debug("Excel文件解析完成");
+            logger.debug("Excel文件解析完成");
 
             response.setMessage("已申报债权登记簿导入成功");
-            log.info("已申报债权登记簿导入完成 - 文件名: {}", file.getOriginalFilename());
+            logger.info("已申报债权登记簿导入完成 - 文件名: {}", file.getOriginalFilename());
         } catch (IOException e) {
             response.setMessage("Excel文件解析失败: " + e.getMessage());
-            log.error("Excel文件解析失败 - 文件名: {}, 错误: {}", file.getOriginalFilename(), e.getMessage(), e);
+            logger.error("Excel文件解析失败 - 文件名: {}, 错误: {}", file.getOriginalFilename(), e.getMessage(), e);
         } catch (Exception e) {
             response.setMessage("导入失败: " + e.getMessage());
-            log.error("导入过程中发生异常 - 文件名: {}, 错误: {}", file.getOriginalFilename(), e.getMessage(), e);
+            logger.error("导入过程中发生异常 - 文件名: {}, 错误: {}", file.getOriginalFilename(), e.getMessage(), e);
         }
 
         return response;
@@ -987,9 +989,9 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                     .sheet("债权登记")
                     .doWrite(excelDataList);
 
-            log.info("导出Excel成功，共{}条数据", excelDataList.size());
+            logger.info("导出Excel成功，共{}条数据", excelDataList.size());
         } catch (IOException e) {
-            log.error("导出Excel失败", e);
+            logger.error("导出Excel失败", e);
             throw new BusinessException("导出Excel失败: " + e.getMessage());
         }
     }

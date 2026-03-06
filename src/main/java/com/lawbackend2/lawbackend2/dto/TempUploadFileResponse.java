@@ -32,4 +32,7 @@ public class TempUploadFileResponse {
 
     @Schema(description = "Token")
     private String token;
+
+    @Schema(description = "文件路径")
+    private String filePath;
 }

@@ -1,5 +1,5 @@
 "id"	"username"	"password"	"real_name"	"mobile"	"email"	"phone"	"is_valid"	"status"	"login_type"	"bind_device"	"last_login_time"	"last_login_ip"	"login_count"	"pwd_error_count"	"pwd_error_time"	"pwd_expire_time"	"is_deleted"	"create_time"	"update_time"	"create_user_id"	"update_user_id"
-"1"	"admin"	"$2a$10$4gyUon33ugZxdhAqFrhxgucg8ywGzwCCqF/5Ygp.12XpA.4Ypk4KC"	"系统管理员"	"13800138000"	"admin@law.com"	"010-12345678"	"1"	"ACTIVE"	"1"		"17/1/2026 08:28:35"	"192.168.0.120"	"100"	"0"			"0"	"8/1/2026 08:39:42"	"17/1/2026 08:28:35"		
+"1"	"admin"	"$2a$10$4gyUon33ugZxdhAqFrhxgucg8ywGzwCCqF/5Ygp.12XpA.4Ypk4KC"	"系统管理员"	"13800138000"	"admin@law.com"	"010-12345678"	"1"	"ACTIVE"	"1"		"17/1/2026 08:28:35"	"192.168.0.151"	"100"	"0"			"0"	"8/1/2026 08:39:42"	"17/1/2026 08:28:35"		
 "2"	"string"	"$2a$10$GVoB36epzGpC1UTR/jW9.uV6qq8jUx7aXT1TFRJl2GYeWgY55cceG"	"string"	"18656953556"	"string"	""	"1"	"ACTIVE"	"1"				"0"	"0"			"0"	"8/1/2026 08:39:42"	"14/1/2026 09:46:48"		
 "3"	"lawyer02"	"$2a$10$4gyUon33ugZxdhAqFrhxgucg8ywGzwCCqF/5Ygp.12XpA.4Ypk4KC"	"李律师"	"13800138002"	"li@law.com"	"010-12345680"	"1"	"ACTIVE"	"1"				"0"	"0"			"0"	"8/1/2026 08:39:42"	"8/1/2026 14:23:25"		
 "4"	"staff01"	"$2a$10$4gyUon33ugZxdhAqFrhxgucg8ywGzwCCqF/5Ygp.12XpA.4Ypk4KC"	"王工作人员"	"13800138003"	"wang@law.com"	"010-12345681"	"1"	"ACTIVE"	"1"				"0"	"0"			"0"	"8/1/2026 08:39:42"	"8/1/2026 14:23:26"		

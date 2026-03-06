@@ -170,6 +170,7 @@ public class TempUploadController {
         response.setDescription(fileRecord.getDescription());
         response.setUploadTime(fileRecord.getUploadTime());
         response.setToken(fileRecord.getBizId());
+        response.setFilePath(fileRecord.getFilePath());
         return response;
     }
 

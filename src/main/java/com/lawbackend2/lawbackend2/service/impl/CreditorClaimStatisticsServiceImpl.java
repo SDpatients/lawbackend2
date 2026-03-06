@@ -23,12 +23,14 @@ import java.util.Optional;
 @Transactional
 public class CreditorClaimStatisticsServiceImpl implements CreditorClaimStatisticsService {
 
+    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(CreditorClaimStatisticsServiceImpl.class);
+
     @Autowired
     private CreditorClaimRepository creditorClaimRepository;
 
     @Override
     public CreditorClaimStatisticsResponse getCreditorClaimStatistics(CreditorClaimStatisticsRequest request) {
-        log.info("开始获取债权申报统计数据，请求参数：{}", request);
+        logger.info("开始获取债权申报统计数据，请求参数：{}", request);
 
         CreditorClaimStatisticsResponse response = new CreditorClaimStatisticsResponse();
 
@@ -133,13 +135,13 @@ public class CreditorClaimStatisticsServiceImpl implements CreditorClaimStatisti
             Long hasCollateralClaims = creditorClaimRepository.countByHasCollateral(true);
             response.setHasCollateralClaims(hasCollateralClaims != null ? hasCollateralClaims : 0L);
 
-            log.info("债权申报统计数据获取成功，总申报数：{}", totalClaims);
+            logger.info("债权申报统计数据获取成功，总申报数：{}", totalClaims);
 
         } catch (BusinessException e) {
-            log.error("获取债权申报统计数据失败，业务异常：{}", e.getMessage());
+            logger.error("获取债权申报统计数据失败，业务异常：{}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("获取债权申报统计数据失败，系统异常：{}", e.getMessage(), e);
+            logger.error("获取债权申报统计数据失败，系统异常：{}", e.getMessage(), e);
             throw new BusinessException("获取债权申报统计数据失败");
         }
 

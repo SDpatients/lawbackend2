@@ -14,6 +14,7 @@ import com.lawbackend2.lawbackend2.service.ApprovalHistoryService;
 import com.lawbackend2.lawbackend2.service.ApprovalService;
 import com.lawbackend2.lawbackend2.service.CaseTaskService;
 import com.lawbackend2.lawbackend2.service.UserRoleService;
+import com.lawbackend2.lawbackend2.service.impl.ApprovalServiceImpl;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -155,13 +156,13 @@ public class ApprovalController {
         return Result.success(result);
     }
     
-    @Operation(summary = "根据案件ID获取当前提交进度")
+    @Operation(summary = "根据案件 ID 获取当前提交进度")
     @GetMapping("/case/{caseId}/progress")
     public Result<List<ApprovalResponse>> getApprovalProgressByCaseId(
-            @Parameter(description = "案件ID") @PathVariable Long caseId) {
+            @Parameter(description = "案件 ID") @PathVariable Long caseId) {
 
-        // 获取该案件下的所有审批信息，不分页
-        PageResult<ApprovalResponse> result = approvalService.getApprovalList(1, Integer.MAX_VALUE, caseId, null, null, null, null, null);
+        // 获取该案件下的所有审批信息，不分页，只筛选 approvalResult 为 null 的数据
+        PageResult<ApprovalResponse> result = ((ApprovalServiceImpl) approvalService).getApprovalList(1, Integer.MAX_VALUE, caseId, null, null, null, null, null, true);
         return Result.success(result.getList());
     }
 

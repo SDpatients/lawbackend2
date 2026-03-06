@@ -15,6 +15,8 @@ public class DocumentTemplateUpdateRequest {
 
     private String description;
 
+    private String filePath;
+
     private String configJson;
 
     private Boolean isDefault;

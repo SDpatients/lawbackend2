@@ -4,6 +4,8 @@ import lombok.Data;
 
 @Data
 public class SystemFieldResponse {
+    private Long id;
+    private String groupName;
     private String label;
     private String value;
     private Integer sortOrder;
