@@ -1,0 +1,352 @@
+## 后端需要做的修改
+### 1. 审批相关接口 GET /api/v1/approval/{id} - 获取审批详情
+```
+@GetMapping("/approval/{id}")
+public ResponseEntity<?> 
+getApprovalDetail(@PathVariable 
+Long id, HttpServletRequest 
+request) {
+    // 1. 获取当前登录用户
+    Long currentUserId = 
+    getCurrentUserId(request);
+    String currentUserRole = 
+    getCurrentUserRole(request);
+    
+    // 2. 查询审批记录
+    Approval approval = 
+    approvalRepository.findById(id);
+    
+    // 3. 如果审批不存在，返回404
+    if (approval == null) {
+        return ResponseEntity.status
+        (404).body(Map.of(
+            "code", 404,
+            "message", "审批记录不存
+            在或已被删除"
+        ));
+    }
+    
+    // 4. 权限校验
+    boolean hasPermission = false;
+    
+    // 4.1 管理员/超级管理员可以查看所
+    有审批
+    if ("ADMIN".equals
+    (currentUserRole) || 
+    "SUPER_ADMIN".equals
+    (currentUserRole)) {
+        hasPermission = true;
+    }
+    // 4.2 审批创建者可以查看
+    else if (currentUserId.equals
+    (approval.getCreatorId())) {
+        hasPermission = true;
+    }
+    // 4.3 审批人可以查看
+    else if (currentUserId.equals
+    (approval.getApproverId())) {
+        hasPermission = true;
+    }
+    // 4.4 案件相关人员可以查看（如果审
+    批关联了案件）
+    else if (approval.getCaseId() 
+    != null && 
+             caseMemberRepository.
+             existsByCaseIdAndUserId
+             (approval.getCaseId(), 
+             currentUserId)) {
+        hasPermission = true;
+    }
+    
+    // 5. 无权限时返回403
+    if (!hasPermission) {
+        return ResponseEntity.status
+        (403).body(Map.of(
+            "code", 403,
+            "message", "您没有权限查
+            看此审批详情"
+        ));
+    }
+    
+    // 6. 有权限，返回审批详情
+    return ResponseEntity.ok(Map.of(
+        "code", 200,
+        "message", "success",
+        "data", approval
+    ));
+}
+``` 其他审批相关接口也需要增加权限校验：
+接口 权限校验规则 GET /api/v1/approval/{id}/history 同上 POST /api/v1/approval/{id}/approve 只有审批人/管理员可以操作 POST /api/v1/approval/{id}/reject 只有审批人/管理员可以操作
+
+### 2. 归档管理接口 GET /api/v1/archive/case/{caseId} - 获取案件归档文件
+```
+@GetMapping("/archive/case/{caseId}
+")
+public ResponseEntity<?> 
+getArchiveFilesByCaseId(
+    @PathVariable Long caseId,
+    HttpServletRequest request
+) {
+    // 1. 获取当前登录用户
+    Long currentUserId = 
+    getCurrentUserId(request);
+    String currentUserRole = 
+    getCurrentUserRole(request);
+    
+    // 2. 查询案件信息
+    Case caseInfo = caseRepository.
+    findById(caseId);
+    
+    // 3. 如果案件不存在，返回404
+    if (caseInfo == null) {
+        return ResponseEntity.status
+        (404).body(Map.of(
+            "code", 404,
+            "message", "案件不存在或
+            已被删除"
+        ));
+    }
+    
+    // 4. 权限校验
+    boolean hasPermission = 
+    checkCaseAccessPermission
+    (caseInfo, currentUserId, 
+    currentUserRole);
+    
+    // 5. 无权限时返回403
+    if (!hasPermission) {
+        return ResponseEntity.status
+        (403).body(Map.of(
+            "code", 403,
+            "message", "您没有权限访
+            问此案件的归档文件"
+        ));
+    }
+    
+    // 6. 有权限，返回归档文件列表
+    // ... 查询并返回归档文件
+}
+
+// 案件访问权限检查方法
+private boolean 
+checkCaseAccessPermission(Case 
+caseInfo, Long userId, String role) 
+{
+    // 管理员/超级管理员
+    if ("ADMIN".equals(role) || 
+    "SUPER_ADMIN".equals(role)) {
+        return true;
+    }
+    // 案件创建者
+    if (userId.equals(caseInfo.
+    getCreateUserId())) {
+        return true;
+    }
+    // 承办人员
+    if (caseInfo.
+    getUndertakingPersonnel() != 
+    null && 
+        caseInfo.
+        getUndertakingPersonnel().
+        contains(getUsernameByUserId
+        (userId))) {
+        return true;
+    }
+    // 工作团队成员
+    if (workTeamMemberRepository.
+    existsByCaseIdAndUserId
+    (caseInfo.getId(), userId)) {
+        return true;
+    }
+    return false;
+}
+```
+### 3. 报销单接口 GET /api/v1/reimbursement/{id} - 获取报销单详情
+```
+@GetMapping("/reimbursement/{id}")
+public ResponseEntity<?> 
+getReimbursementDetail
+(@PathVariable Long id, 
+HttpServletRequest request) {
+    Long currentUserId = 
+    getCurrentUserId(request);
+    String currentUserRole = 
+    getCurrentUserRole(request);
+    
+    Reimbursement reimbursement = 
+    reimbursementRepository.findById
+    (id);
+    
+    if (reimbursement == null) {
+        return ResponseEntity.status
+        (404).body(Map.of(
+            "code", 404,
+            "message", "报销单不存在
+            或已被删除"
+        ));
+    }
+    
+    // 权限校验：管理员可查看所有，普通
+    用户只能查看自己创建的
+    boolean isAdmin = "ADMIN".equals
+    (currentUserRole) || 
+    "SUPER_ADMIN".equals
+    (currentUserRole);
+    boolean isCreator = 
+    currentUserId.equals
+    (reimbursement.getCreatorId());
+    
+    if (!isAdmin && !isCreator) {
+        return ResponseEntity.status
+        (403).body(Map.of(
+            "code", 403,
+            "message", "您没有权限查
+            看此报销单"
+        ));
+    }
+    
+    return ResponseEntity.ok(Map.of(
+        "code", 200,
+        "message", "success",
+        "data", reimbursement
+    ));
+}
+``` PUT /api/v1/reimbursement/{id} - 更新报销单
+```
+@PutMapping("/reimbursement/{id}")
+public ResponseEntity<?> 
+updateReimbursement(
+    @PathVariable Long id,
+    @RequestBody 
+    UpdateReimbursementRequest 
+    request,
+    HttpServletRequest httpRequest
+) {
+    Long currentUserId = 
+    getCurrentUserId(httpRequest);
+    String currentUserRole = 
+    getCurrentUserRole(httpRequest);
+    
+    Reimbursement reimbursement = 
+    reimbursementRepository.findById
+    (id);
+    
+    if (reimbursement == null) {
+        return ResponseEntity.status
+        (404).body(Map.of(
+            "code", 404,
+            "message", "报销单不存在"
+        ));
+    }
+    
+    // 只有创建者且状态为待审批时可以编
+    辑
+    boolean isAdmin = "ADMIN".equals
+    (currentUserRole) || 
+    "SUPER_ADMIN".equals
+    (currentUserRole);
+    boolean isCreator = 
+    currentUserId.equals
+    (reimbursement.getCreatorId());
+    boolean isPending = "PENDING".
+    equals(reimbursement.
+    getApprovalStatus());
+    
+    if (!isAdmin && !(isCreator && 
+    isPending)) {
+        return ResponseEntity.status
+        (403).body(Map.of(
+            "code", 403,
+            "message", "您没有权限编
+            辑此报销单"
+        ));
+    }
+    
+    // 执行更新逻辑...
+}
+```
+### 4. 建议创建统一的权限校验工具类
+```
+@Component
+public class PermissionChecker {
+    
+    /**
+     * 检查案件访问权限
+     */
+    public boolean checkCaseAccess
+    (Long caseId, Long userId, 
+    String role) {
+        Case caseInfo = 
+        caseRepository.findById
+        (caseId);
+        if (caseInfo == null) 
+        return false;
+        return 
+        checkCaseAccessPermission
+        (caseInfo, userId, role);
+    }
+    
+    /**
+     * 检查审批访问权限
+     */
+    public boolean 
+    checkApprovalAccess(Long 
+    approvalId, Long userId, String 
+    role) {
+        Approval approval = 
+        approvalRepository.findById
+        (approvalId);
+        if (approval == null) 
+        return false;
+        
+        if ("ADMIN".equals(role) || 
+        "SUPER_ADMIN".equals(role)) 
+        return true;
+        if (userId.equals(approval.
+        getCreatorId())) return 
+        true;
+        if (userId.equals(approval.
+        getApproverId())) return 
+        true;
+        if (approval.getCaseId() != 
+        null && 
+            checkCaseAccess
+            (approval.getCaseId(), 
+            userId, role)) return 
+            true;
+        
+        return false;
+    }
+    
+    /**
+     * 检查报销单访问权限
+     */
+    public boolean 
+    checkReimbursementAccess(Long 
+    reimbursementId, Long userId, 
+    String role) {
+        Reimbursement reimbursement 
+        = reimbursementRepository.
+        findById(reimbursementId);
+        if (reimbursement == null) 
+        return false;
+        
+        if ("ADMIN".equals(role) || 
+        "SUPER_ADMIN".equals(role)) 
+        return true;
+        if (userId.equals
+        (reimbursement.getCreatorId
+        ())) return true;
+        
+        return false;
+    }
+}
+```
+## 总结
+层面 修改状态 说明 前端 ✅ 已完成 5个高风险/中风险模块已全部修复 后端 ⏳ 待实现 需要为所有相关API添加权限校验
+
+重要提示 ：
+
+1. 前端的权限校验只是用户体验优化， 不能作为真正的安全防线
+2. 后端的权限校验是 必须的 ，这是防止越权访问的根本保障
+3. 建议后端优先实现权限校验，前端修复作为补充

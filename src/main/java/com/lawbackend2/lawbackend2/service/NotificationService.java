@@ -15,35 +15,35 @@ public interface NotificationService {
                                Long relatedId, String relatedType,
                                String priority, Long createUserId, String createUserName);
 
-    Notification getNotificationById(Long notificationId);
+    Notification getNotificationById(Long notificationId, Long currentUserId);
 
-    Page<Notification> getUserNotifications(Long userId, Pageable pageable);
+    Page<Notification> getUserNotifications(Long userId, Long currentUserId, Pageable pageable);
 
-    Page<Notification> getUserNotificationsByStatus(Long userId, String status, Pageable pageable);
+    Page<Notification> getUserNotificationsByStatus(Long userId, Long currentUserId, String status, Pageable pageable);
 
-    Page<Notification> getUserNotificationsByType(Long userId, String type, Pageable pageable);
+    Page<Notification> getUserNotificationsByType(Long userId, Long currentUserId, String type, Pageable pageable);
 
-    Page<Notification> getUserNotificationsByReadStatus(Long userId, Boolean isRead, Pageable pageable);
+    Page<Notification> getUserNotificationsByReadStatus(Long userId, Long currentUserId, Boolean isRead, Pageable pageable);
 
-    Page<Notification> searchNotifications(Long userId, String type, Boolean isRead, String status, Pageable pageable);
+    Page<Notification> searchNotifications(Long userId, Long currentUserId, String type, Boolean isRead, String status, Pageable pageable);
 
-    List<Notification> getUnreadNotifications(Long userId);
+    List<Notification> getUnreadNotifications(Long userId, Long currentUserId);
 
-    Long countUnreadNotifications(Long userId);
+    Long countUnreadNotifications(Long userId, Long currentUserId);
 
-    Long countNotificationsByStatus(Long userId, String status);
+    Long countNotificationsByStatus(Long userId, Long currentUserId, String status);
 
-    Notification markAsRead(Long notificationId);
+    Notification markAsRead(Long notificationId, Long currentUserId);
 
-    void markAllAsRead(Long userId);
+    void markAllAsRead(Long userId, Long currentUserId);
 
-    void deleteNotification(Long notificationId);
+    void deleteNotification(Long notificationId, Long currentUserId);
 
     void deleteExpiredNotifications();
 
-    void batchDeleteNotifications(List<Long> notificationIds);
+    void batchDeleteNotifications(List<Long> notificationIds, Long currentUserId);
 
-    void updateNotificationStatus(Long notificationId, String status);
+    void updateNotificationStatus(Long notificationId, String status, Long currentUserId);
 
     void sendNotificationToAdminAndSuperAdmin(String title, String content, String type, Long relatedId, String relatedType, Long createUserId, String createUserName);
 

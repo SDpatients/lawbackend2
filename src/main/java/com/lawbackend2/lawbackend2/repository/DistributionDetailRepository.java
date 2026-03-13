@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.entity.DistributionDetail;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,5 +28,8 @@ public interface DistributionDetailRepository extends JpaRepository<Distribution
     List<DistributionDetail> findByDistributionExecutionIdAndIsDeleted(Long distributionExecutionId, Boolean isDeleted);
 
     List<DistributionDetail> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE DistributionDetail dd SET dd.isDeleted = true WHERE dd.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

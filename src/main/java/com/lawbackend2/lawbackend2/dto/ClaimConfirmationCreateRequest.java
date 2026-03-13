@@ -1,15 +1,17 @@
 package com.lawbackend2.lawbackend2.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
 
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ClaimConfirmationCreateRequest {
-    @NotNull(message = "债权申报ID不能为空")
+    @NotNull(message = "债权申报 ID 不能为空")
     private Long claimRegistrationId;
 
     private Long caseId;
@@ -26,13 +28,14 @@ public class ClaimConfirmationCreateRequest {
 
     private String voteNotes;
 
+    @JsonDeserialize(using = BooleanDeserializer.class)
     private Boolean hasObjection = false;
 
     private String objector;
 
     private String objectionReason;
 
-    private Long objectionAmount;
+    private BigDecimal objectionAmount;
 
     private LocalDateTime objectionDate;
 
@@ -48,10 +51,11 @@ public class ClaimConfirmationCreateRequest {
 
     private String courtRulingResult;
 
-    private Long courtRulingAmount;
+    private BigDecimal courtRulingAmount;
 
     private String courtRulingNotes;
 
+    @JsonDeserialize(using = BooleanDeserializer.class)
     private Boolean hasLawsuit = false;
 
     private String lawsuitCaseNo;
@@ -60,17 +64,17 @@ public class ClaimConfirmationCreateRequest {
 
     private String lawsuitResult;
 
-    private Long lawsuitAmount;
+    private BigDecimal lawsuitAmount;
 
     private String lawsuitNotes;
 
-    private Long finalConfirmedAmount;
+    private BigDecimal finalConfirmedAmount;
 
     private LocalDateTime finalConfirmationDate;
 
     private String finalConfirmationBasis;
 
-    private String confirmationAttachments;
+    private List<String> confirmationAttachments;
 
     private String confirmationStatus = "PENDING";
 

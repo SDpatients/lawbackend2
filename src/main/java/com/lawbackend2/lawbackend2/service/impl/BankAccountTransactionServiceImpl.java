@@ -94,8 +94,29 @@ public class BankAccountTransactionServiceImpl implements BankAccountTransaction
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "transactionDate", "createTime"));
 
         boolean isAdmin = isAdminOrSuperAdmin(userId);
-        Page<BankAccountTransactionResponse> page = transactionRepository.findTransactionsWithDetails(
-                accountId, transactionType, businessType, startDate, endDate, caseId, pageable);
+        
+        Page<BankAccountTransactionResponse> page;
+        
+        if (isAdmin) {
+            // 管理员可以查看所有交易记录
+            page = transactionRepository.findTransactionsWithDetails(
+                    accountId, transactionType, businessType, startDate, endDate, caseId, null, pageable);
+        } else if (accountId != null) {
+            // 普通用户查询指定账户的交易记录，需要验证权限
+            BankAccount bankAccount = bankAccountRepository.findById(accountId)
+                    .orElseThrow(() -> new BusinessException("银行账户不存在"));
+            
+            if (!bankAccount.getCreateUserId().equals(userId)) {
+                throw new BusinessException("无权查看该银行账户的交易记录");
+            }
+            
+            page = transactionRepository.findTransactionsWithDetails(
+                    accountId, transactionType, businessType, startDate, endDate, caseId, null, pageable);
+        } else {
+            // 普通用户不传 accountId，查询该用户创建的所有账户的交易记录
+            page = transactionRepository.findTransactionsByCreateUserId(
+                    userId, transactionType, businessType, startDate, endDate, caseId, pageable);
+        }
 
         PageResult<BankAccountTransactionResponse> result = new PageResult<>();
         result.setTotal(page.getTotalElements());

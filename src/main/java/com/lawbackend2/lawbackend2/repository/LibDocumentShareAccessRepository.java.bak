@@ -1,0 +1,27 @@
+package com.lawbackend2.lawbackend2.repository;
+
+import com.lawbackend2.lawbackend2.entity.LibDocumentShareAccess;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface LibDocumentShareAccessRepository extends JpaRepository<LibDocumentShareAccess, Long>, JpaSpecificationExecutor<LibDocumentShareAccess> {
+
+    Page<LibDocumentShareAccess> findByShareIdOrderByCreateTimeDesc(Long shareId, Pageable pageable);
+
+    @Query("SELECT sa FROM LibDocumentShareAccess sa WHERE sa.shareId = :shareId AND sa.accessType = :type ORDER BY sa.createTime DESC")
+    List<LibDocumentShareAccess> findByShareIdAndAccessType(@Param("shareId") Long shareId, @Param("type") String type);
+
+    @Query("SELECT sa FROM LibDocumentShareAccess sa WHERE sa.visitorUserId = :userId ORDER BY sa.createTime DESC")
+    Page<LibDocumentShareAccess> findByVisitorUserId(@Param("userId") Long userId, Pageable pageable);
+
+    @Query("SELECT COUNT(sa) FROM LibDocumentShareAccess sa WHERE sa.shareId = :shareId")
+    Long countByShareId(@Param("shareId") Long shareId);
+}

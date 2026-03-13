@@ -24,4 +24,6 @@ public class DocumentTemplateUpdateRequest {
     private String status;
 
     private List<DocumentTemplateFieldDTO> fields;
+
+    private List<DocumentTemplateMappingDTO> mappings;
 }

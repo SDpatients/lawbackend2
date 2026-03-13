@@ -72,9 +72,9 @@ class ClaimRegistrationServiceTest {
         createRequest.setCreditorType("个人");
         createRequest.setClaimType("普通债权");
         createRequest.setTotalAmount(new BigDecimal("100000.00"));
-        createRequest.setHasCourtJudgment(0);
-        createRequest.setHasExecution(0);
-        createRequest.setHasCollateral(0);
+        createRequest.setHasCourtJudgment(false);
+        createRequest.setHasExecution(false);
+        createRequest.setHasCollateral(false);
 
         mockClaim = new ClaimRegistration();
         mockClaim.setId(1L);
@@ -265,9 +265,9 @@ class ClaimRegistrationServiceTest {
         request.setCreditorType("个人");
         request.setClaimType("普通债权");
         request.setTotalAmount(new BigDecimal("100000.00"));
-        request.setHasCourtJudgment(0);
-        request.setHasExecution(0);
-        request.setHasCollateral(0);
+        request.setHasCourtJudgment(false);
+        request.setHasExecution(false);
+        request.setHasCollateral(false);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             claimRegistrationService.createClaim(request, 1L);
@@ -284,9 +284,9 @@ class ClaimRegistrationServiceTest {
         request.setCreditorName("测试债权人");
         request.setClaimType("普通债权");
         request.setTotalAmount(new BigDecimal("100000.00"));
-        request.setHasCourtJudgment(0);
-        request.setHasExecution(0);
-        request.setHasCollateral(0);
+        request.setHasCourtJudgment(false);
+        request.setHasExecution(false);
+        request.setHasCollateral(false);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             claimRegistrationService.createClaim(request, 1L);
@@ -303,9 +303,9 @@ class ClaimRegistrationServiceTest {
         request.setCreditorName("测试债权人");
         request.setCreditorType("个人");
         request.setTotalAmount(new BigDecimal("100000.00"));
-        request.setHasCourtJudgment(0);
-        request.setHasExecution(0);
-        request.setHasCollateral(0);
+        request.setHasCourtJudgment(false);
+        request.setHasExecution(false);
+        request.setHasCollateral(false);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> {
             claimRegistrationService.createClaim(request, 1L);
@@ -323,9 +323,9 @@ class ClaimRegistrationServiceTest {
         request.setCreditorType("个人");
         request.setClaimType("普通债权");
         request.setTotalAmount(new BigDecimal("0"));
-        request.setHasCourtJudgment(0);
-        request.setHasExecution(0);
-        request.setHasCollateral(0);
+        request.setHasCourtJudgment(false);
+        request.setHasExecution(false);
+        request.setHasCollateral(false);
 
         // 模拟用户数据
         com.lawbackend2.lawbackend2.entity.User mockUser = new com.lawbackend2.lawbackend2.entity.User();
@@ -351,9 +351,9 @@ class ClaimRegistrationServiceTest {
         request.setCreditorType("个人");
         request.setClaimType("普通债权");
         request.setTotalAmount(new BigDecimal("-100000.00"));
-        request.setHasCourtJudgment(0);
-        request.setHasExecution(0);
-        request.setHasCollateral(0);
+        request.setHasCourtJudgment(false);
+        request.setHasExecution(false);
+        request.setHasCollateral(false);
 
         // 模拟用户数据
         com.lawbackend2.lawbackend2.entity.User mockUser = new com.lawbackend2.lawbackend2.entity.User();

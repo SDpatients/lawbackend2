@@ -10,6 +10,7 @@ import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
 import com.lawbackend2.lawbackend2.service.ClaimConfirmationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
     private final ClaimConfirmationRepository claimConfirmationRepository;
     private final ClaimRegistrationRepository claimRegistrationRepository;
     private final ClaimReviewRepository claimReviewRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public ClaimConfirmationServiceImpl(ClaimConfirmationRepository claimConfirmationRepository,
@@ -50,13 +52,27 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
         ClaimConfirmation confirmation = new ClaimConfirmation();
         BeanUtils.copyProperties(request, confirmation);
         
+        // 将 List<String> 转为 JSON 字符串存储
+        if (request.getConfirmationAttachments() != null) {
+            try {
+                String attachmentsJson = objectMapper.writeValueAsString(request.getConfirmationAttachments());
+                confirmation.setConfirmationAttachments(attachmentsJson);
+            } catch (Exception e) {
+                log.warn("附件列表序列化失败", e);
+            }
+        }
+        
         confirmation.setCaseId(registration.getCaseId());
         confirmation.setCreditorName(registration.getCreditorName());
         confirmation.setCreateUserId(userId);
         confirmation.setUpdateUserId(userId);
 
         ClaimConfirmation saved = claimConfirmationRepository.save(confirmation);
-        log.info("债权确认记录创建成功, confirmationId: {}, claimRegistrationId: {}", 
+        
+        // 自动同步债权审查数据
+        syncReviewDataToConfirmation(saved.getId(), userId);
+        
+        log.info("债权确认记录创建成功，confirmationId: {}, claimRegistrationId: {}", 
                   saved.getId(), request.getClaimRegistrationId());
         return saved;
     }
@@ -122,7 +138,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
             confirmation.setVoteNotes(request.getVoteNotes());
         }
         if (request.getHasObjection() != null) {
-            confirmation.setHasObjection(request.getHasObjection() == 1);
+            confirmation.setHasObjection(request.getHasObjection());
         }
         if (request.getObjector() != null) {
             confirmation.setObjector(request.getObjector());
@@ -161,7 +177,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
             confirmation.setCourtRulingNotes(request.getCourtRulingNotes());
         }
         if (request.getHasLawsuit() != null) {
-            confirmation.setHasLawsuit(request.getHasLawsuit() == 1);
+            confirmation.setHasLawsuit(request.getHasLawsuit());
         }
         if (request.getLawsuitCaseNo() != null) {
             confirmation.setLawsuitCaseNo(request.getLawsuitCaseNo());
@@ -187,9 +203,17 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
         if (request.getFinalConfirmationBasis() != null) {
             confirmation.setFinalConfirmationBasis(request.getFinalConfirmationBasis());
         }
+        
+        // 处理附件列表更新
         if (request.getConfirmationAttachments() != null) {
-            confirmation.setConfirmationAttachments(request.getConfirmationAttachments());
+            try {
+                String attachmentsJson = objectMapper.writeValueAsString(request.getConfirmationAttachments());
+                confirmation.setConfirmationAttachments(attachmentsJson);
+            } catch (Exception e) {
+                log.warn("附件列表序列化失败", e);
+            }
         }
+        
         if (request.getConfirmationStatus() != null) {
             confirmation.setConfirmationStatus(request.getConfirmationStatus());
         }
@@ -197,7 +221,58 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
             confirmation.setRemarks(request.getRemarks());
         }
 
-        return claimConfirmationRepository.save(confirmation);
+        // 更新债权审查相关字段
+        if (request.getDeclaredPrincipal() != null) {
+            confirmation.setDeclaredPrincipal(request.getDeclaredPrincipal());
+        }
+        if (request.getDeclaredInterest() != null) {
+            confirmation.setDeclaredInterest(request.getDeclaredInterest());
+        }
+        if (request.getDeclaredPenalty() != null) {
+            confirmation.setDeclaredPenalty(request.getDeclaredPenalty());
+        }
+        if (request.getDeclaredOtherLosses() != null) {
+            confirmation.setDeclaredOtherLosses(request.getDeclaredOtherLosses());
+        }
+        if (request.getDeclaredTotalAmount() != null) {
+            confirmation.setDeclaredTotalAmount(request.getDeclaredTotalAmount());
+        }
+        if (request.getConfirmedPrincipal() != null) {
+            confirmation.setConfirmedPrincipal(request.getConfirmedPrincipal());
+        }
+        if (request.getConfirmedInterest() != null) {
+            confirmation.setConfirmedInterest(request.getConfirmedInterest());
+        }
+        if (request.getConfirmedPenalty() != null) {
+            confirmation.setConfirmedPenalty(request.getConfirmedPenalty());
+        }
+        if (request.getConfirmedOtherLosses() != null) {
+            confirmation.setConfirmedOtherLosses(request.getConfirmedOtherLosses());
+        }
+        if (request.getConfirmedTotalAmount() != null) {
+            confirmation.setConfirmedTotalAmount(request.getConfirmedTotalAmount());
+        }
+        if (request.getUnconfirmedPrincipal() != null) {
+            confirmation.setUnconfirmedPrincipal(request.getUnconfirmedPrincipal());
+        }
+        if (request.getUnconfirmedInterest() != null) {
+            confirmation.setUnconfirmedInterest(request.getUnconfirmedInterest());
+        }
+        if (request.getUnconfirmedPenalty() != null) {
+            confirmation.setUnconfirmedPenalty(request.getUnconfirmedPenalty());
+        }
+        if (request.getUnconfirmedOtherLosses() != null) {
+            confirmation.setUnconfirmedOtherLosses(request.getUnconfirmedOtherLosses());
+        }
+        if (request.getUnconfirmedTotalAmount() != null) {
+            confirmation.setUnconfirmedTotalAmount(request.getUnconfirmedTotalAmount());
+        }
+
+        confirmation.setUpdateUserId(1L); // TODO: 从上下文获取实际用户 ID
+
+        ClaimConfirmation updated = claimConfirmationRepository.save(confirmation);
+        log.info("债权确认记录更新成功，confirmationId: {}", confirmationId);
+        return updated;
     }
 
     @Override
@@ -350,6 +425,50 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
             return claimConfirmationRepository.countByConfirmationStatus(confirmationStatus);
         } else {
             return claimConfirmationRepository.count();
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void syncReviewDataToConfirmation(Long confirmationId, Long userId) {
+        ClaimConfirmation confirmation = getConfirmationById(confirmationId);
+        
+        Optional<ClaimReview> reviewOpt = claimReviewRepository
+                .findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(confirmation.getClaimRegistrationId());
+        
+        if (reviewOpt.isPresent()) {
+            ClaimReview review = reviewOpt.get();
+            
+            confirmation.setDeclaredPrincipal(review.getDeclaredPrincipal());
+            confirmation.setDeclaredInterest(review.getDeclaredInterest());
+            confirmation.setDeclaredPenalty(review.getDeclaredPenalty());
+            confirmation.setDeclaredOtherLosses(review.getDeclaredOtherLosses());
+            confirmation.setDeclaredTotalAmount(review.getDeclaredTotalAmount());
+            
+            confirmation.setConfirmedPrincipal(review.getConfirmedPrincipal());
+            confirmation.setConfirmedInterest(review.getConfirmedInterest());
+            confirmation.setConfirmedPenalty(review.getConfirmedPenalty());
+            confirmation.setConfirmedOtherLosses(review.getConfirmedOtherLosses());
+            confirmation.setConfirmedTotalAmount(review.getConfirmedTotalAmount());
+            
+            confirmation.setUnconfirmedPrincipal(review.getUnconfirmedPrincipal());
+            confirmation.setUnconfirmedInterest(review.getUnconfirmedInterest());
+            confirmation.setUnconfirmedPenalty(review.getUnconfirmedPenalty());
+            confirmation.setUnconfirmedOtherLosses(review.getUnconfirmedOtherLosses());
+            confirmation.setUnconfirmedTotalAmount(review.getUnconfirmedTotalAmount());
+            
+            if (review.getConfirmedTotalAmount() != null) {
+                confirmation.setFinalConfirmedAmount(review.getConfirmedTotalAmount());
+            }
+            
+            confirmation.setUpdateUserId(userId);
+            claimConfirmationRepository.save(confirmation);
+            
+            log.info("债权审查数据同步到确认表成功，confirmationId: {}, claimRegistrationId: {}", 
+                      confirmationId, confirmation.getClaimRegistrationId());
+        } else {
+            log.warn("未找到对应的债权审查数据，confirmationId: {}, claimRegistrationId: {}", 
+                      confirmationId, confirmation.getClaimRegistrationId());
         }
     }
 }

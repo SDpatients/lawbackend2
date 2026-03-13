@@ -35,6 +35,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.criteria.Join;
 import javax.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
@@ -158,7 +159,7 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         };
     }
 
-    private Specification<CreditorInfo> buildSpecificationWithPermission(Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId) {
+    private Specification<CreditorInfo> buildSpecificationWithPermission(Long caseId, String caseNumber, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -189,6 +190,59 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                     // Ignore invalid status values
                 }
             }
+
+            predicates.add(cb.equal(root.get("isDeleted"), false));
+
+            if (!isAdminOrSuperAdmin(userId)) {
+                List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
+                predicates.add(cb.or(
+                    cb.equal(root.get("createUserId"), userId),
+                    root.get("caseId").in(accessibleCaseIds)
+                ));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    private Specification<CreditorInfo> buildSpecificationWithCaseNumber(Long caseId, String caseNumber, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (caseId != null) {
+                predicates.add(cb.equal(root.get("caseId"), caseId));
+            }
+
+            if (caseNumber != null && !caseNumber.trim().isEmpty()) {
+                Join<CreditorInfo, BankruptCase> caseJoin = root.join("bankruptCase", javax.persistence.criteria.JoinType.INNER);
+                predicates.add(cb.like(caseJoin.get("caseNumber"), "%" + caseNumber + "%"));
+            }
+
+            if (creditorType != null && !creditorType.trim().isEmpty()) {
+                predicates.add(cb.equal(root.get("creditorType"), creditorType));
+            }
+
+            if (creditorName != null && !creditorName.trim().isEmpty()) {
+                predicates.add(cb.like(root.get("creditorName"), "%" + creditorName + "%"));
+            }
+
+            if (idNumber != null && !idNumber.trim().isEmpty()) {
+                predicates.add(cb.like(root.get("idNumber"), "%" + idNumber + "%"));
+            }
+
+            if (legalRepresentative != null && !legalRepresentative.trim().isEmpty()) {
+                predicates.add(cb.like(root.get("legalRepresentative"), "%" + legalRepresentative + "%"));
+            }
+
+            if (status != null && !status.trim().isEmpty()) {
+                try {
+                    predicates.add(cb.equal(root.get("creditorStatus"), CreditorStatus.valueOf(status)));
+                } catch (IllegalArgumentException e) {
+                    // Ignore invalid status values
+                }
+            }
+
+            predicates.add(cb.equal(root.get("isDeleted"), false));
 
             if (!isAdminOrSuperAdmin(userId)) {
                 List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
@@ -318,10 +372,10 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     }
 
     @Override
-    public PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId) {
+    public PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String caseNumber, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
 
-        Specification<CreditorInfo> spec = buildSpecificationWithPermission(caseId, creditorType, creditorName, idNumber, legalRepresentative, status, userId);
+        Specification<CreditorInfo> spec = buildSpecificationWithCaseNumber(caseId, caseNumber, creditorType, creditorName, idNumber, legalRepresentative, status, userId);
         Page<CreditorInfo> page = creditorInfoRepository.findAll(spec, pageable);
         
         List<CreditorInfo> creditorList = page.getContent();
@@ -430,6 +484,8 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                     response.setCreditorName(creditor.getCreditorName());
                     response.setIdNumber(creditor.getIdNumber());
                     response.setCreditorType(creditor.getCreditorType());
+                    response.setLegalRepresentative(creditor.getLegalRepresentative());
+                    response.setAddress(creditor.getAddress());
                     return response;
                 })
                 .collect(Collectors.toList());

@@ -35,4 +35,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
 
     @Query("SELECT u FROM User u WHERE u.isDeleted = false ORDER BY u.createTime DESC")
     List<User> findAllActive();
+
+    @Query("SELECT u.realName FROM User u WHERE u.id = :id")
+    Optional<String> findRealNameById(@Param("id") Long id);
 }

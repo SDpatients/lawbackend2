@@ -14,17 +14,18 @@ import java.util.List;
 @Repository
 public interface ActivityRepository extends JpaRepository<Activity, Long> {
 
-    Page<Activity> findByUserId(Long userId, Pageable pageable);
+    @Query("SELECT a FROM Activity a WHERE a.isDeleted = false AND a.userId = :userId")
+    Page<Activity> findByUserId(@Param("userId") Long userId, Pageable pageable);
 
-    @Query("SELECT a FROM Activity a WHERE a.type = :type AND a.createTime > :startTime")
+    @Query("SELECT a FROM Activity a WHERE a.isDeleted = false AND a.type = :type AND a.createTime > :startTime")
     List<Activity> findRecentActivitiesByType(@Param("type") String type, @Param("startTime") LocalDateTime startTime);
 
-    @Query("SELECT a FROM Activity a WHERE (:userId IS NULL OR a.userId = :userId) AND (:type IS NULL OR a.type = :type) AND a.status = :status ORDER BY a.createTime DESC")
+    @Query("SELECT a FROM Activity a WHERE a.isDeleted = false AND (:userId IS NULL OR a.userId = :userId) AND (:type IS NULL OR a.type = :type) AND a.status = :status ORDER BY a.createTime DESC")
     Page<Activity> searchActivities(@Param("userId") Long userId, @Param("type") String type, @Param("status") String status, Pageable pageable);
 
-    @Query("SELECT COUNT(a) FROM Activity a WHERE a.userId = :userId AND a.createTime > :startTime")
+    @Query("SELECT COUNT(a) FROM Activity a WHERE a.isDeleted = false AND a.userId = :userId AND a.createTime > :startTime")
     long countActivitiesByUserSince(@Param("userId") Long userId, @Param("startTime") LocalDateTime startTime);
 
-    @Query("SELECT a FROM Activity a WHERE a.relatedType = :relatedType AND a.relatedId = :relatedId ORDER BY a.createTime DESC")
+    @Query("SELECT a FROM Activity a WHERE a.isDeleted = false AND a.relatedType = :relatedType AND a.relatedId = :relatedId ORDER BY a.createTime DESC")
     List<Activity> findByRelatedTypeAndRelatedId(@Param("relatedType") String relatedType, @Param("relatedId") Long relatedId);
 }

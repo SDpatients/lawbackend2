@@ -92,8 +92,9 @@ public class DocumentExportController {
 
     @Operation(summary = "获取所有文档导出模板")
     @GetMapping
-    public Result<List<DocumentExportTemplate>> getAllTemplates() {
-        List<DocumentExportTemplate> templates = documentExportService.getAllTemplates();
+    public Result<List<DocumentExportTemplate>> getAllTemplates(
+            @Parameter(description = "描述模糊查询") @RequestParam(required = false) String description) {
+        List<DocumentExportTemplate> templates = documentExportService.getAllTemplates(description);
         return Result.success(templates);
     }
 

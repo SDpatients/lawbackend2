@@ -115,15 +115,15 @@ public class ClaimRegistrationExcelListener extends AnalysisEventListener<ClaimR
         return request;
     }
 
-    private Integer parseBoolean(String value) {
+    private Boolean parseBoolean(String value) {
         if (value == null || value.trim().isEmpty()) {
-            return 0;
+            return false;
         }
         String trimmed = value.trim().toLowerCase();
         if ("是".equals(trimmed) || "yes".equals(trimmed) || "true".equals(trimmed) || "1".equals(trimmed)) {
-            return 1;
+            return true;
         }
-        return 0;
+        return false;
     }
 
     private void validateRequest(ClaimRegistrationCreateRequest request) {

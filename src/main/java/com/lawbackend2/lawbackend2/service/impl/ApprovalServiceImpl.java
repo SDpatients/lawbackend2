@@ -650,7 +650,6 @@ public class ApprovalServiceImpl implements ApprovalService {
         fileInfo.put("fileExtension", file.getFileExtension());
         fileInfo.put("mimeType", file.getMimeType());
         
-        // 仅当includeImages为true且是图片文件时返回imageData
         if (includeImages && file.getMimeType() != null && file.getMimeType().startsWith("image/")) {
             try {
                 java.nio.file.Path filePath = java.nio.file.Paths.get(file.getFilePath());
@@ -660,10 +659,79 @@ public class ApprovalServiceImpl implements ApprovalService {
                     fileInfo.put("imageData", "data:" + file.getMimeType() + ";base64," + base64Content);
                 }
             } catch (Exception e) {
-                // 读取文件失败时不返回imageData
             }
         }
         
         return fileInfo;
+    }
+
+    @Override
+    public List<ApprovalResponse> getApprovalProgressByCaseId(Long caseId, String approvalType) {
+        List<Approval> approvals = approvalRepository.findByCaseId(caseId);
+        
+        approvals = approvals.stream()
+                .filter(approval -> approval.getApprovalResult() == null)
+                .filter(approval -> {
+                    if (approvalType == null || approvalType.isEmpty()) {
+                        if ("CASE_SUBMIT".equals(approval.getApprovalType())) {
+                            return true;
+                        }
+                        if (approval.getApprovalType() != null && approval.getApprovalType().startsWith("TASK_")) {
+                            return true;
+                        }
+                        return false;
+                    }
+                    if ("CASE_SUBMIT".equals(approvalType)) {
+                        return "CASE_SUBMIT".equals(approval.getApprovalType());
+                    }
+                    if (approvalType.startsWith("TASK_")) {
+                        return approval.getApprovalType() != null && approval.getApprovalType().startsWith("TASK_");
+                    }
+                    return approval.getApprovalType() != null && approval.getApprovalType().equals(approvalType);
+                })
+                .sorted((a1, a2) -> a2.getCreateTime().compareTo(a1.getCreateTime()))
+                .collect(Collectors.toList());
+        
+        return approvals.stream().map(approval -> {
+            String caseNumber = "";
+            if (approval.getCaseId() != null) {
+                Optional<BankruptCase> bankruptCaseOpt = bankruptCaseRepository.findById(approval.getCaseId());
+                if (bankruptCaseOpt.isPresent()) {
+                    caseNumber = bankruptCaseOpt.get().getCaseNumber();
+                }
+            }
+            
+            String realName = "";
+            if (approval.getCreateUserId() != null) {
+                Optional<User> userOpt = userRepository.findById(approval.getCreateUserId());
+                if (userOpt.isPresent()) {
+                    realName = userOpt.get().getRealName();
+                }
+            }
+            
+            return ApprovalResponse.fromEntity(approval, caseNumber, realName);
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public long getPendingCaseSubmitCount() {
+        return approvalRepository.countByApprovalResultIsNullAndApprovalType("CASE_SUBMIT");
+    }
+
+    @Override
+    public long getPendingTaskCount() {
+        List<Approval> pendingApprovals = approvalRepository.findByApprovalResultIsNull();
+        return pendingApprovals.stream()
+                .filter(approval -> approval.getApprovalType() != null && approval.getApprovalType().startsWith("TASK_"))
+                .count();
+    }
+
+    @Override
+    public long getPendingTotalCount() {
+        List<Approval> pendingApprovals = approvalRepository.findByApprovalResultIsNull();
+        return pendingApprovals.stream()
+                .filter(approval -> approval.getApprovalType() != null && 
+                        ("CASE_SUBMIT".equals(approval.getApprovalType()) || approval.getApprovalType().startsWith("TASK_")))
+                .count();
     }
 }

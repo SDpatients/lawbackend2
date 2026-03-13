@@ -8,6 +8,7 @@ import com.lawbackend2.lawbackend2.dto.ArchiveRecordResponse;
 import com.lawbackend2.lawbackend2.dto.ArchiveUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.ArchiveUploadRequest;
 import com.lawbackend2.lawbackend2.service.ArchiveService;
+import com.lawbackend2.lawbackend2.util.PermissionChecker;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -36,10 +37,12 @@ import java.util.List;
 public class ArchiveController {
 
     private final ArchiveService archiveService;
+    private final PermissionChecker permissionChecker;
 
     @Autowired
-    public ArchiveController(ArchiveService archiveService) {
+    public ArchiveController(ArchiveService archiveService, PermissionChecker permissionChecker) {
         this.archiveService = archiveService;
+        this.permissionChecker = permissionChecker;
     }
 
     @Operation(summary = "获取归档分类树", description = "获取归档分类的完整树形结构")
@@ -63,6 +66,7 @@ public class ArchiveController {
             @Parameter(description = "是否机密") @RequestParam(required = false) Boolean isConfidential,
             @Parameter(description = "访问级别") @RequestParam(required = false) String accessLevel) {
 
+        permissionChecker.checkArchiveEditPermission(caseId);
         Long userId = SecurityUtil.getCurrentUserId();
 
         ArchiveUploadRequest request = new ArchiveUploadRequest();
@@ -87,6 +91,7 @@ public class ArchiveController {
             @Parameter(description = "记录状态") @RequestParam(required = false) String status,
             @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
 
+        permissionChecker.checkArchiveAccessPermission(caseId);
         PageResult<ArchiveRecordResponse> result = archiveService.getArchiveFiles(
                 caseId, categoryCode, pageNum, pageSize, status, keyword);
         return Result.success(result);
@@ -143,6 +148,7 @@ public class ArchiveController {
             @Parameter(description = "归档分类代码") @RequestParam(required = false) String categoryCode,
             @Parameter(description = "记录状态") @RequestParam(required = false) String status) {
 
+        permissionChecker.checkArchiveAccessPermission(caseId);
         Long count = archiveService.getArchiveCount(caseId, categoryCode, status);
         return Result.success(count);
     }

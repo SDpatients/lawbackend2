@@ -1,0 +1,257 @@
+package com.lawbackend2.lawbackend2.service.impl;
+
+import com.lawbackend2.lawbackend2.dto.request.LibVersionCreateRequest;
+import com.lawbackend2.lawbackend2.dto.response.LibVersionListResponse;
+import com.lawbackend2.lawbackend2.dto.response.LibVersionResponse;
+import com.lawbackend2.lawbackend2.entity.LibDocument;
+import com.lawbackend2.lawbackend2.entity.LibDocumentVersion;
+import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.repository.LibDocumentRepository;
+import com.lawbackend2.lawbackend2.repository.LibDocumentVersionRepository;
+import com.lawbackend2.lawbackend2.service.LibDocumentOperationLogService;
+import com.lawbackend2.lawbackend2.service.LibDocumentVersionService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class LibDocumentVersionServiceImpl implements LibDocumentVersionService {
+
+    private final LibDocumentVersionRepository versionRepository;
+    private final LibDocumentRepository documentRepository;
+    private final LibDocumentOperationLogService operationLogService;
+
+    @Override
+    @Transactional
+    public LibVersionResponse createVersion(LibVersionCreateRequest request, Long userId) {
+        LibDocument document = documentRepository.findById(request.getDocumentId())
+                .orElseThrow(() -> new BusinessException("文档不存在"));
+
+        if (document.getIsDeleted()) {
+            throw new BusinessException("文档已被删除");
+        }
+
+        Integer versionNumber = getNextVersionNumber(request.getDocumentId());
+        String versionName = "v" + versionNumber;
+
+        LibDocumentVersion version = LibDocumentVersion.builder()
+                .documentId(request.getDocumentId())
+                .versionNumber(versionNumber)
+                .versionName(versionName)
+                .fileName(request.getFileName())
+                .filePath(request.getFilePath())
+                .fileSize(request.getFileSize() != null ? request.getFileSize() : 0L)
+                .changeSummary(request.getChangeSummary())
+                .changeType("UPDATE")
+                .isMajor(request.getIsMajor() != null ? request.getIsMajor() : false)
+                .build();
+        version.setCreateUserId(userId);
+
+        version = versionRepository.save(version);
+
+        document.setCurrentVersion(versionNumber);
+        document.setUpdateUserId(userId);
+        documentRepository.save(document);
+
+        log.info("创建文档版本成功 - 文档ID: {}, 版本号: {}, 用户ID: {}", request.getDocumentId(), versionNumber, userId);
+        operationLogService.logOperation(request.getDocumentId(), null, "UPDATE", "创建新版本: " + versionName, null, request.getChangeSummary(), userId, null, null);
+
+        return convertToResponse(version);
+    }
+
+    @Override
+    @Transactional
+    public LibVersionResponse uploadNewVersion(Long documentId, MultipartFile file, String changeSummary, Boolean isMajor, Long userId) {
+        LibDocument document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new BusinessException("文档不存在"));
+
+        if (document.getIsDeleted()) {
+            throw new BusinessException("文档已被删除");
+        }
+
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("文件不能为空");
+        }
+
+        Integer versionNumber = getNextVersionNumber(documentId);
+        String versionName = "v" + versionNumber;
+
+        String filePath = saveVersionFile(file, documentId, versionNumber);
+
+        LibDocumentVersion version = LibDocumentVersion.builder()
+                .documentId(documentId)
+                .versionNumber(versionNumber)
+                .versionName(versionName)
+                .fileName(file.getOriginalFilename())
+                .filePath(filePath)
+                .fileSize(file.getSize())
+                .changeSummary(changeSummary)
+                .changeType("UPDATE")
+                .isMajor(isMajor != null ? isMajor : false)
+                .build();
+        version.setCreateUserId(userId);
+
+        version = versionRepository.save(version);
+
+        document.setCurrentVersion(versionNumber);
+        document.setFileName(file.getOriginalFilename());
+        document.setFilePath(filePath);
+        document.setFileSize(file.getSize());
+        document.setUpdateUserId(userId);
+        documentRepository.save(document);
+
+        log.info("上传新版本成功 - 文档ID: {}, 版本号: {}, 用户ID: {}", documentId, versionNumber, userId);
+        operationLogService.logOperation(documentId, null, "UPDATE", "上传新版本: " + versionName, null, changeSummary, userId, null, null);
+
+        return convertToResponse(version);
+    }
+
+    @Override
+    public LibVersionListResponse getVersionList(Long documentId) {
+        List<LibDocumentVersion> versions = versionRepository.findActiveVersionsByDocumentId(documentId);
+
+        List<LibVersionResponse> versionResponses = versions.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+
+        return LibVersionListResponse.builder()
+                .total((long) versions.size())
+                .versions(versionResponses)
+                .build();
+    }
+
+    @Override
+    public LibVersionResponse getVersion(Long documentId, Integer versionNumber) {
+        LibDocumentVersion version = versionRepository.findByDocumentIdAndVersionNumber(documentId, versionNumber)
+                .orElseThrow(() -> new BusinessException("版本不存在"));
+
+        return convertToResponse(version);
+    }
+
+    @Override
+    public LibVersionResponse getLatestVersion(Long documentId) {
+        LibDocumentVersion version = versionRepository.findFirstByDocumentIdOrderByVersionNumberDesc(documentId)
+                .orElseThrow(() -> new BusinessException("文档暂无版本记录"));
+
+        return convertToResponse(version);
+    }
+
+    @Override
+    @Transactional
+    public void deleteVersion(Long versionId, Long userId) {
+        LibDocumentVersion version = versionRepository.findById(versionId)
+                .orElseThrow(() -> new BusinessException("版本不存在"));
+
+        if (version.getIsDeleted()) {
+            throw new BusinessException("版本已被删除");
+        }
+
+        version.setIsDeleted(true);
+        versionRepository.save(version);
+
+        log.info("删除文档版本成功 - 版本ID: {}, 用户ID: {}", versionId, userId);
+        operationLogService.logOperation(version.getDocumentId(), null, "DELETE", "删除版本: " + version.getVersionName(), null, null, userId, null, null);
+    }
+
+    @Override
+    @Transactional
+    public void restoreVersion(Long documentId, Integer versionNumber, Long userId) {
+        LibDocument document = documentRepository.findById(documentId)
+                .orElseThrow(() -> new BusinessException("文档不存在"));
+
+        LibDocumentVersion version = versionRepository.findByDocumentIdAndVersionNumber(documentId, versionNumber)
+                .orElseThrow(() -> new BusinessException("版本不存在"));
+
+        if (version.getIsDeleted()) {
+            throw new BusinessException("版本已被删除");
+        }
+
+        Integer newVersionNumber = getNextVersionNumber(documentId);
+
+        LibDocumentVersion newVersion = LibDocumentVersion.builder()
+                .documentId(documentId)
+                .versionNumber(newVersionNumber)
+                .versionName("v" + newVersionNumber)
+                .fileName(version.getFileName())
+                .filePath(version.getFilePath())
+                .fileSize(version.getFileSize())
+                .changeSummary("恢复到版本 v" + versionNumber)
+                .changeType("RESTORE")
+                .isMajor(false)
+                .build();
+        newVersion.setCreateUserId(userId);
+
+        versionRepository.save(newVersion);
+
+        document.setCurrentVersion(newVersionNumber);
+        document.setFileName(version.getFileName());
+        document.setFilePath(version.getFilePath());
+        document.setFileSize(version.getFileSize());
+        document.setUpdateUserId(userId);
+        documentRepository.save(document);
+
+        log.info("恢复文档版本成功 - 文档ID: {}, 恢复到版本: {}, 用户ID: {}", documentId, versionNumber, userId);
+        operationLogService.logOperation(documentId, null, "RESTORE", "恢复到版本 v" + versionNumber, null, null, userId, null, null);
+    }
+
+    @Override
+    public Integer getNextVersionNumber(Long documentId) {
+        Integer maxVersion = versionRepository.findMaxVersionNumber(documentId);
+        return maxVersion != null ? maxVersion + 1 : 1;
+    }
+
+    @Override
+    public Long getTotalVersions(Long documentId) {
+        return versionRepository.countByDocumentId(documentId);
+    }
+
+    private String saveVersionFile(MultipartFile file, Long documentId, Integer versionNumber) {
+        String uploadDir = "uploads/documents/versions/" + documentId + "/";
+
+        File dir = new File(uploadDir);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        String newFileName = "v" + versionNumber + "_" + timestamp + "_" + file.getOriginalFilename();
+
+        try {
+            File destFile = new File(uploadDir + newFileName);
+            file.transferTo(destFile);
+            return destFile.getAbsolutePath();
+        } catch (IOException e) {
+            log.error("保存版本文件失败: {}", e.getMessage());
+            throw new BusinessException("保存版本文件失败");
+        }
+    }
+
+    private LibVersionResponse convertToResponse(LibDocumentVersion version) {
+        return LibVersionResponse.builder()
+                .id(version.getId())
+                .documentId(version.getDocumentId())
+                .versionNumber(version.getVersionNumber())
+                .versionName(version.getVersionName())
+                .fileName(version.getFileName())
+                .filePath(version.getFilePath())
+                .fileSize(version.getFileSize())
+                .changeSummary(version.getChangeSummary())
+                .changeType(version.getChangeType())
+                .isMajor(version.getIsMajor())
+                .status(version.getStatus())
+                .createTime(version.getCreateTime())
+                .createUserId(version.getCreateUserId())
+                .build();
+    }
+}

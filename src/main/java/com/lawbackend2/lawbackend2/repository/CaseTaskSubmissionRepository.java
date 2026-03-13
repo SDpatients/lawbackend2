@@ -34,7 +34,7 @@ public interface CaseTaskSubmissionRepository extends JpaRepository<CaseTaskSubm
     List<CaseTaskSubmission> findByCaseId(@Param("caseId") Long caseId);
 
     @Modifying
-    @Query("DELETE FROM CaseTaskSubmission s WHERE s.caseTaskId IN (SELECT ct.id FROM CaseTask ct WHERE ct.caseId = :caseId)")
+    @Query("UPDATE CaseTaskSubmission s SET s.isDeleted = true WHERE s.caseTaskId IN (SELECT ct.id FROM CaseTask ct WHERE ct.caseId = :caseId)")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
     @Query("SELECT s FROM CaseTaskSubmission s WHERE s.caseTaskId IN :caseTaskIds AND s.isDeleted = false ORDER BY s.caseTaskId, s.submissionNumber DESC")

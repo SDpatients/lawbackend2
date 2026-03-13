@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.dto.ExcelFieldValidationRuleCreateRequest;
 import com.lawbackend2.lawbackend2.dto.ExcelFieldValidationRuleResponse;
 import com.lawbackend2.lawbackend2.dto.ExcelFieldValidationRuleUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.ExcelFieldValidationRule;
+import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.ExcelFieldValidationRuleRepository;
 import com.lawbackend2.lawbackend2.service.ExcelFieldValidationRuleService;
 import lombok.extern.slf4j.Slf4j;
@@ -136,7 +137,7 @@ public class ExcelFieldValidationRuleServiceImpl implements ExcelFieldValidation
         log.info("删除Excel字段验证规则: id={}", id);
         
         if (!ruleRepository.existsById(id)) {
-            throw new RuntimeException("验证规则不存在: " + id);
+            throw new BusinessException(404, "验证规则不存在: " + id);
         }
         
         ruleRepository.deleteById(id);

@@ -1,0 +1,33 @@
+package com.lawbackend2.lawbackend2.repository;
+
+import com.lawbackend2.lawbackend2.entity.LibDocumentFavorite;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface LibDocumentFavoriteRepository extends JpaRepository<LibDocumentFavorite, Long>, JpaSpecificationExecutor<LibDocumentFavorite> {
+
+    List<LibDocumentFavorite> findByUserIdAndIsDeletedFalseOrderByCreateTimeDesc(Long userId);
+
+    Page<LibDocumentFavorite> findByUserIdAndIsDeletedFalseOrderByCreateTimeDesc(Long userId, Pageable pageable);
+
+    Optional<LibDocumentFavorite> findByDocumentIdAndUserIdAndIsDeletedFalse(Long documentId, Long userId);
+
+    boolean existsByDocumentIdAndUserIdAndIsDeletedFalse(Long documentId, Long userId);
+
+    @Query("SELECT f FROM LibDocumentFavorite f WHERE f.userId = :userId AND f.folderName = :folderName AND f.isDeleted = false ORDER BY f.sortOrder ASC")
+    List<LibDocumentFavorite> findByUserIdAndFolderName(@Param("userId") Long userId, @Param("folderName") String folderName);
+
+    @Query("SELECT DISTINCT f.folderName FROM LibDocumentFavorite f WHERE f.userId = :userId AND f.folderName IS NOT NULL AND f.isDeleted = false")
+    List<String> findDistinctFolderNamesByUserId(@Param("userId") Long userId);
+
+    void deleteByDocumentIdAndUserId(Long documentId, Long userId);
+}

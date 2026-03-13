@@ -113,4 +113,71 @@ public class UserController {
         userService.deleteUserById(id);
         return Result.success();
     }
+
+    @GetMapping("/username/{username}")
+    @PreAuthorize("hasAuthority('system:user:query')")
+    @Operation(summary = "根据用户名查询用户", description = "根据用户名查询用户详情")
+    public Result<UserResponse> getUserByUsername(
+            @Parameter(description = "用户名") @PathVariable String username) {
+        log.info("根据用户名查询用户 - 用户名: {}", username);
+        UserResponse response = userService.getUserByUsername(username);
+        return Result.success(response);
+    }
+
+    @GetMapping("/mobile/{mobile}")
+    @PreAuthorize("hasAuthority('system:user:query')")
+    @Operation(summary = "根据手机号查询用户", description = "根据手机号查询用户详情")
+    public Result<UserResponse> getUserByMobile(
+            @Parameter(description = "手机号") @PathVariable String mobile) {
+        log.info("根据手机号查询用户 - 手机号: {}", mobile);
+        UserResponse response = userService.getUserByMobile(mobile);
+        return Result.success(response);
+    }
+
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('system:user:edit')")
+    @RateLimit(limit = 20, timeout = 60)
+    @Operation(summary = "更新用户状态", description = "更新指定用户的状态，需要管理员权限")
+    public Result<UserResponse> updateUserStatus(
+            @Parameter(description = "用户ID") @PathVariable Long id,
+            @Valid @RequestBody UpdateUserStatusRequest request) {
+        log.info("更新用户状态 - 用户ID: {}, 新状态: {}", id, request.getStatus());
+        UserResponse response = userService.updateUserStatus(id, request.getStatus());
+        return Result.success(response);
+    }
+
+    @PutMapping("/{id}/mobile")
+    @PreAuthorize("hasAuthority('system:user:edit')")
+    @RateLimit(limit = 10, timeout = 60)
+    @Operation(summary = "更新用户手机号", description = "更新指定用户的手机号，需要管理员权限")
+    public Result<UserResponse> updateUserMobile(
+            @Parameter(description = "用户ID") @PathVariable Long id,
+            @Valid @RequestBody UpdateUserMobileRequest request) {
+        log.info("更新用户手机号 - 用户ID: {}, 新手机号: {}", id, request.getMobile());
+        UserResponse response = userService.updateUserMobile(id, request.getMobile(), request.getSmsCode());
+        return Result.success(response);
+    }
+
+    @PutMapping("/{id}/email")
+    @PreAuthorize("hasAuthority('system:user:edit')")
+    @RateLimit(limit = 10, timeout = 60)
+    @Operation(summary = "更新用户邮箱", description = "更新指定用户的邮箱，需要管理员权限")
+    public Result<UserResponse> updateUserEmail(
+            @Parameter(description = "用户ID") @PathVariable Long id,
+            @Valid @RequestBody UpdateUserEmailRequest request) {
+        log.info("更新用户邮箱 - 用户ID: {}, 新邮箱: {}", id, request.getEmail());
+        UserResponse response = userService.updateUserEmail(id, request.getEmail());
+        return Result.success(response);
+    }
+
+    @PutMapping("/batch/status")
+    @PreAuthorize("hasAuthority('system:user:edit')")
+    @RateLimit(limit = 5, timeout = 60)
+    @Operation(summary = "批量更新用户状态", description = "批量更新多个用户的状态，需要管理员权限")
+    public Result<Void> batchUpdateUserStatus(
+            @Valid @RequestBody BatchUpdateUserStatusRequest request) {
+        log.info("批量更新用户状态 - 用户数量: {}, 新状态: {}", request.getUserIds().size(), request.getStatus());
+        userService.batchUpdateUserStatus(request.getUserIds(), request.getStatus());
+        return Result.success();
+    }
 }

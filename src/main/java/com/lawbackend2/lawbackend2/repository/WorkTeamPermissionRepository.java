@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.repository;
 
 import com.lawbackend2.lawbackend2.entity.WorkTeamPermission;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -27,4 +28,8 @@ public interface WorkTeamPermissionRepository extends JpaRepository<WorkTeamPerm
     WorkTeamPermission findByMemberAndModuleAndPermission(@Param("teamMemberId") Long teamMemberId,
                                                           @Param("moduleType") String moduleType,
                                                           @Param("permissionType") String permissionType);
+
+    @Modifying
+    @Query("UPDATE WorkTeamPermission wtp SET wtp.isDeleted = true WHERE wtp.teamMemberId IN (SELECT wtm.id FROM WorkTeamMember wtm WHERE wtm.caseId = :caseId)")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

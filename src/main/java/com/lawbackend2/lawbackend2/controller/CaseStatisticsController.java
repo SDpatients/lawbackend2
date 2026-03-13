@@ -27,16 +27,17 @@ public class CaseStatisticsController {
     private StatisticsPermissionUtil statisticsPermissionUtil;
 
     @GetMapping
-    @Operation(summary = "获取案件统计数据", description = "根据条件获取案件统计数据，支持按日期范围、法院、状态等条件筛选")
+    @Operation(summary = "获取案件统计数据", description = "根据条件获取案件统计数据，支持按日期范围、法院、状态等条件筛选。传入 userId 参数只返回该用户的案件数据，不传则返回所有案件数据")
     public Result<CaseStatisticsResponse> getCaseStatistics(
             @Parameter(description = "开始日期") @RequestParam(required = false) String startDate,
             @Parameter(description = "结束日期") @RequestParam(required = false) String endDate,
-            @Parameter(description = "法院ID") @RequestParam(required = false) Long courtId,
+            @Parameter(description = "法院 ID") @RequestParam(required = false) Long courtId,
             @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
-            @Parameter(description = "案件进度") @RequestParam(required = false) String caseProgress) {
+            @Parameter(description = "案件进度") @RequestParam(required = false) String caseProgress,
+            @Parameter(description = "用户 ID（可选，传入则只返回该用户的案件数据）") @RequestParam(required = false) Long userId) {
 
-        log.info("获取案件统计数据，startDate：{}，endDate：{}，courtId：{}，caseStatus：{}，caseProgress：{}",
-                startDate, endDate, courtId, caseStatus, caseProgress);
+        log.info("获取案件统计数据，startDate：{}，endDate：{}，courtId：{}，caseStatus：{}，caseProgress：{}，userId：{}",
+                startDate, endDate, courtId, caseStatus, caseProgress, userId);
 
         CaseStatisticsRequest request = new CaseStatisticsRequest();
 
@@ -50,13 +51,7 @@ public class CaseStatisticsController {
             request.setCourtId(courtId);
             request.setCaseStatus(caseStatus);
             request.setCaseProgress(caseProgress);
-
-            // 获取当前用户ID，非管理员只能查看自己的案件统计数据
-            if (!statisticsPermissionUtil.isAdmin()) {
-                Long userId = statisticsPermissionUtil.getCurrentUserId();
-                request.setUserId(userId);
-                log.info("非管理员用户，设置用户ID：{}", userId);
-            }
+            request.setUserId(userId);
 
             CaseStatisticsResponse response = caseStatisticsService.getCaseStatistics(request);
 

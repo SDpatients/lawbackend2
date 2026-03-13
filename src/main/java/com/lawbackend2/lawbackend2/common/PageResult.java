@@ -27,4 +27,8 @@ public class PageResult<T> {
     public static <T> PageResult<T> of(Long total, java.util.List<T> list) {
         return new PageResult<>(total, list);
     }
+
+    public static <T> PageResult<T> of(Long total, java.util.List<T> list, Integer pageNum, Integer pageSize) {
+        return new PageResult<>(list, total, pageNum, pageSize);
+    }
 }

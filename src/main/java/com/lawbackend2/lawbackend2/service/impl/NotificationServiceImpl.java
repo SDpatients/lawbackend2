@@ -83,55 +83,55 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public Notification getNotificationById(Long notificationId) {
-        return notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new BusinessException("通知不存在"));
+    public Notification getNotificationById(Long notificationId, Long currentUserId) {
+        return notificationRepository.findByIdAndCreateUserIdNot(notificationId, currentUserId)
+                .orElseThrow(() -> new BusinessException("通知不存在或无权访问"));
     }
 
     @Override
-    public Page<Notification> getUserNotifications(Long userId, Pageable pageable) {
-        return notificationRepository.findByUserId(userId, pageable);
+    public Page<Notification> getUserNotifications(Long userId, Long currentUserId, Pageable pageable) {
+        return notificationRepository.findByUserIdAndCreateUserIdNot(userId, currentUserId, pageable);
     }
 
     @Override
-    public Page<Notification> getUserNotificationsByStatus(Long userId, String status, Pageable pageable) {
-        return notificationRepository.findByUserIdAndStatus(userId, status, pageable);
+    public Page<Notification> getUserNotificationsByStatus(Long userId, Long currentUserId, String status, Pageable pageable) {
+        return notificationRepository.findByUserIdAndStatusAndCreateUserIdNot(userId, status, currentUserId, pageable);
     }
 
     @Override
-    public Page<Notification> getUserNotificationsByType(Long userId, String type, Pageable pageable) {
-        return notificationRepository.findByUserIdAndType(userId, type, pageable);
+    public Page<Notification> getUserNotificationsByType(Long userId, Long currentUserId, String type, Pageable pageable) {
+        return notificationRepository.findByUserIdAndTypeAndCreateUserIdNot(userId, type, currentUserId, pageable);
     }
 
     @Override
-    public Page<Notification> getUserNotificationsByReadStatus(Long userId, Boolean isRead, Pageable pageable) {
-        return notificationRepository.findByUserIdAndIsRead(userId, isRead, pageable);
+    public Page<Notification> getUserNotificationsByReadStatus(Long userId, Long currentUserId, Boolean isRead, Pageable pageable) {
+        return notificationRepository.findByUserIdAndIsReadAndCreateUserIdNot(userId, isRead, currentUserId, pageable);
     }
 
     @Override
-    public Page<Notification> searchNotifications(Long userId, String type, Boolean isRead, String status, Pageable pageable) {
-        return notificationRepository.searchNotifications(userId, type, isRead, status, pageable);
+    public Page<Notification> searchNotifications(Long userId, Long currentUserId, String type, Boolean isRead, String status, Pageable pageable) {
+        return notificationRepository.searchNotifications(userId, currentUserId, type, isRead, status, pageable);
     }
 
     @Override
-    public List<Notification> getUnreadNotifications(Long userId) {
-        return notificationRepository.findByUserIdAndIsReadOrderByCreateTimeDesc(userId, false);
+    public List<Notification> getUnreadNotifications(Long userId, Long currentUserId) {
+        return notificationRepository.findByUserIdAndIsReadAndCreateUserIdNotOrderByCreateTimeDesc(userId, false, currentUserId);
     }
 
     @Override
-    public Long countUnreadNotifications(Long userId) {
-        return notificationRepository.countUnreadByUserId(userId);
+    public Long countUnreadNotifications(Long userId, Long currentUserId) {
+        return notificationRepository.countUnreadByUserIdAndCreateUserIdNot(userId, currentUserId);
     }
 
     @Override
-    public Long countNotificationsByStatus(Long userId, String status) {
-        return notificationRepository.countByUserIdAndStatus(userId, status);
+    public Long countNotificationsByStatus(Long userId, Long currentUserId, String status) {
+        return notificationRepository.countByUserIdAndStatusAndCreateUserIdNot(userId, status, currentUserId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Notification markAsRead(Long notificationId) {
-        Notification notification = getNotificationById(notificationId);
+    public Notification markAsRead(Long notificationId, Long currentUserId) {
+        Notification notification = getNotificationById(notificationId, currentUserId);
         notification.setIsRead(true);
         notification.setReadTime(LocalDateTime.now());
         return notificationRepository.save(notification);
@@ -139,8 +139,8 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void markAllAsRead(Long userId) {
-        List<Notification> unreadNotifications = getUnreadNotifications(userId);
+    public void markAllAsRead(Long userId, Long currentUserId) {
+        List<Notification> unreadNotifications = getUnreadNotifications(userId, currentUserId);
         LocalDateTime now = LocalDateTime.now();
         for (Notification notification : unreadNotifications) {
             notification.setIsRead(true);
@@ -152,8 +152,8 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteNotification(Long notificationId) {
-        Notification notification = getNotificationById(notificationId);
+    public void deleteNotification(Long notificationId, Long currentUserId) {
+        Notification notification = getNotificationById(notificationId, currentUserId);
         notificationRepository.delete(notification);
         log.info("删除通知, ID: {}", notificationId);
     }
@@ -168,16 +168,21 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void batchDeleteNotifications(List<Long> notificationIds) {
-        List<Notification> notifications = notificationRepository.findAllById(notificationIds);
-        notificationRepository.deleteAll(notifications);
-        log.info("批量删除通知, 共 {} 条", notifications.size());
+    public void batchDeleteNotifications(List<Long> notificationIds, Long currentUserId) {
+        for (Long notificationId : notificationIds) {
+            try {
+                deleteNotification(notificationId, currentUserId);
+            } catch (BusinessException e) {
+                log.warn("批量删除通知时跳过无权访问的通知: {}", notificationId);
+            }
+        }
+        log.info("批量删除通知, 共 {} 条", notificationIds.size());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateNotificationStatus(Long notificationId, String status) {
-        Notification notification = getNotificationById(notificationId);
+    public void updateNotificationStatus(Long notificationId, String status, Long currentUserId) {
+        Notification notification = getNotificationById(notificationId, currentUserId);
         notification.setStatus(status);
         notificationRepository.save(notification);
         log.info("更新通知状态, ID: {}, 状态: {}", notificationId, status);

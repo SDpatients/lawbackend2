@@ -96,20 +96,20 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserLoginResponse register(UserRegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("用户名已存在");
+            throw new BusinessException(400, "用户名已存在");
         }
 
         if (userRepository.existsByMobile(request.getMobile())) {
-            throw new RuntimeException("手机号已注册");
+            throw new BusinessException(400, "手机号已注册");
         }
 
         if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("邮箱已注册");
+            throw new BusinessException(400, "邮箱已注册");
         }
 
         boolean smsValid = smsService.verifySmsCode(request.getMobile(), request.getSmsCode(), SMS_TYPE_REGISTER);
         if (!smsValid) {
-            throw new RuntimeException("短信验证码错误或已过期");
+            throw new BusinessException(400, "短信验证码错误或已过期");
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
@@ -142,7 +142,7 @@ public class UserServiceImpl implements UserService {
 
         if (!userOpt.isPresent()) {
             recordLoginFailure(username, ipAddress, "ACCOUNT");
-            throw new RuntimeException("用户名或密码错误");
+            throw new BusinessException(401, "用户名或密码错误");
         }
 
         User user = userOpt.get();
@@ -153,7 +153,7 @@ public class UserServiceImpl implements UserService {
 
         boolean isLocked = checkAccountLocked(username, ipAddress);
         if (isLocked) {
-            throw new RuntimeException("账号已被锁定，请" + lockMinutes + "分钟后再试");
+            throw new BusinessException(401, "账号已被锁定，请" + lockMinutes + "分钟后再试");
         }
 
         boolean passwordValid = passwordEncoder.matches(password, user.getPassword());
@@ -163,7 +163,6 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(401, "用户名或密码错误");
         }
 
-        // 只有当smsCode是有效的数字验证码（4-6位数字）时，才验证它
         if (smsCode != null && smsCode.matches("\\d{4,6}")) {
             boolean smsValid = smsService.verifySmsCode(user.getMobile(), smsCode, SMS_TYPE_LOGIN);
             if (!smsValid) {
@@ -174,8 +173,8 @@ public class UserServiceImpl implements UserService {
 
         resetLoginFailures(username, ipAddress);
 
-        String accessToken = jwtTokenUtil.generateAccessToken(user.getId(), user.getUsername());
-        String refreshToken = jwtTokenUtil.generateRefreshToken(user.getId(), user.getUsername());
+        String accessToken = jwtTokenUtil.generateAccessToken(user.getId(), username);
+        String refreshToken = jwtTokenUtil.generateRefreshToken(user.getId(), username);
 
         saveToken(user.getId(), accessToken, "A", ipAddress, deviceInfo);
         saveToken(user.getId(), refreshToken, "R", ipAddress, deviceInfo);
@@ -207,7 +206,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserLoginResponse refreshToken(String token) {
         if (!jwtTokenUtil.validateToken(token)) {
-            throw new RuntimeException("Token无效或已过期");
+            throw new BusinessException(401, "Token无效或已过期");
         }
 
         Long userId = jwtTokenUtil.getUserIdFromToken(token);
@@ -215,13 +214,13 @@ public class UserServiceImpl implements UserService {
 
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
 
         User user = userOpt.get();
 
         if (!"ACTIVE".equals(user.getStatus())) {
-            throw new RuntimeException("账号已被禁用或锁定");
+            throw new BusinessException(401, "账号已被禁用或锁定");
         }
 
         Optional<Token> oldTokenOpt = tokenRepository.findByTokenValue(token);
@@ -248,11 +247,11 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public RefreshTokenResponse refreshAccessToken(String refreshToken) {
         if (!jwtTokenUtil.validateToken(refreshToken)) {
-            throw new RuntimeException("刷新令牌无效或已过期");
+            throw new BusinessException(401, "刷新令牌无效或已过期");
         }
 
         if (!jwtTokenUtil.isRefreshToken(refreshToken)) {
-            throw new RuntimeException("令牌类型错误，需要刷新令牌");
+            throw new BusinessException(400, "令牌类型错误，需要刷新令牌");
         }
 
         Long userId = jwtTokenUtil.getUserIdFromToken(refreshToken);
@@ -260,20 +259,20 @@ public class UserServiceImpl implements UserService {
 
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
 
         User user = userOpt.get();
 
         if (!"ACTIVE".equals(user.getStatus())) {
-            throw new RuntimeException("账号已被禁用或锁定");
+            throw new BusinessException(401, "账号已被禁用或锁定");
         }
 
         Optional<Token> oldRefreshTokenOpt = tokenRepository.findByTokenValue(refreshToken);
         if (oldRefreshTokenOpt.isPresent()) {
             Token oldRefreshToken = oldRefreshTokenOpt.get();
             if (!"ACTIVE".equals(oldRefreshToken.getStatus())) {
-                throw new RuntimeException("刷新令牌已失效");
+                throw new BusinessException(401, "刷新令牌已失效");
             }
         }
 
@@ -308,17 +307,17 @@ public class UserServiceImpl implements UserService {
     public void updateUserInfo(Long userId, String realName, String mobile, String email, String phone) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
 
         User user = userOpt.get();
 
         if (mobile != null && !mobile.equals(user.getMobile()) && userRepository.existsByMobile(mobile)) {
-            throw new RuntimeException("手机号已被使用");
+            throw new BusinessException(400, "手机号已被使用");
         }
 
         if (email != null && !email.equals(user.getEmail()) && userRepository.existsByEmail(email)) {
-            throw new RuntimeException("邮箱已被使用");
+            throw new BusinessException(400, "邮箱已被使用");
         }
 
         if (realName != null) {
@@ -343,13 +342,13 @@ public class UserServiceImpl implements UserService {
     public void changePassword(Long userId, String oldPassword, String newPassword) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
 
         User user = userOpt.get();
 
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-            throw new RuntimeException("原密码错误");
+            throw new BusinessException(400, "原密码错误，请重新输入");
         }
 
         String encodedNewPassword = passwordEncoder.encode(newPassword);
@@ -361,7 +360,7 @@ public class UserServiceImpl implements UserService {
 
         tokenRepository.revokeAllTokensByUserId(userId, LocalDateTime.now());
 
-        log.info("用户密码修改成功 - 用户ID: {}", userId);
+        log.info("用户密码修改成功 - 用户 ID: {}", userId);
     }
 
     @Override
@@ -405,29 +404,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void updateUserStatus(Long userId, String status) {
-        Optional<User> userOpt = userRepository.findById(userId);
-        if (!userOpt.isPresent()) {
-            throw new RuntimeException("用户不存在");
-        }
-
-        User user = userOpt.get();
-        user.setStatus(status);
-        userRepository.save(user);
-
-        if ("LOCKED".equals(status) || "INACTIVE".equals(status)) {
-            tokenRepository.revokeAllTokensByUserId(userId, LocalDateTime.now());
-        }
-
-        log.info("用户状态更新成功 - 用户ID: {}, 新状态: {}", userId, status);
-    }
-
-    @Override
-    @Transactional
     public void deleteUser(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(404, "用户不存在");
         }
 
         User user = userOpt.get();
@@ -819,7 +799,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getAdminUsers() {
-        // 查找role_code为ADMIN的角色
         Optional<Role> adminRoleOpt = roleRepository.findByRoleCode("ADMIN");
         if (!adminRoleOpt.isPresent()) {
             return Collections.emptyList();
@@ -827,16 +806,160 @@ public class UserServiceImpl implements UserService {
         
         Long adminRoleId = adminRoleOpt.get().getId();
         
-        // 通过user_role表查询所有具有ADMIN角色的用户ID
         List<Long> userIds = userRoleRepository.findUserIdsByRoleId(adminRoleId);
         
-        // 查询这些用户的详细信息
         List<User> users = userRepository.findAllById(userIds);
         
-        // 转换为UserResponse并返回，过滤掉已删除的用户
         return users.stream()
                 .filter(user -> !user.getIsDeleted())
                 .map(this::convertToUserResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public UserResponse getUserByUsername(String username) {
+        Optional<User> userOpt = userRepository.findByUsername(username);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        User user = userOpt.get();
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        return convertToUserResponse(user);
+    }
+
+    @Override
+    public UserResponse getUserByMobile(String mobile) {
+        Optional<User> userOpt = userRepository.findByMobile(mobile);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        User user = userOpt.get();
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        return convertToUserResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUserStatus(Long id, String status) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        User user = userOpt.get();
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        user.setStatus(status);
+        user = userRepository.save(user);
+
+        if ("LOCKED".equals(status) || "INACTIVE".equals(status)) {
+            tokenRepository.revokeAllTokensByUserId(id, LocalDateTime.now());
+        }
+
+        log.info("用户状态更新成功 - 用户ID: {}, 新状态: {}", id, status);
+        return convertToUserResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUserMobile(Long id, String mobile, String smsCode) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        User user = userOpt.get();
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        if (!mobile.equals(user.getMobile()) && userRepository.existsByMobile(mobile)) {
+            throw new BusinessException(400, "手机号已被使用");
+        }
+
+        if (smsCode != null && !smsCode.isEmpty()) {
+            boolean smsValid = smsService.verifySmsCode(mobile, smsCode, "4");
+            if (!smsValid) {
+                throw new BusinessException(400, "短信验证码错误或已过期");
+            }
+        }
+
+        user.setMobile(mobile);
+        user = userRepository.save(user);
+
+        log.info("用户手机号更新成功 - 用户ID: {}, 新手机号: {}", id, mobile);
+        return convertToUserResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUserEmail(Long id, String email) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        User user = userOpt.get();
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        if (!email.equals(user.getEmail()) && userRepository.existsByEmail(email)) {
+            throw new BusinessException(400, "邮箱已被使用");
+        }
+
+        user.setEmail(email);
+        user = userRepository.save(user);
+
+        log.info("用户邮箱更新成功 - 用户 ID: {}, 新邮箱：{}", id, email);
+        return convertToUserResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUserRealName(Long id, String realName) {
+        Optional<User> userOpt = userRepository.findById(id);
+        if (!userOpt.isPresent()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        User user = userOpt.get();
+        if (user.getIsDeleted()) {
+            throw new BusinessException(404, "用户不存在");
+        }
+
+        user.setRealName(realName);
+        user = userRepository.save(user);
+
+        log.info("用户真实姓名更新成功 - 用户 ID: {}, 新姓名：{}", id, realName);
+        return convertToUserResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public void batchUpdateUserStatus(List<Long> userIds, String status) {
+        List<User> users = userRepository.findAllById(userIds);
+        
+        for (User user : users) {
+            if (!user.getIsDeleted()) {
+                user.setStatus(status);
+                if ("LOCKED".equals(status) || "INACTIVE".equals(status)) {
+                    tokenRepository.revokeAllTokensByUserId(user.getId(), LocalDateTime.now());
+                }
+            }
+        }
+        
+        userRepository.saveAll(users);
+        log.info("批量更新用户状态成功 - 用户数量: {}, 新状态: {}", userIds.size(), status);
     }
 }

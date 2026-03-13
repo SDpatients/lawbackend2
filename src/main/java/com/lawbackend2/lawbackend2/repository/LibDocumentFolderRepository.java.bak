@@ -1,0 +1,42 @@
+package com.lawbackend2.lawbackend2.repository;
+
+import com.lawbackend2.lawbackend2.entity.LibDocumentFolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface LibDocumentFolderRepository extends JpaRepository<LibDocumentFolder, Long>, JpaSpecificationExecutor<LibDocumentFolder> {
+
+    Optional<LibDocumentFolder> findByFolderPath(String folderPath);
+
+    boolean existsByFolderPath(String folderPath);
+
+    List<LibDocumentFolder> findByParentIdAndIsDeletedFalseOrderBySortOrderAsc(Long parentId);
+
+    List<LibDocumentFolder> findByParentIdIsNullAndIsDeletedFalseOrderBySortOrderAsc();
+
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.parentId = :parentId AND f.status = :status AND f.isDeleted = false ORDER BY f.sortOrder ASC")
+    List<LibDocumentFolder> findByParentIdAndStatus(@Param("parentId") Long parentId, @Param("status") String status);
+
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.folderName LIKE %:keyword% AND f.isDeleted = false")
+    Page<LibDocumentFolder> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.createUserId = :userId AND f.isDeleted = false ORDER BY f.createTime DESC")
+    List<LibDocumentFolder> findByCreateUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(f) FROM LibDocumentFolder f WHERE f.parentId = :parentId AND f.isDeleted = false")
+    Long countByParentId(@Param("parentId") Long parentId);
+
+    boolean existsByParentIdAndFolderNameAndIsDeletedFalse(Long parentId, String folderName);
+
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.isPublic = true AND f.isDeleted = false ORDER BY f.sortOrder ASC")
+    List<LibDocumentFolder> findPublicFolders();
+}

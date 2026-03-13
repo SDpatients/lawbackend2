@@ -1,0 +1,140 @@
+package com.lawbackend2.lawbackend2.controller;
+
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.request.LibFolderCreateRequest;
+import com.lawbackend2.lawbackend2.dto.request.LibFolderUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.LibDocumentTreeResponse;
+import com.lawbackend2.lawbackend2.dto.response.LibFolderListResponse;
+import com.lawbackend2.lawbackend2.dto.response.LibFolderResponse;
+import com.lawbackend2.lawbackend2.service.LibDocumentFolderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import javax.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/lib/folders")
+@Tag(name = "文档库-文件夹管理", description = "文件夹CRUD操作API")
+@RequiredArgsConstructor
+public class LibDocumentFolderController {
+
+    private final LibDocumentFolderService folderService;
+
+    @PostMapping
+    @Operation(summary = "创建文件夹", description = "创建新的文件夹")
+    public Result<LibFolderResponse> createFolder(
+            @Valid @RequestBody LibFolderCreateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("创建文件夹请求 - 文件夹名称: {}, 用户ID: {}", request.getFolderName(), userId);
+        LibFolderResponse response = folderService.createFolder(request, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "获取文件夹详情", description = "根据ID获取文件夹详细信息")
+    public Result<LibFolderResponse> getFolderById(
+            @Parameter(description = "文件夹ID") @PathVariable Long id) {
+        LibFolderResponse response = folderService.getFolderById(id);
+        return Result.success(response);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "更新文件夹", description = "更新文件夹信息")
+    public Result<LibFolderResponse> updateFolder(
+            @Parameter(description = "文件夹ID") @PathVariable Long id,
+            @Valid @RequestBody LibFolderUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("更新文件夹请求 - 文件夹ID: {}, 用户ID: {}", id, userId);
+        LibFolderResponse response = folderService.updateFolder(id, request, userId);
+        return Result.success(response);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "删除文件夹", description = "删除指定文件夹（软删除）")
+    public Result<Void> deleteFolder(
+            @Parameter(description = "文件夹ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("删除文件夹请求 - 文件夹ID: {}, 用户ID: {}", id, userId);
+        folderService.deleteFolder(id, userId);
+        return Result.success();
+    }
+
+    @GetMapping
+    @Operation(summary = "获取文件夹列表", description = "分页获取文件夹列表")
+    public Result<LibFolderListResponse> getFolderList(
+            @Parameter(description = "父文件夹ID") @RequestParam(required = false) Long parentId,
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") Integer size) {
+        LibFolderListResponse response = folderService.getFolderList(parentId, keyword, page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/sub/{parentId}")
+    @Operation(summary = "获取子文件夹", description = "获取指定文件夹下的子文件夹")
+    public Result<List<LibFolderResponse>> getSubFolders(
+            @Parameter(description = "父文件夹ID") @PathVariable Long parentId) {
+        List<LibFolderResponse> response = folderService.getSubFolders(parentId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/root")
+    @Operation(summary = "获取根目录文件夹", description = "获取根目录下的文件夹列表")
+    public Result<List<LibFolderResponse>> getRootFolders() {
+        List<LibFolderResponse> response = folderService.getSubFolders(null);
+        return Result.success(response);
+    }
+
+    @GetMapping("/tree")
+    @Operation(summary = "获取文件夹树", description = "获取完整的文件夹树形结构")
+    public Result<LibDocumentTreeResponse> getFolderTree() {
+        LibDocumentTreeResponse response = folderService.getFolderTree();
+        return Result.success(response);
+    }
+
+    @GetMapping("/{id}/breadcrumbs")
+    @Operation(summary = "获取面包屑导航", description = "获取文件夹的面包屑导航路径")
+    public Result<List<LibDocumentTreeResponse>> getBreadcrumbs(
+            @Parameter(description = "文件夹ID") @PathVariable Long id) {
+        List<LibDocumentTreeResponse> response = folderService.getBreadcrumbs(id);
+        return Result.success(response);
+    }
+
+    @PutMapping("/{id}/move")
+    @Operation(summary = "移动文件夹", description = "将文件夹移动到新的父文件夹下")
+    public Result<Void> moveFolder(
+            @Parameter(description = "文件夹ID") @PathVariable Long id,
+            @Parameter(description = "新父文件夹ID") @RequestParam Long newParentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("移动文件夹请求 - 文件夹ID: {}, 新父文件夹ID: {}, 用户ID: {}", id, newParentId, userId);
+        folderService.moveFolder(id, newParentId, userId);
+        return Result.success();
+    }
+
+    @GetMapping("/{id}/count")
+    @Operation(summary = "获取文档数量", description = "获取文件夹下的文档数量")
+    public Result<Long> getDocumentCount(
+            @Parameter(description = "文件夹ID") @PathVariable Long id) {
+        Long count = folderService.getDocumentCount(id);
+        return Result.success(count);
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            return null;
+        }
+        return Long.parseLong(userDetails.getUsername());
+    }
+}

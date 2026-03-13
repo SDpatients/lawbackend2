@@ -25,7 +25,7 @@ public interface CreditorInfoService {
 
     void deleteCreditor(Long creditorId, Long userId);
 
-    PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId);
+    PageResult<CreditorInfoResponse> getCreditorListWithCaseInfo(Integer pageNum, Integer pageSize, Long caseId, String caseNumber, String creditorType, String creditorName, String idNumber, String legalRepresentative, String status, Long userId);
 
     CreditorClaimStagesResponse getCreditorClaimStages(Long creditorId, Long userId);
 

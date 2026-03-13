@@ -1,6 +1,7 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.entity.SmsCode;
+import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.SmsCodeRepository;
 import com.lawbackend2.lawbackend2.service.SmsService;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,7 @@ public class SmsServiceImpl implements SmsService {
 
         long recentCount = smsCodeRepository.countRecentCodes(mobile, startTime);
         if (recentCount >= maxAttempts) {
-            throw new RuntimeException("发送过于频繁，请稍后再试");
+            throw new BusinessException(429, "发送过于频繁，请稍后再试");
         }
 
         String code = generateSmsCode();

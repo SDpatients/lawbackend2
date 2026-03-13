@@ -5,7 +5,7 @@ import com.lawbackend2.lawbackend2.dto.response.ApprovalHistoryResponse;
 import com.lawbackend2.lawbackend2.entity.ApprovalHistory;
 
 public interface ApprovalHistoryService {
-    PageResult<ApprovalHistoryResponse> getApprovalHistoryList(Integer pageNum, Integer pageSize, Long approvalId, Long caseId, Long approverId);
+    PageResult<ApprovalHistoryResponse> getApprovalHistoryList(Integer pageNum, Integer pageSize, Long approvalId, Long caseId, Long approverId, String approvalType);
     ApprovalHistoryResponse getApprovalHistoryDetail(Long historyId);
     ApprovalHistory createApprovalHistory(ApprovalHistory approvalHistory);
     ApprovalHistory updateApprovalHistory(Long historyId, ApprovalHistory approvalHistory);

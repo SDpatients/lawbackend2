@@ -1,0 +1,84 @@
+package com.lawbackend2.lawbackend2.entity;
+
+import javax.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "tb_lib_document", indexes = {
+    @Index(name = "idx_lib_doc_folder_id", columnList = "folder_id"),
+    @Index(name = "idx_lib_doc_type", columnList = "document_type"),
+    @Index(name = "idx_lib_doc_status", columnList = "status"),
+    @Index(name = "idx_lib_doc_create_user_id", columnList = "create_user_id"),
+    @Index(name = "idx_lib_doc_create_time", columnList = "create_time")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "uk_lib_doc_code", columnNames = {"document_code"})
+})
+@Data
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class LibDocument extends LibBaseEntity {
+
+    @Column(name = "document_name", nullable = false)
+    private String documentName;
+
+    @Column(name = "document_code", length = 50)
+    private String documentCode;
+
+    @Column(name = "folder_id")
+    private Long folderId;
+
+    @Column(name = "document_type", nullable = false, length = 20)
+    private String documentType;
+
+    @Column(name = "file_name", nullable = false)
+    private String fileName;
+
+    @Column(name = "file_path", nullable = false, length = 500)
+    private String filePath;
+
+    @Column(name = "file_size")
+    @Builder.Default
+    private Long fileSize = 0L;
+
+    @Column(name = "file_extension", length = 20)
+    private String fileExtension;
+
+    @Column(name = "mime_type", length = 100)
+    private String mimeType;
+
+    @Column(name = "current_version")
+    @Builder.Default
+    private Integer currentVersion = 1;
+
+    @Column(name = "description", length = 1000)
+    private String description;
+
+    @Column(name = "tags", length = 500)
+    private String tags;
+
+    @Column(name = "is_public")
+    @Builder.Default
+    private Boolean isPublic = false;
+
+    @Column(name = "is_locked")
+    @Builder.Default
+    private Boolean isLocked = false;
+
+    @Column(name = "locked_by")
+    private Long lockedBy;
+
+    @Column(name = "locked_time")
+    private LocalDateTime lockedTime;
+
+    @Column(name = "download_count")
+    @Builder.Default
+    private Integer downloadCount = 0;
+
+    @Column(name = "view_count")
+    @Builder.Default
+    private Integer viewCount = 0;
+}

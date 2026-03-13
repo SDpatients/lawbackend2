@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -71,7 +72,29 @@ public interface ClaimConfirmationRepository extends JpaRepository<ClaimConfirma
     @Query("SELECT c FROM ClaimConfirmation c WHERE c.caseId = :caseId AND c.lawsuitStatus = 'TRIALING' AND c.isDeleted = false")
     List<ClaimConfirmation> findTrialingLawsuitsByCaseId(@Param("caseId") Long caseId);
 
-    void deleteByCaseId(Long caseId);
+    @Modifying
+    @Query("UPDATE ClaimConfirmation c SET c.isDeleted = true WHERE c.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 
     List<ClaimConfirmation> findAllByCreditorNameAndIsDeletedFalse(String creditorName);
+
+    @Query("SELECT c.caseId, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL GROUP BY c.caseId ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    List<Object[]> sumFinalConfirmedAmountByCaseIdGroup();
+
+    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    List<Object[]> findTopConfirmationsByAmount();
+
+    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    List<Object[]> findTopConfirmationsByAmount(Pageable pageable);
+
+    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    List<Object[]> sumFinalConfirmedAmountByCaseIdGroupByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    List<Object[]> findTopConfirmationsByAmountByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    List<Object[]> findTopConfirmationsByAmountByUserId(@Param("userId") Long userId, Pageable pageable);
+
 }
+

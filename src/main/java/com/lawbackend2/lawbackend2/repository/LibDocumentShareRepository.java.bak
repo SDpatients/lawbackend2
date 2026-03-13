@@ -1,0 +1,42 @@
+package com.lawbackend2.lawbackend2.repository;
+
+import com.lawbackend2.lawbackend2.entity.LibDocumentShare;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface LibDocumentShareRepository extends JpaRepository<LibDocumentShare, Long>, JpaSpecificationExecutor<LibDocumentShare> {
+
+    Optional<LibDocumentShare> findByShareCode(String shareCode);
+
+    boolean existsByShareCode(String shareCode);
+
+    List<LibDocumentShare> findByDocumentIdAndIsDeletedFalse(Long documentId);
+
+    Page<LibDocumentShare> findByCreateUserIdAndIsDeletedFalseOrderByCreateTimeDesc(Long createUserId, Pageable pageable);
+
+    @Query("SELECT s FROM LibDocumentShare s WHERE s.isEnabled = true AND s.isDeleted = false AND (s.expireTime IS NULL OR s.expireTime > :now)")
+    List<LibDocumentShare> findActiveShares(@Param("now") LocalDateTime now);
+
+    @Query("SELECT s FROM LibDocumentShare s WHERE s.isEnabled = true AND s.expireTime IS NOT NULL AND s.expireTime < :now")
+    List<LibDocumentShare> findExpiredShares(@Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("UPDATE LibDocumentShare s SET s.accessCount = s.accessCount + 1 WHERE s.id = :id")
+    void incrementAccessCount(@Param("id") Long id);
+
+    @Query("SELECT s FROM LibDocumentShare s WHERE s.documentId = :documentId AND s.isEnabled = true AND s.isDeleted = false AND (s.expireTime IS NULL OR s.expireTime > :now)")
+    List<LibDocumentShare> findActiveSharesByDocumentId(@Param("documentId") Long documentId, @Param("now") LocalDateTime now);
+
+    void deleteByDocumentId(Long documentId);
+}

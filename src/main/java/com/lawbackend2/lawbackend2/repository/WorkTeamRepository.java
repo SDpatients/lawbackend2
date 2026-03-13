@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.entity.WorkTeam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -42,5 +43,8 @@ public interface WorkTeamRepository extends JpaRepository<WorkTeam, Long> {
                                                @Param("teamLeaderId") Long teamLeaderId,
                                                @Param("teamIds") List<Long> teamIds,
                                                Pageable pageable);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE WorkTeam wt SET wt.isDeleted = true WHERE wt.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

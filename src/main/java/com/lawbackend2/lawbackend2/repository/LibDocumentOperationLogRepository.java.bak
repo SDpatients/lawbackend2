@@ -1,0 +1,29 @@
+package com.lawbackend2.lawbackend2.repository;
+
+import com.lawbackend2.lawbackend2.entity.LibDocumentOperationLog;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface LibDocumentOperationLogRepository extends JpaRepository<LibDocumentOperationLog, Long>, JpaSpecificationExecutor<LibDocumentOperationLog> {
+
+    Page<LibDocumentOperationLog> findByDocumentIdOrderByCreateTimeDesc(Long documentId, Pageable pageable);
+
+    Page<LibDocumentOperationLog> findByFolderIdOrderByCreateTimeDesc(Long folderId, Pageable pageable);
+
+    @Query("SELECT l FROM LibDocumentOperationLog l WHERE l.operationType = :type ORDER BY l.createTime DESC")
+    Page<LibDocumentOperationLog> findByOperationType(@Param("type") String type, Pageable pageable);
+
+    @Query("SELECT l FROM LibDocumentOperationLog l WHERE l.createUserId = :userId ORDER BY l.createTime DESC")
+    Page<LibDocumentOperationLog> findByCreateUserId(@Param("userId") Long userId, Pageable pageable);
+
+    @Query("SELECT l FROM LibDocumentOperationLog l WHERE l.documentId = :documentId AND l.operationType = :type ORDER BY l.createTime DESC")
+    List<LibDocumentOperationLog> findByDocumentIdAndOperationType(@Param("documentId") Long documentId, @Param("type") String type);
+}

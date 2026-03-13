@@ -1,0 +1,119 @@
+package com.lawbackend2.lawbackend2.controller;
+
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.request.LibVersionCreateRequest;
+import com.lawbackend2.lawbackend2.dto.response.LibVersionListResponse;
+import com.lawbackend2.lawbackend2.dto.response.LibVersionResponse;
+import com.lawbackend2.lawbackend2.service.LibDocumentVersionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import javax.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/lib/versions")
+@Tag(name = "文档库-版本管理", description = "文档版本管理API")
+@RequiredArgsConstructor
+public class LibDocumentVersionController {
+
+    private final LibDocumentVersionService versionService;
+
+    @PostMapping
+    @Operation(summary = "创建版本", description = "创建新的文档版本记录")
+    public Result<LibVersionResponse> createVersion(
+            @Valid @RequestBody LibVersionCreateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("创建版本请求 - 文档ID: {}, 用户ID: {}", request.getDocumentId(), userId);
+        LibVersionResponse response = versionService.createVersion(request, userId);
+        return Result.success(response);
+    }
+
+    @PostMapping("/upload")
+    @Operation(summary = "上传新版本", description = "上传文档的新版本文件")
+    public Result<LibVersionResponse> uploadNewVersion(
+            @Parameter(description = "文档ID") @RequestParam Long documentId,
+            @Parameter(description = "文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "变更说明") @RequestParam(required = false) String changeSummary,
+            @Parameter(description = "是否主版本") @RequestParam(required = false, defaultValue = "false") Boolean isMajor,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("上传新版本请求 - 文档ID: {}, 用户ID: {}", documentId, userId);
+        LibVersionResponse response = versionService.uploadNewVersion(documentId, file, changeSummary, isMajor, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/document/{documentId}")
+    @Operation(summary = "获取版本列表", description = "获取指定文档的所有版本")
+    public Result<LibVersionListResponse> getVersionList(
+            @Parameter(description = "文档ID") @PathVariable Long documentId) {
+        LibVersionListResponse response = versionService.getVersionList(documentId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/document/{documentId}/version/{versionNumber}")
+    @Operation(summary = "获取指定版本", description = "获取文档的指定版本")
+    public Result<LibVersionResponse> getVersion(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Parameter(description = "版本号") @PathVariable Integer versionNumber) {
+        LibVersionResponse response = versionService.getVersion(documentId, versionNumber);
+        return Result.success(response);
+    }
+
+    @GetMapping("/document/{documentId}/latest")
+    @Operation(summary = "获取最新版本", description = "获取文档的最新版本")
+    public Result<LibVersionResponse> getLatestVersion(
+            @Parameter(description = "文档ID") @PathVariable Long documentId) {
+        LibVersionResponse response = versionService.getLatestVersion(documentId);
+        return Result.success(response);
+    }
+
+    @DeleteMapping("/{versionId}")
+    @Operation(summary = "删除版本", description = "删除指定的文档版本")
+    public Result<Void> deleteVersion(
+            @Parameter(description = "版本ID") @PathVariable Long versionId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("删除版本请求 - 版本ID: {}, 用户ID: {}", versionId, userId);
+        versionService.deleteVersion(versionId, userId);
+        return Result.success();
+    }
+
+    @PostMapping("/document/{documentId}/restore/{versionNumber}")
+    @Operation(summary = "恢复版本", description = "将文档恢复到指定版本")
+    public Result<Void> restoreVersion(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Parameter(description = "版本号") @PathVariable Integer versionNumber,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("恢复版本请求 - 文档ID: {}, 版本号: {}, 用户ID: {}", documentId, versionNumber, userId);
+        versionService.restoreVersion(documentId, versionNumber, userId);
+        return Result.success();
+    }
+
+    @GetMapping("/document/{documentId}/count")
+    @Operation(summary = "获取版本数量", description = "获取文档的版本总数")
+    public Result<Long> getTotalVersions(
+            @Parameter(description = "文档ID") @PathVariable Long documentId) {
+        Long count = versionService.getTotalVersions(documentId);
+        return Result.success(count);
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userDetails.getUsername());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+}

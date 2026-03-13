@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
@@ -9,7 +10,7 @@ import java.time.LocalDateTime;
 
 @Data
 public class CreditorClaimCreateRequest {
-    @NotNull(message = "案件ID不能为空")
+    @NotNull(message = "案件 ID 不能为空")
     private Long caseId;
 
     private String caseName;
@@ -55,11 +56,14 @@ public class CreditorClaimCreateRequest {
     @NotNull(message = "总金额不能为空")
     private BigDecimal totalAmount;
 
-    private Integer hasCourtJudgment = 0;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasCourtJudgment = false;
 
-    private Integer hasExecution = 0;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasExecution = false;
 
-    private Integer hasCollateral = 0;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasCollateral = false;
 
     private String claimNature;
 

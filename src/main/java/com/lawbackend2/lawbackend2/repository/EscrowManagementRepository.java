@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.entity.EscrowManagement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -26,5 +27,8 @@ public interface EscrowManagementRepository extends JpaRepository<EscrowManageme
                                             Pageable pageable);
 
     List<EscrowManagement> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE EscrowManagement em SET em.isDeleted = true WHERE em.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

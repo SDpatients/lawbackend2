@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.entity.WorkLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -25,5 +26,8 @@ public interface WorkLogRepository extends JpaRepository<WorkLog, Long> {
                                     @Param("createUserId") Long createUserId,
                                     @Param("status") String status,
                                     Pageable pageable);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE WorkLog wl SET wl.isDeleted = true WHERE wl.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

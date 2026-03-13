@@ -143,19 +143,23 @@ public class StatisticsController {
         return Result.success(trend);
     }
 
-    @Operation(summary = "案件趋势分析")
+    @Operation(summary = "案件趋势分析", description = "分析案件数量随时间的变化趋势。传入 userId 参数只返回该用户的案件数据，不传则返回所有案件数据")
     @GetMapping("/case/trend")
     public Result<TimeTrendStatistics> getCaseTrend(
-            @Parameter(description = "周期类型: month/quarter/year") @RequestParam(defaultValue = "month") String period) {
-        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+            @Parameter(description = "周期类型: month/quarter/year") @RequestParam(defaultValue = "month") String period,
+            @Parameter(description = "用户 ID（可选，传入则只返回该用户的案件数据）") @RequestParam(required = false) Long userId) {
+        
+        log.info("获取案件趋势分析，period：{}，userId：{}", period, userId);
         TimeTrendStatistics trend = statisticsService.getCaseTrend(period, userId);
         return Result.success(trend);
     }
 
-    @Operation(summary = "案件状态与进度交叉分析")
+    @Operation(summary = "案件状态与进度交叉分析", description = "分析案件状态与进度的交叉分布情况。传入 userId 参数只返回该用户的案件数据，不传则返回所有案件数据")
     @GetMapping("/case/cross-analysis")
-    public Result<CrossAnalysisStatistics> getCaseCrossAnalysis() {
-        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+    public Result<CrossAnalysisStatistics> getCaseCrossAnalysis(
+            @Parameter(description = "用户 ID（可选，传入则只返回该用户的案件数据）") @RequestParam(required = false) Long userId) {
+        
+        log.info("获取案件交叉分析，userId：{}", userId);
         CrossAnalysisStatistics analysis = statisticsService.getCaseCrossAnalysis(userId);
         return Result.success(analysis);
     }
@@ -163,8 +167,11 @@ public class StatisticsController {
     @Operation(summary = "案件金额排名")
     @GetMapping("/case/amount-ranking")
     public Result<RankingStatistics> getCaseAmountRanking(
+            @Parameter(description = "用户ID（可选，传入则只返回该用户的案件数据）") @RequestParam(required = false) Long userId,
             @Parameter(description = "前N名") @RequestParam(defaultValue = "10") Integer topN) {
-        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        if (userId == null) {
+            userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        }
         RankingStatistics ranking = statisticsService.getCaseAmountRanking(topN, userId);
         return Result.success(ranking);
     }
@@ -172,8 +179,11 @@ public class StatisticsController {
     @Operation(summary = "债权申报金额排名")
     @GetMapping("/creditor-claim/amount-ranking")
     public Result<RankingStatistics> getCreditorClaimAmountRanking(
+            @Parameter(description = "用户ID（可选，传入则只返回该用户的案件数据）") @RequestParam(required = false) Long userId,
             @Parameter(description = "前N名") @RequestParam(defaultValue = "10") Integer topN) {
-        Long userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        if (userId == null) {
+            userId = statisticsPermissionUtil.isAdmin() ? null : statisticsPermissionUtil.getCurrentUserId();
+        }
         RankingStatistics ranking = statisticsService.getCreditorClaimAmountRanking(topN, userId);
         return Result.success(ranking);
     }

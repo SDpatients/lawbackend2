@@ -1,0 +1,46 @@
+package com.lawbackend2.lawbackend2.entity;
+
+import javax.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "tb_lib_document_operation_log", indexes = {
+    @Index(name = "idx_lib_log_doc_id", columnList = "document_id"),
+    @Index(name = "idx_lib_log_folder_id", columnList = "folder_id"),
+    @Index(name = "idx_lib_log_op_type", columnList = "operation_type"),
+    @Index(name = "idx_lib_log_create_user_id", columnList = "create_user_id"),
+    @Index(name = "idx_lib_log_create_time", columnList = "create_time")
+})
+@Data
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
+public class LibDocumentOperationLog extends LibBaseEntity {
+
+    @Column(name = "document_id")
+    private Long documentId;
+
+    @Column(name = "document_name")
+    private String documentName;
+
+    @Column(name = "folder_id")
+    private Long folderId;
+
+    @Column(name = "operation_type", nullable = false, length = 20)
+    private String operationType;
+
+    @Column(name = "operation_detail", columnDefinition = "TEXT")
+    private String operationDetail;
+
+    @Column(name = "old_value", length = 500)
+    private String oldValue;
+
+    @Column(name = "new_value", length = 500)
+    private String newValue;
+
+    @Column(name = "ip_address", length = 50)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+}

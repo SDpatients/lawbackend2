@@ -15,6 +15,10 @@ public class CreditorInfo extends BaseEntity {
     @Column(name = "case_id")
     private Long caseId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "case_id", insertable = false, updatable = false)
+    private BankruptCase bankruptCase;
+
     @Column(name = "creditor_name", length = 255)
     private String creditorName;
 

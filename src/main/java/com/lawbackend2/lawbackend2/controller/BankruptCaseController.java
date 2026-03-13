@@ -7,6 +7,7 @@ import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.PermissionService;
 import com.lawbackend2.lawbackend2.service.UserRoleService;
+import com.lawbackend2.lawbackend2.util.CasePermissionUtil;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,11 +32,13 @@ public class BankruptCaseController {
     private final BankruptCaseService bankruptCaseService;
     private final PermissionService permissionService;
     private final UserRoleService userRoleService;
+    private final CasePermissionUtil casePermissionUtil;
 
-    public BankruptCaseController(BankruptCaseService bankruptCaseService, PermissionService permissionService, UserRoleService userRoleService) {
+    public BankruptCaseController(BankruptCaseService bankruptCaseService, PermissionService permissionService, UserRoleService userRoleService, CasePermissionUtil casePermissionUtil) {
         this.bankruptCaseService = bankruptCaseService;
         this.permissionService = permissionService;
         this.userRoleService = userRoleService;
+        this.casePermissionUtil = casePermissionUtil;
     }
 
     @Operation(summary = "创建案件")
@@ -54,6 +57,7 @@ public class BankruptCaseController {
     @Operation(summary = "获取案件详情")
     @GetMapping("/{caseId}")
     public Result<BankruptCase> getCaseById(@Parameter(description = "案件ID") @PathVariable Long caseId) {
+        casePermissionUtil.checkCaseAccessPermission(caseId);
         BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
         return Result.success(bankruptCase);
     }
@@ -92,6 +96,7 @@ public class BankruptCaseController {
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Valid @RequestBody CaseUpdateRequest request) {
 
+        casePermissionUtil.checkCaseEditPermission(caseId);
         bankruptCaseService.updateCase(caseId, request);
         return Result.success();
     }
@@ -102,6 +107,7 @@ public class BankruptCaseController {
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Valid @RequestBody CaseStatusUpdateRequest request) {
 
+        casePermissionUtil.checkCaseEditPermission(caseId);
         bankruptCaseService.updateCaseStatus(caseId, request);
         return Result.success();
     }
@@ -112,6 +118,7 @@ public class BankruptCaseController {
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Valid @RequestBody com.lawbackend2.lawbackend2.dto.request.CaseProgressUpdateRequest request) {
 
+        casePermissionUtil.checkCaseEditPermission(caseId);
         bankruptCaseService.updateCaseProgress(caseId, request.getCaseProgress());
         return Result.success();
     }
@@ -123,6 +130,7 @@ public class BankruptCaseController {
             @Valid @RequestBody CaseReviewRequest request) {
 
         Long userId = getCurrentUserId();
+        casePermissionUtil.checkCaseAccessPermission(caseId);
         bankruptCaseService.reviewCase(caseId, request, userId);
         log.info("案件审核成功, caseId: {}, reviewerId: {}", caseId, userId);
         return Result.success();
@@ -134,6 +142,7 @@ public class BankruptCaseController {
             @Parameter(description = "案件ID") @PathVariable Long caseId) {
 
         Long userId = getCurrentUserId();
+        casePermissionUtil.checkCaseEditPermission(caseId);
         bankruptCaseService.submitForReview(caseId, userId);
         log.info("案件提交审核成功, caseId: {}, userId: {}", caseId, userId);
         return Result.success();
@@ -145,6 +154,7 @@ public class BankruptCaseController {
             @Parameter(description = "案件ID") @PathVariable Long caseId) {
 
         Long userId = getCurrentUserId();
+        casePermissionUtil.checkCaseEditPermission(caseId);
         bankruptCaseService.withdrawReview(caseId, userId);
         log.info("案件撤销审核成功, caseId: {}, userId: {}", caseId, userId);
         return Result.success();
@@ -156,6 +166,7 @@ public class BankruptCaseController {
             @Parameter(description = "案件ID") @PathVariable Long caseId) {
 
         Long userId = getCurrentUserId();
+        casePermissionUtil.checkCaseEditPermission(caseId);
         bankruptCaseService.resubmitForReview(caseId, userId);
         log.info("案件重新提交审核成功, caseId: {}, userId: {}", caseId, userId);
         return Result.success();
@@ -183,6 +194,7 @@ public class BankruptCaseController {
             @Parameter(description = "案件ID") @PathVariable Long caseId) {
 
         Long userId = getCurrentUserId();
+        casePermissionUtil.checkCaseAccessPermission(caseId);
         bankruptCaseService.revokeReview(caseId, userId);
         log.info("案件审核结果撤销成功, caseId: {}, userId: {}", caseId, userId);
         return Result.success();
@@ -191,6 +203,7 @@ public class BankruptCaseController {
     @Operation(summary = "查询案件审核状态")
     @GetMapping("/{caseId}/review-status")
     public Result<BankruptCase> getReviewStatus(@Parameter(description = "案件ID") @PathVariable Long caseId) {
+        casePermissionUtil.checkCaseAccessPermission(caseId);
         BankruptCase bankruptCase = bankruptCaseService.getReviewStatus(caseId);
         return Result.success(bankruptCase);
     }
@@ -209,30 +222,30 @@ public class BankruptCaseController {
         return Result.success(PageResult.of(total, list));
     }
 
-    @Operation(summary = "根据用户ID查询案件列表(分页)")
+    @Operation(summary = "根据用户 ID 查询案件列表 (分页)")
     @GetMapping("/user/{userId}/list")
     public Result<PageResult<BankruptCase>> getUserCaseList(
-            @Parameter(description = "用户ID") @PathVariable Long userId,
+            @Parameter(description = "用户 ID") @PathVariable Long userId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
             @Parameter(description = "案号") @RequestParam(required = false) String caseNumber) {
 
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        List<String> roleCodes = userRoleService.getUserRoleCodes(currentUserId);
-
-        List<BankruptCase> list;
-        Long total;
-
-        if (roleCodes.contains("SUPER_ADMIN") || roleCodes.contains("ADMIN")) {
-            list = bankruptCaseService.getCaseList(pageNum, pageSize, caseStatus, null);
-            total = bankruptCaseService.getCaseCount(caseStatus, null);
-        } else {
-            list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, caseNumber);
-            total = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
-        }
+        List<BankruptCase> list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, caseNumber);
+        Long total = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
 
         return Result.success(PageResult.of(total, list));
+    }
+
+    @Operation(summary = "根据用户 ID 查询案件数量")
+    @GetMapping("/user/{userId}/count")
+    public Result<Long> getUserCaseCount(
+            @Parameter(description = "用户 ID") @PathVariable Long userId,
+            @Parameter(description = "案件状态 (可选)") @RequestParam(required = false) String caseStatus,
+            @Parameter(description = "案号 (可选，支持模糊查询)") @RequestParam(required = false) String caseNumber) {
+
+        Long count = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
+        return Result.success(count);
     }
 
     @Operation(summary = "查询待审核案件列表")
@@ -308,6 +321,7 @@ public class BankruptCaseController {
     @Operation(summary = "删除案件")
     @DeleteMapping("/{caseId}")
     public Result<Void> deleteCase(@Parameter(description = "案件ID") @PathVariable Long caseId) {
+        casePermissionUtil.checkCaseDeletePermission(caseId);
         bankruptCaseService.deleteCase(caseId);
         log.info("案件删除成功, caseId: {}", caseId);
         return Result.success();
@@ -317,6 +331,7 @@ public class BankruptCaseController {
     @GetMapping("/{caseId}/related-data")
     public Result<com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse> getCaseRelatedData(
             @Parameter(description = "案件ID") @PathVariable Long caseId) {
+        casePermissionUtil.checkCaseAccessPermission(caseId);
         com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse relatedData = 
             bankruptCaseService.getCaseRelatedData(caseId);
         return Result.success(relatedData);

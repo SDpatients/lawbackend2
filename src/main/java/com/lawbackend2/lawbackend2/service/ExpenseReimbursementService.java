@@ -31,4 +31,6 @@ public interface ExpenseReimbursementService {
     void deleteExpenseReimbursementAttachment(Long attachmentId);
     
     ExpenseReimbursementAttachment getAttachmentById(Long attachmentId);
+
+    Long linkAttachment(Long reimbursementId, Long fileId);
 }

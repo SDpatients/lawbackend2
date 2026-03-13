@@ -1,0 +1,46 @@
+package com.lawbackend2.lawbackend2.entity;
+
+import javax.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "tb_lib_document_folder", indexes = {
+    @Index(name = "idx_lib_folder_parent_id", columnList = "parent_id"),
+    @Index(name = "idx_lib_folder_status", columnList = "status"),
+    @Index(name = "idx_lib_folder_create_user_id", columnList = "create_user_id")
+}, uniqueConstraints = {
+    @UniqueConstraint(name = "uk_lib_folder_path", columnNames = {"folder_path"})
+})
+@Data
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
+public class LibDocumentFolder extends LibBaseEntity {
+
+    @Column(name = "folder_name", nullable = false, length = 100)
+    private String folderName;
+
+    @Column(name = "folder_path", nullable = false, length = 500)
+    private String folderPath;
+
+    @Column(name = "parent_id")
+    private Long parentId;
+
+    @Column(name = "folder_level")
+    private Integer folderLevel = 1;
+
+    @Column(name = "sort_order")
+    private Integer sortOrder = 0;
+
+    @Column(name = "description", length = 500)
+    private String description;
+
+    @Column(name = "icon", length = 50)
+    private String icon;
+
+    @Column(name = "color", length = 20)
+    private String color;
+
+    @Column(name = "is_public")
+    private Boolean isPublic = false;
+}

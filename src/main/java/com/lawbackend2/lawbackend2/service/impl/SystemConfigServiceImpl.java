@@ -1,6 +1,7 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.entity.SystemConfig;
+import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.SystemConfigRepository;
 import com.lawbackend2.lawbackend2.service.SystemConfigService;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +54,7 @@ public class SystemConfigServiceImpl implements SystemConfigService {
     @Transactional
     public SystemConfig createConfig(SystemConfig config) {
         if (systemConfigRepository.existsByConfigKey(config.getConfigKey())) {
-            throw new RuntimeException("配置键已存在: " + config.getConfigKey());
+            throw new BusinessException(400, "配置键已存在: " + config.getConfigKey());
         }
 
         SystemConfig savedConfig = systemConfigRepository.save(config);
@@ -67,7 +68,7 @@ public class SystemConfigServiceImpl implements SystemConfigService {
     public SystemConfig updateConfig(String configKey, String configValue) {
         Optional<SystemConfig> configOpt = systemConfigRepository.findByConfigKey(configKey);
         if (!configOpt.isPresent()) {
-            throw new RuntimeException("配置不存在: " + configKey);
+            throw new BusinessException(404, "配置不存在: " + configKey);
         }
 
         SystemConfig config = configOpt.get();
@@ -84,7 +85,7 @@ public class SystemConfigServiceImpl implements SystemConfigService {
     public void deleteConfig(Long configId) {
         Optional<SystemConfig> configOpt = systemConfigRepository.findById(configId);
         if (!configOpt.isPresent()) {
-            throw new RuntimeException("配置不存在");
+            throw new BusinessException(404, "配置不存在");
         }
 
         SystemConfig config = configOpt.get();
@@ -100,7 +101,7 @@ public class SystemConfigServiceImpl implements SystemConfigService {
     public void updateConfigStatus(Long configId, String status) {
         Optional<SystemConfig> configOpt = systemConfigRepository.findById(configId);
         if (!configOpt.isPresent()) {
-            throw new RuntimeException("配置不存在");
+            throw new BusinessException(404, "配置不存在");
         }
 
         SystemConfig config = configOpt.get();

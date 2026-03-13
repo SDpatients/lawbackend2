@@ -59,9 +59,10 @@ public class CreditorInfoController {
     @Operation(summary = "债权人列表", description = "支持多条件查询债权人信息，所有查询参数都是可选的，返回数据包含案件案号和案件名称")
     @GetMapping("/list")
     public Result<PageResult<CreditorInfoResponse>> getCreditorList(
-            @Parameter(description = "页码，从1开始", example = "1") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "页码，从 1 开始", example = "1") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小", example = "10") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "案件ID，精确查询", example = "1") @RequestParam(required = false) Long caseId,
+            @Parameter(description = "案件 ID，精确查询", example = "1") @RequestParam(required = false) Long caseId,
+            @Parameter(description = "案件案号，模糊查询", example = "(2023) 京 01 破申 1 号") @RequestParam(required = false) String caseNumber,
             @Parameter(description = "债权人类型（个人/企业），精确查询", example = "企业") @RequestParam(required = false) String creditorType,
             @Parameter(description = "债权人名称，模糊查询", example = "张三") @RequestParam(required = false) String creditorName,
             @Parameter(description = "身份证号，模糊查询", example = "110101") @RequestParam(required = false) String idNumber,
@@ -69,7 +70,7 @@ public class CreditorInfoController {
             @Parameter(description = "状态，精确查询", example = "CONFIRMED") @RequestParam(required = false) String status) {
 
         Long userId = getCurrentUserId();
-        PageResult<CreditorInfoResponse> pageResult = creditorInfoService.getCreditorListWithCaseInfo(pageNum, pageSize, caseId, creditorType, creditorName, idNumber, legalRepresentative, status, userId);
+        PageResult<CreditorInfoResponse> pageResult = creditorInfoService.getCreditorListWithCaseInfo(pageNum, pageSize, caseId, caseNumber, creditorType, creditorName, idNumber, legalRepresentative, status, userId);
 
         return Result.success(pageResult);
     }

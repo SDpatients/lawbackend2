@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.dto.response.*;
 import com.lawbackend2.lawbackend2.entity.*;
 import com.lawbackend2.lawbackend2.repository.*;
 import com.lawbackend2.lawbackend2.service.StatisticsService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -22,10 +23,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
+@Slf4j
 public class StatisticsServiceImpl implements StatisticsService {
 
     private final FundFlowRepository fundFlowRepository;
@@ -34,19 +37,25 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final WorkPlanRepository workPlanRepository;
     private final BankruptCaseRepository bankruptCaseRepository;
     private final CreditorClaimRepository creditorClaimRepository;
+    private final ClaimConfirmationRepository claimConfirmationRepository;
+    private final UserRepository userRepository;
 
     public StatisticsServiceImpl(FundFlowRepository fundFlowRepository,
                                  FundApprovalRepository fundApprovalRepository,
                                  FundAccountRepository fundAccountRepository,
                                  WorkPlanRepository workPlanRepository,
                                  BankruptCaseRepository bankruptCaseRepository,
-                                 CreditorClaimRepository creditorClaimRepository) {
+                                 CreditorClaimRepository creditorClaimRepository,
+                                 ClaimConfirmationRepository claimConfirmationRepository,
+                                 UserRepository userRepository) {
         this.fundFlowRepository = fundFlowRepository;
         this.fundApprovalRepository = fundApprovalRepository;
         this.fundAccountRepository = fundAccountRepository;
         this.workPlanRepository = workPlanRepository;
         this.bankruptCaseRepository = bankruptCaseRepository;
         this.creditorClaimRepository = creditorClaimRepository;
+        this.claimConfirmationRepository = claimConfirmationRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -426,6 +435,15 @@ public class StatisticsServiceImpl implements StatisticsService {
         LocalDate now = LocalDate.now();
         int periods = 12;
 
+        String realName = null;
+        if (userId != null) {
+            Optional<String> realNameOpt = userRepository.findRealNameById(userId);
+            if (realNameOpt.isPresent()) {
+                realName = realNameOpt.get();
+            }
+            log.info("案件趋势分析 - 用户ID: {}, realName: {}", userId, realName);
+        }
+
         for (int i = periods - 1; i >= 0; i--) {
             LocalDate startDate;
             LocalDate endDate;
@@ -456,7 +474,12 @@ public class StatisticsServiceImpl implements StatisticsService {
 
             Long count;
             if (userId != null) {
-                count = bankruptCaseRepository.countByUserIdAndAcceptanceDateBetween(userId, startDate, endDate);
+                Long countByCreator = bankruptCaseRepository.countByUserIdAndAcceptanceDateBetween(userId, startDate, endDate);
+                Long countByUndertaking = 0L;
+                if (realName != null) {
+                    countByUndertaking = bankruptCaseRepository.countByUndertakingPersonnelAndAcceptanceDateBetween(realName, startDate, endDate);
+                }
+                count = countByCreator + countByUndertaking;
             } else {
                 count = bankruptCaseRepository.countByAcceptanceDateBetween(startDate, endDate);
             }
@@ -465,7 +488,12 @@ public class StatisticsServiceImpl implements StatisticsService {
             LocalDate prevEndDate = startDate.minusMonths(1).plusDays(1);
             Long previousCount;
             if (userId != null) {
-                previousCount = bankruptCaseRepository.countByUserIdAndAcceptanceDateBetween(userId, prevStartDate, prevEndDate);
+                Long prevCountByCreator = bankruptCaseRepository.countByUserIdAndAcceptanceDateBetween(userId, prevStartDate, prevEndDate);
+                Long prevCountByUndertaking = 0L;
+                if (realName != null) {
+                    prevCountByUndertaking = bankruptCaseRepository.countByUndertakingPersonnelAndAcceptanceDateBetween(realName, prevStartDate, prevEndDate);
+                }
+                previousCount = prevCountByCreator + prevCountByUndertaking;
             } else {
                 previousCount = bankruptCaseRepository.countByAcceptanceDateBetween(prevStartDate, prevEndDate);
             }
@@ -517,33 +545,70 @@ public class StatisticsServiceImpl implements StatisticsService {
         List<Object[]> statusData;
         List<Object[]> progressData;
 
+        Map<String, Map<String, Long>> crossData = new HashMap<>();
+        Map<String, Long> statusDistribution = new HashMap<>();
+        Map<String, Long> progressDistribution = new HashMap<>();
+
         if (userId != null) {
-            statusProgressData = bankruptCaseRepository.countByUserIdAndStatusAndProgressGroup(userId);
-            statusData = bankruptCaseRepository.countByUserIdAndStatusGroup(userId);
-            progressData = bankruptCaseRepository.countByUserIdAndProgressGroup(userId);
+            String realName = userRepository.findRealNameById(userId).orElse(null);
+            log.info("案件交叉分析 - 用户ID: {}, realName: {}", userId, realName);
+
+            List<Object[]> statusProgressDataByCreator = bankruptCaseRepository.countByUserIdAndStatusAndProgressGroup(userId);
+            for (Object[] row : statusProgressDataByCreator) {
+                String status = (String) row[0];
+                String progress = (String) row[1];
+                Long count = (Long) row[2];
+                crossData.computeIfAbsent(status, k -> new HashMap<>()).merge(progress, count, Long::sum);
+            }
+
+            List<Object[]> statusDataByCreator = bankruptCaseRepository.countByUserIdAndStatusGroup(userId);
+            for (Object[] row : statusDataByCreator) {
+                statusDistribution.merge((String) row[0], (Long) row[1], Long::sum);
+            }
+
+            List<Object[]> progressDataByCreator = bankruptCaseRepository.countByUserIdAndProgressGroup(userId);
+            for (Object[] row : progressDataByCreator) {
+                progressDistribution.merge((String) row[0], (Long) row[1], Long::sum);
+            }
+
+            if (realName != null) {
+                List<Object[]> statusProgressDataByUndertaking = bankruptCaseRepository.countByUndertakingPersonnelAndStatusAndProgressGroup(realName);
+                for (Object[] row : statusProgressDataByUndertaking) {
+                    String status = (String) row[0];
+                    String progress = (String) row[1];
+                    Long count = (Long) row[2];
+                    crossData.computeIfAbsent(status, k -> new HashMap<>()).merge(progress, count, Long::sum);
+                }
+
+                List<Object[]> statusDataByUndertaking = bankruptCaseRepository.countByUndertakingPersonnelAndStatusGroup(realName);
+                for (Object[] row : statusDataByUndertaking) {
+                    statusDistribution.merge((String) row[0], (Long) row[1], Long::sum);
+                }
+
+                List<Object[]> progressDataByUndertaking = bankruptCaseRepository.countByUndertakingPersonnelAndProgressGroup(realName);
+                for (Object[] row : progressDataByUndertaking) {
+                    progressDistribution.merge((String) row[0], (Long) row[1], Long::sum);
+                }
+            }
         } else {
             statusProgressData = bankruptCaseRepository.countByStatusAndProgressGroup();
+            for (Object[] row : statusProgressData) {
+                String status = (String) row[0];
+                String progress = (String) row[1];
+                Long count = (Long) row[2];
+
+                crossData.computeIfAbsent(status, k -> new HashMap<>()).put(progress, count);
+            }
+
             statusData = bankruptCaseRepository.countByStatusGroup();
+            for (Object[] row : statusData) {
+                statusDistribution.put((String) row[0], (Long) row[1]);
+            }
+
             progressData = bankruptCaseRepository.countByProgressGroup();
-        }
-
-        Map<String, Map<String, Long>> crossData = new HashMap<>();
-        for (Object[] row : statusProgressData) {
-            String status = (String) row[0];
-            String progress = (String) row[1];
-            Long count = (Long) row[2];
-
-            crossData.computeIfAbsent(status, k -> new HashMap<>()).put(progress, count);
-        }
-
-        Map<String, Long> statusDistribution = new HashMap<>();
-        for (Object[] row : statusData) {
-            statusDistribution.put((String) row[0], (Long) row[1]);
-        }
-
-        Map<String, Long> progressDistribution = new HashMap<>();
-        for (Object[] row : progressData) {
-            progressDistribution.put((String) row[0], (Long) row[1]);
+            for (Object[] row : progressData) {
+                progressDistribution.put((String) row[0], (Long) row[1]);
+            }
         }
 
         Long totalCount = statusDistribution.values().stream().mapToLong(Long::longValue).sum();
@@ -573,9 +638,49 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         List<Object[]> caseAmountData;
         if (userId != null) {
-            caseAmountData = creditorClaimRepository.sumTotalAmountByCaseIdWithNameGroupByUserId(userId);
+            caseAmountData = claimConfirmationRepository.sumFinalConfirmedAmountByCaseIdGroupByUserId(userId);
         } else {
-            caseAmountData = creditorClaimRepository.sumTotalAmountByCaseIdWithNameGroup();
+            caseAmountData = claimConfirmationRepository.sumFinalConfirmedAmountByCaseIdGroup();
+        }
+
+        Map<String, String> caseNameMap = new HashMap<>();
+        List<String> caseIdOrNames = new ArrayList<>();
+        
+        for (Object[] row : caseAmountData) {
+            Object caseIdObj = row[0];
+            if (caseIdObj instanceof String) {
+                String caseIdOrName = (String) caseIdObj;
+                caseIdOrNames.add(caseIdOrName);
+                caseNameMap.put(caseIdOrName, caseIdOrName);
+            } else if (caseIdObj instanceof Number) {
+                Long caseId = ((Number) caseIdObj).longValue();
+                caseIdOrNames.add(String.valueOf(caseId));
+            }
+        }
+
+        if (!caseIdOrNames.isEmpty()) {
+            try {
+                List<Long> caseIds = caseIdOrNames.stream()
+                        .filter(s -> {
+                            try {
+                                Long.parseLong(s);
+                                return true;
+                            } catch (NumberFormatException e) {
+                                return false;
+                            }
+                        })
+                        .map(Long::parseLong)
+                        .collect(Collectors.toList());
+                
+                if (!caseIds.isEmpty()) {
+                    List<BankruptCase> cases = bankruptCaseRepository.findAllById(caseIds);
+                    for (BankruptCase c : cases) {
+                        caseNameMap.put(String.valueOf(c.getId()), c.getCaseName());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("查询案件名称失败", e);
+            }
         }
 
         List<RankingItem> rankings = new ArrayList<>();
@@ -583,9 +688,17 @@ public class StatisticsServiceImpl implements StatisticsService {
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (int i = 0; i < Math.min(topN, caseAmountData.size()); i++) {
             Object[] row = caseAmountData.get(i);
-            Long caseId = (Long) row[0];
-            String caseName = (String) row[1];
-            BigDecimal amount = (BigDecimal) row[2];
+            String caseIdStr = String.valueOf(row[0]);
+            BigDecimal amount = (BigDecimal) row[1];
+            
+            Long caseId = null;
+            String caseName;
+            try {
+                caseId = Long.parseLong(caseIdStr);
+                caseName = caseNameMap.getOrDefault(caseIdStr, "");
+            } catch (NumberFormatException e) {
+                caseName = caseIdStr;
+            }
 
             if (amount == null) {
                 amount = BigDecimal.ZERO;
@@ -626,19 +739,18 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         List<Object[]> claimAmountData;
         if (userId != null) {
-            claimAmountData = creditorClaimRepository.findTopClaimsByAmountByUserId(userId, PageRequest.of(0, topN));
+            claimAmountData = claimConfirmationRepository.findTopConfirmationsByAmountByUserId(userId);
         } else {
-            claimAmountData = creditorClaimRepository.findTopClaimsByAmount(PageRequest.of(0, topN));
+            claimAmountData = claimConfirmationRepository.findTopConfirmationsByAmount();
         }
 
         List<RankingItem> rankings = new ArrayList<>();
 
         BigDecimal totalAmount = BigDecimal.ZERO;
-        for (int i = 0; i < claimAmountData.size(); i++) {
+        for (int i = 0; i < Math.min(topN, claimAmountData.size()); i++) {
             Object[] row = claimAmountData.get(i);
-            Long claimId = (Long) row[0];
-            String creditorName = (String) row[1];
-            BigDecimal amount = (BigDecimal) row[2];
+            String creditorName = (String) row[0];
+            BigDecimal amount = (BigDecimal) row[1];
 
             if (amount == null) {
                 amount = BigDecimal.ZERO;
@@ -647,7 +759,6 @@ public class StatisticsServiceImpl implements StatisticsService {
             totalAmount = totalAmount.add(amount);
 
             RankingItem item = new RankingItem();
-            item.setId(claimId);
             item.setName(creditorName);
             item.setAmount(amount);
             item.setRank(i + 1);

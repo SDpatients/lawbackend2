@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -73,21 +74,27 @@ public class BankruptCase extends BaseEntity {
     @Column(name = "undertaking_personnel", length = 255)
     private String undertakingPersonnel;
 
+    @JsonIgnore
     @Column(name = "creator_name", length = 100)
     private String creatorName;
 
+    @JsonIgnore
     @Column(name = "reviewer_id")
     private Long reviewerId;
 
+    @JsonIgnore
     @Column(name = "review_status", length = 20)
     private String reviewStatus = "PENDING";
 
+    @JsonIgnore
     @Column(name = "review_time")
     private LocalDateTime reviewTime;
 
+    @JsonIgnore
     @Column(name = "review_opinion", columnDefinition = "TEXT")
     private String reviewOpinion;
 
+    @JsonIgnore
     @Column(name = "review_count")
     private Integer reviewCount = 0;
 

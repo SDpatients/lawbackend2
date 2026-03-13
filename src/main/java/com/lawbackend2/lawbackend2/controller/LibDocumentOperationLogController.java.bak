@@ -1,0 +1,75 @@
+package com.lawbackend2.lawbackend2.controller;
+
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.response.LibOperationLogListResponse;
+import com.lawbackend2.lawbackend2.service.LibDocumentOperationLogService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/lib/logs")
+@Tag(name = "文档库-操作日志", description = "文档操作日志API")
+@RequiredArgsConstructor
+public class LibDocumentOperationLogController {
+
+    private final LibDocumentOperationLogService logService;
+
+    @GetMapping("/document/{documentId}")
+    @Operation(summary = "获取文档操作日志", description = "获取指定文档的操作日志")
+    public Result<LibOperationLogListResponse> getDocumentLogs(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") Integer size) {
+        LibOperationLogListResponse response = logService.getDocumentLogs(documentId, page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/folder/{folderId}")
+    @Operation(summary = "获取文件夹操作日志", description = "获取指定文件夹的操作日志")
+    public Result<LibOperationLogListResponse> getFolderLogs(
+            @Parameter(description = "文件夹ID") @PathVariable Long folderId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") Integer size) {
+        LibOperationLogListResponse response = logService.getFolderLogs(folderId, page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/my")
+    @Operation(summary = "获取我的操作日志", description = "获取当前用户的操作日志")
+    public Result<LibOperationLogListResponse> getMyLogs(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") Integer size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibOperationLogListResponse response = logService.getMyLogs(userId, page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/type/{operationType}")
+    @Operation(summary = "按类型获取操作日志", description = "根据操作类型获取操作日志")
+    public Result<LibOperationLogListResponse> getLogsByType(
+            @Parameter(description = "操作类型") @PathVariable String operationType,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "20") Integer size) {
+        LibOperationLogListResponse response = logService.getLogsByType(operationType, page, size);
+        return Result.success(response);
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userDetails.getUsername());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+}

@@ -47,9 +47,7 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     Long countByUserIdAndDeadlineBefore(Long userId, LocalDateTime deadline);
 
-    @Query("SELECT COUNT(t) FROM Todo t WHERE t.userId = :userId AND t.status = 'PENDING'")
-    Long countPendingByUserId(@Param("userId") Long userId);
+    Long countPendingByUserId(Long userId);
 
-    @Query("SELECT COUNT(t) FROM Todo t WHERE t.userId = :userId AND t.status = 'COMPLETED'")
-    Long countCompletedByUserId(@Param("userId") Long userId);
+    Long countCompletedByUserId(Long userId);
 }

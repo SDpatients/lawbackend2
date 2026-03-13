@@ -19,8 +19,8 @@ public class UserPatchRequest {
     private String username;
 
     @Size(min = 8, max = 20, message = "密码长度必须在8-20之间")
-    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]+$",
-            message = "密码必须包含大小写字母、数字和特殊字符")
+    @Pattern(regexp = "^(?=.*[a-zA-Z])(?=.*\\d)[a-zA-Z\\d]+$",
+            message = "密码必须包含字母和数字")
     private String password;
 
     @Size(max = 50, message = "真实姓名长度不能超过50")
@@ -28,7 +28,6 @@ public class UserPatchRequest {
 
     private String mobile;
 
-    @Email(message = "邮箱格式不正确")
     private String email;
 
     private String phone;

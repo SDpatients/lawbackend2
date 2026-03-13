@@ -3,7 +3,11 @@ package com.lawbackend2.lawbackend2.service.impl;
 import com.lawbackend2.lawbackend2.dto.*;
 import com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
+import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.entity.User;
+import com.lawbackend2.lawbackend2.entity.WorkTeam;
+import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
+import com.lawbackend2.lawbackend2.entity.WorkTeamPermission;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.*;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
@@ -27,8 +31,12 @@ import java.util.stream.Collectors;
 public class BankruptCaseServiceImpl implements BankruptCaseService {
 
     private final BankruptCaseRepository bankruptCaseRepository;
+    private final WorkTeamRepository workTeamRepository;
     private final WorkTeamMemberRepository workTeamMemberRepository;
+    private final WorkTeamPermissionRepository workTeamPermissionRepository;
     private final UserRepository userRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
     private final com.lawbackend2.lawbackend2.service.CaseTaskService caseTaskService;
     private final ApprovalRepository approvalRepository;
     private final ApprovalHistoryRepository approvalHistoryRepository;
@@ -51,7 +59,6 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     private final BankruptcyExpenseRepository bankruptcyExpenseRepository;
     private final AdministratorRepository administratorRepository;
     private final CreditorClaimRepository creditorClaimRepository;
-    private final WorkTeamRepository workTeamRepository;
     private final WorkPlanRepository workPlanRepository;
     private final DebtorEnterpriseRepository debtorEnterpriseRepository;
     private final CaseProgressRepository caseProgressRepository;
@@ -64,8 +71,12 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     private final ClaimReviewRepository claimReviewRepository;
 
     public BankruptCaseServiceImpl(BankruptCaseRepository bankruptCaseRepository, 
+                                 WorkTeamRepository workTeamRepository,
                                  WorkTeamMemberRepository workTeamMemberRepository,
+                                 WorkTeamPermissionRepository workTeamPermissionRepository,
                                  UserRepository userRepository,
+                                 UserRoleRepository userRoleRepository,
+                                 RoleRepository roleRepository,
                                  com.lawbackend2.lawbackend2.service.CaseTaskService caseTaskService,
                                  ApprovalRepository approvalRepository,
                                  ApprovalHistoryRepository approvalHistoryRepository,
@@ -88,7 +99,6 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
                                  BankruptcyExpenseRepository bankruptcyExpenseRepository,
                                  AdministratorRepository administratorRepository,
                                  CreditorClaimRepository creditorClaimRepository,
-                                 WorkTeamRepository workTeamRepository,
                                  WorkPlanRepository workPlanRepository,
                                  DebtorEnterpriseRepository debtorEnterpriseRepository,
                                  CaseProgressRepository caseProgressRepository,
@@ -100,8 +110,12 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
                                  ClaimRegistrationRepository claimRegistrationRepository,
                                  ClaimReviewRepository claimReviewRepository) {
         this.bankruptCaseRepository = bankruptCaseRepository;
+        this.workTeamRepository = workTeamRepository;
         this.workTeamMemberRepository = workTeamMemberRepository;
+        this.workTeamPermissionRepository = workTeamPermissionRepository;
         this.userRepository = userRepository;
+        this.userRoleRepository = userRoleRepository;
+        this.roleRepository = roleRepository;
         this.caseTaskService = caseTaskService;
         this.approvalRepository = approvalRepository;
         this.approvalHistoryRepository = approvalHistoryRepository;
@@ -124,7 +138,6 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         this.bankruptcyExpenseRepository = bankruptcyExpenseRepository;
         this.administratorRepository = administratorRepository;
         this.creditorClaimRepository = creditorClaimRepository;
-        this.workTeamRepository = workTeamRepository;
         this.workPlanRepository = workPlanRepository;
         this.debtorEnterpriseRepository = debtorEnterpriseRepository;
         this.caseProgressRepository = caseProgressRepository;
@@ -154,12 +167,13 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         bankruptCase.setCreateUserId(userId);
         bankruptCase.setUpdateUserId(userId);
         bankruptCase.setIsSimplifiedTrial(request.getIsSimplifiedTrial() != null && request.getIsSimplifiedTrial() == 1);
-        // 确保新增案件时caseStatus默认为ONGOING
         bankruptCase.setCaseStatus("ONGOING");
 
         BankruptCase savedCase = bankruptCaseRepository.save(bankruptCase);
         
         caseTaskService.createTasksForCase(savedCase.getId());
+        
+        createInitialWorkTeam(savedCase.getId(), request.getMainResponsiblePerson(), request.getUndertakingPersonnel(), userId);
 
         return savedCase;
     }
@@ -426,16 +440,33 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
 
     @Override
     public List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleList(Long userId, Integer page, Integer size, String caseNumber) {
-        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+        // 检查用户是否为 ADMIN 角色
+        boolean isAdmin = isUserAdmin(userId);
+        
+        if (isAdmin) {
+            // ADMIN 用户可以查看所有案件
+            Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createTime"));
+            Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result;
+            
+            if (caseNumber != null && !caseNumber.isEmpty()) {
+                result = bankruptCaseRepository.findAllByCaseNumberLike(caseNumber, pageable);
+            } else {
+                result = bankruptCaseRepository.findAllSimpleInfo(pageable);
+            }
+            
+            return result.getContent();
+        }
+        
+        // 非 ADMIN 用户，查询用户参与的所有案件 ID（通过工作组成员关系）
         List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
         
-        // 2. 查询用户创建的所有案件ID
+        // 查询用户创建的所有案件 ID
         List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
         List<Long> createdCaseIds = createdCases.stream()
                 .map(BankruptCase::getId)
                 .collect(Collectors.toList());
         
-        // 3. 合并并去重所有案件ID
+        // 合并并去重所有案件 ID
         Set<Long> allCaseIdsSet = participatedCaseIds.stream()
                 .collect(Collectors.toSet());
         allCaseIdsSet.addAll(createdCaseIds);
@@ -446,7 +477,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             return List.of();
         }
         
-        // 4. 根据案件ID列表和案号条件查询案件简单信息，支持分页
+        // 根据案件 ID 列表和案号条件查询案件简单信息，支持分页
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result;
         
@@ -461,16 +492,28 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
 
     @Override
     public Long getCaseSimpleCount(Long userId, String caseNumber) {
-        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+        // 检查用户是否为 ADMIN 角色
+        boolean isAdmin = isUserAdmin(userId);
+        
+        if (isAdmin) {
+            // ADMIN 用户可以查看所有案件
+            if (caseNumber != null && !caseNumber.isEmpty()) {
+                return bankruptCaseRepository.countByCaseNumberLike(caseNumber);
+            } else {
+                return bankruptCaseRepository.count();
+            }
+        }
+        
+        // 非 ADMIN 用户，查询用户参与的所有案件 ID（通过工作组成员关系）
         List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
         
-        // 2. 查询用户创建的所有案件ID
+        // 查询用户创建的所有案件 ID
         List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
         List<Long> createdCaseIds = createdCases.stream()
                 .map(BankruptCase::getId)
                 .collect(Collectors.toList());
         
-        // 3. 合并并去重所有案件ID
+        // 合并并去重所有案件 ID
         Set<Long> allCaseIdsSet = participatedCaseIds.stream()
                 .collect(Collectors.toSet());
         allCaseIdsSet.addAll(createdCaseIds);
@@ -481,7 +524,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             return 0L;
         }
         
-        // 4. 根据案件ID列表和案号条件查询案件简单信息总数
+        // 根据案件 ID 列表和案号条件查询案件简单信息总数
         Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result;
         
         if (caseNumber != null && !caseNumber.isEmpty()) {
@@ -762,7 +805,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteCase(Long caseId) {
-        log.info("开始删除案件及其关联数据, caseId: {}", caseId);
+        log.info("开始软删除案件及其关联数据, caseId: {}", caseId);
 
         BankruptCase bankruptCase = getCaseById(caseId);
 
@@ -787,6 +830,8 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         bankruptcyExpenseRepository.deleteByCaseId(caseId);
         administratorRepository.deleteByCaseId(caseId);
         creditorClaimRepository.deleteByCaseId(caseId);
+        workTeamPermissionRepository.deleteByCaseId(caseId);
+        workTeamMemberRepository.deleteByCaseId(caseId);
         workTeamRepository.deleteByCaseId(caseId);
         workPlanRepository.deleteByCaseId(caseId);
         debtorEnterpriseRepository.deleteByCaseId(caseId);
@@ -799,8 +844,157 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         claimRegistrationRepository.deleteByCaseId(caseId);
         claimReviewRepository.deleteByCaseId(caseId);
 
-        bankruptCaseRepository.delete(bankruptCase);
+        bankruptCase.setIsDeleted(true);
+        bankruptCaseRepository.save(bankruptCase);
 
-        log.info("案件及其关联数据删除成功, caseId: {}", caseId);
+        log.info("案件及其关联数据软删除成功，caseId: {}", caseId);
+    }
+
+    /**
+     * 创建案件时自动创建初始工作团队
+     * @param caseId 案件 ID
+     * @param mainResponsiblePerson 主要负责人姓名
+     * @param undertakingPersonnel 承办人员姓名
+     * @param createUserId 创建人 ID
+     */
+    private void createInitialWorkTeam(Long caseId, String mainResponsiblePerson, String undertakingPersonnel, Long createUserId) {
+        try {
+            // 1. 查询用户 ID
+            Long mainResponsibleUserId = findUserIdByRealName(mainResponsiblePerson);
+            Long undertakingUserId = findUserIdByRealName(undertakingPersonnel);
+            
+            if (mainResponsibleUserId == null) {
+                log.warn("未找到主要负责人：{}", mainResponsiblePerson);
+                mainResponsibleUserId = createUserId; // 如果找不到，使用创建人
+            }
+            
+            if (undertakingUserId == null) {
+                log.warn("未找到承办人员：{}", undertakingPersonnel);
+                undertakingUserId = createUserId; // 如果找不到，使用创建人
+            }
+            
+            // 2. 创建工作团队
+            WorkTeam workTeam = new WorkTeam();
+            workTeam.setTeamName("初始团队");
+            workTeam.setTeamLeaderId(undertakingUserId); // 负责人默认为承办人员
+            workTeam.setCaseId(caseId);
+            workTeam.setTeamDescription("此为系统在新增案件后自动创建的工作团队");
+            workTeam.setCreateUserId(createUserId);
+            workTeam.setUpdateUserId(createUserId);
+            
+            WorkTeam savedTeam = workTeamRepository.save(workTeam);
+            log.info("创建初始工作团队成功，teamId: {}, caseId: {}", savedTeam.getId(), caseId);
+            
+            // 3. 添加团队成员（主要负责人、承办人员、创建人）
+            java.util.Set<Long> memberUserIds = new java.util.HashSet<>();
+            memberUserIds.add(mainResponsibleUserId);
+            memberUserIds.add(undertakingUserId);
+            memberUserIds.add(createUserId);
+            
+            for (Long userId : memberUserIds) {
+                WorkTeamMember member = new WorkTeamMember();
+                member.setTeamId(savedTeam.getId());
+                member.setCaseId(caseId);
+                member.setUserId(userId);
+                
+                // 设置角色为 LEADER
+                member.setTeamRole("LEADER");
+                
+                // 设置权限级别为 ADMIN
+                member.setPermissionLevel("ADMIN");
+                member.setIsActive(1);
+                member.setCreateUserId(createUserId);
+                member.setUpdateUserId(createUserId);
+                
+                WorkTeamMember savedMember = workTeamMemberRepository.save(member);
+                log.info("添加工作团队成员成功，memberId: {}, userId: {}, role: {}", 
+                        savedMember.getId(), userId, member.getTeamRole());
+                
+                // 4. 为成员分配权限
+                assignFullPermissionsToMember(savedMember.getId(), createUserId);
+            }
+            
+            log.info("初始工作团队创建完成，teamId: {}, 成员数：{}", savedTeam.getId(), memberUserIds.size());
+            
+        } catch (Exception e) {
+            log.error("创建初始工作团队失败，caseId: {}, error: {}", caseId, e.getMessage(), e);
+            // 不抛出异常，避免影响案件创建
+        }
+    }
+    
+    /**
+     * 根据真实姓名查询用户 ID
+     */
+    private Long findUserIdByRealName(String realName) {
+        if (realName == null || realName.trim().isEmpty()) {
+            return null;
+        }
+        
+        try {
+            java.util.List<User> users = userRepository.findAll();
+            for (User user : users) {
+                if (realName.equals(user.getRealName()) && !user.getIsDeleted()) {
+                    return user.getId();
+                }
+            }
+        } catch (Exception e) {
+            log.error("根据姓名查询用户失败，realName: {}, error: {}", realName, e.getMessage());
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 为团队成员分配完整权限
+     */
+    private void assignFullPermissionsToMember(Long teamMemberId, Long createUserId) {
+        // 定义所有模块类型
+        String[] moduleTypes = {
+            "CASE_TASK", "CLAIM_REGISTRATION", "CLAIM_REVIEW", "CLAIM_CONFIRMATION",
+            "WORK_PLAN", "WORK_LOG", "CASE_PROGRESS", "DEBTOR_ENTERPRISE",
+            "CREDITOR_INFO", "BANK_ACCOUNT", "FUND_ACCOUNT", "FUND_OPERATION",
+            "CASE_ANNOUNCEMENT", "DOCUMENT_DELIVERY", "ARCHIVE_RECORD", "CASE_FILE"
+        };
+        
+        // 定义所有权限类型
+        String[] permissionTypes = {"VIEW", "CREATE", "EDIT", "DELETE", "EXPORT", "APPROVE"};
+        
+        for (String moduleType : moduleTypes) {
+            for (String permissionType : permissionTypes) {
+                WorkTeamPermission permission = new WorkTeamPermission();
+                permission.setTeamMemberId(teamMemberId);
+                permission.setModuleType(moduleType);
+                permission.setPermissionType(permissionType);
+                permission.setIsAllowed(1); // 允许
+                permission.setCreateUserId(createUserId);
+                permission.setUpdateUserId(createUserId);
+                
+                workTeamPermissionRepository.save(permission);
+            }
+        }
+        
+        log.info("为团队成员分配完整权限成功，teamMemberId: {}", teamMemberId);
+    }
+
+    /**
+     * 检查用户是否为 ADMIN 角色
+     */
+    private boolean isUserAdmin(Long userId) {
+        try {
+            List<Long> roleIds = userRoleRepository.findByUserId(userId).stream()
+                    .map(ur -> ur.getRoleId())
+                    .collect(Collectors.toList());
+            
+            if (roleIds.isEmpty()) {
+                return false;
+            }
+            
+            List<Role> roles = roleRepository.findAllById(roleIds);
+            return roles.stream()
+                    .anyMatch(role -> "ADMIN".equals(role.getRoleCode()));
+        } catch (Exception e) {
+            log.error("检查用户角色失败，userId: {}, error: {}", userId, e.getMessage(), e);
+            return false;
+        }
     }
 }

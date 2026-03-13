@@ -653,15 +653,15 @@ public class ExcelTemplateImportExportServiceImpl implements ExcelTemplateImport
             case "hasCourtJudgment":
             case "是否有法院判决":
             case "涉讼":
-                request.setHasCourtJudgment(parseBoolean(value) ? 1 : 0);
+                request.setHasCourtJudgment(parseBoolean(value));
                 break;
             case "hasExecution":
             case "是否有执行":
-                request.setHasExecution(parseBoolean(value) ? 1 : 0);
+                request.setHasExecution(parseBoolean(value));
                 break;
             case "hasCollateral":
             case "是否有担保":
-                request.setHasCollateral(parseBoolean(value) ? 1 : 0);
+                request.setHasCollateral(parseBoolean(value));
                 break;
         }
     }

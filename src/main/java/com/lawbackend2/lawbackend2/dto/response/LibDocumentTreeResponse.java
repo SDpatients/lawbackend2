@@ -1,0 +1,28 @@
+package com.lawbackend2.lawbackend2.dto.response;
+
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class LibDocumentTreeResponse {
+
+    private Long id;
+    private String name;
+    private String type;
+    private Long parentId;
+    private String path;
+    private Integer folderLevel;
+    private Integer sortOrder;
+    private String icon;
+    private String color;
+    private Long documentCount;
+    private LocalDateTime createTime;
+    private Long createUserId;
+    private String createUserName;
+    private List<LibDocumentTreeResponse> children;
+}

@@ -9,4 +9,6 @@ public class CreditorSimpleResponse {
     private String creditorName;
     private String idNumber;
     private String creditorType;
+    private String legalRepresentative;
+    private String address;
 }

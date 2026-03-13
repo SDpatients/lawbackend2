@@ -1,0 +1,135 @@
+package com.lawbackend2.lawbackend2.controller;
+
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.request.LibPermissionGrantRequest;
+import com.lawbackend2.lawbackend2.dto.response.LibPermissionResponse;
+import com.lawbackend2.lawbackend2.service.LibDocumentPermissionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import javax.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/lib/permissions")
+@Tag(name = "文档库-权限管理", description = "文档权限API")
+@RequiredArgsConstructor
+public class LibDocumentPermissionController {
+
+    private final LibDocumentPermissionService permissionService;
+
+    @GetMapping
+    @Operation(summary = "获取所有权限", description = "获取系统定义的所有权限列表")
+    public Result<List<LibPermissionResponse>> getAllPermissions() {
+        List<LibPermissionResponse> permissions = permissionService.getAllPermissions();
+        return Result.success(permissions);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "获取权限详情", description = "根据ID获取权限详情")
+    public Result<LibPermissionResponse> getPermissionById(
+            @Parameter(description = "权限ID") @PathVariable Long id) {
+        LibPermissionResponse response = permissionService.getPermissionById(id);
+        return Result.success(response);
+    }
+
+    @GetMapping("/code/{code}")
+    @Operation(summary = "根据编码获取权限", description = "根据权限编码获取权限详情")
+    public Result<LibPermissionResponse> getPermissionByCode(
+            @Parameter(description = "权限编码") @PathVariable String code) {
+        LibPermissionResponse response = permissionService.getPermissionByCode(code);
+        return Result.success(response);
+    }
+
+    @PostMapping("/folder/{folderId}")
+    @Operation(summary = "授予文件夹权限", description = "为用户/角色/部门授予文件夹权限")
+    public Result<Void> grantFolderPermission(
+            @Parameter(description = "文件夹ID") @PathVariable Long folderId,
+            @Valid @RequestBody LibPermissionGrantRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("授予文件夹权限请求 - 文件夹ID: {}, 权限ID: {}, 用户ID: {}", folderId, request.getPermissionId(), userId);
+        permissionService.grantFolderPermission(folderId, request, userId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/folder/{folderId}")
+    @Operation(summary = "撤销文件夹权限", description = "撤销用户/角色/部门的文件夹权限")
+    public Result<Void> revokeFolderPermission(
+            @Parameter(description = "文件夹ID") @PathVariable Long folderId,
+            @Parameter(description = "权限ID") @RequestParam Long permissionId,
+            @Parameter(description = "目标类型") @RequestParam String targetType,
+            @Parameter(description = "目标ID") @RequestParam Long targetId) {
+        permissionService.revokeFolderPermission(folderId, permissionId, targetType, targetId);
+        return Result.success();
+    }
+
+    @PostMapping("/document/{documentId}")
+    @Operation(summary = "授予文档权限", description = "为用户/角色/部门授予文档权限")
+    public Result<Void> grantDocumentPermission(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Valid @RequestBody LibPermissionGrantRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("授予文档权限请求 - 文档ID: {}, 权限ID: {}, 用户ID: {}", documentId, request.getPermissionId(), userId);
+        permissionService.grantDocumentPermission(documentId, request, userId);
+        return Result.success();
+    }
+
+    @DeleteMapping("/document/{documentId}")
+    @Operation(summary = "撤销文档权限", description = "撤销用户/角色/部门的文档权限")
+    public Result<Void> revokeDocumentPermission(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Parameter(description = "权限ID") @RequestParam Long permissionId,
+            @Parameter(description = "目标类型") @RequestParam String targetType,
+            @Parameter(description = "目标ID") @RequestParam Long targetId) {
+        permissionService.revokeDocumentPermission(documentId, permissionId, targetType, targetId);
+        return Result.success();
+    }
+
+    @GetMapping("/folder/{folderId}")
+    @Operation(summary = "获取文件夹权限列表", description = "获取文件夹的所有权限配置")
+    public Result<List<Map<String, Object>>> getFolderPermissions(
+            @Parameter(description = "文件夹ID") @PathVariable Long folderId) {
+        List<Map<String, Object>> permissions = permissionService.getFolderPermissions(folderId);
+        return Result.success(permissions);
+    }
+
+    @GetMapping("/document/{documentId}")
+    @Operation(summary = "获取文档权限列表", description = "获取文档的所有权限配置")
+    public Result<List<Map<String, Object>>> getDocumentPermissions(
+            @Parameter(description = "文档ID") @PathVariable Long documentId) {
+        List<Map<String, Object>> permissions = permissionService.getDocumentPermissions(documentId);
+        return Result.success(permissions);
+    }
+
+    @GetMapping("/check")
+    @Operation(summary = "检查权限", description = "检查用户是否有指定资源的权限")
+    public Result<Boolean> checkPermission(
+            @Parameter(description = "用户ID") @RequestParam Long userId,
+            @Parameter(description = "资源ID") @RequestParam Long resourceId,
+            @Parameter(description = "资源类型") @RequestParam String resourceType,
+            @Parameter(description = "权限类型") @RequestParam String permissionType) {
+        boolean hasPermission = permissionService.checkPermission(userId, resourceId, resourceType, permissionType);
+        return Result.success(hasPermission);
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userDetails.getUsername());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+}

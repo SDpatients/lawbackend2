@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -129,7 +130,6 @@ public interface DocumentDeliveryRepository extends JpaRepository<DocumentDelive
                                                  @Param("caseNumber") String caseNumber,
                                                  @Param("sendStatus") String sendStatus,
                                                  Pageable pageable);
-    void deleteByCaseId(Long caseId);
 
     @Query(value = "SELECT d.abbreviation FROM tb_document_delivery d WHERE d.abbreviation IS NOT NULL AND d.is_deleted = false ORDER BY d.create_time DESC LIMIT 1", nativeQuery = true)
     Optional<String> findLatestAbbreviation();
@@ -139,4 +139,8 @@ public interface DocumentDeliveryRepository extends JpaRepository<DocumentDelive
 
     @Query(value = "SELECT MAX(CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(d.document_number, '破管字第', -1), '号', 1) AS UNSIGNED)) FROM tb_document_delivery d WHERE d.document_number LIKE :prefix AND d.is_deleted = false", nativeQuery = true)
     Long findMaxDocumentNumberByPrefix(@Param("prefix") String prefix);
+
+    @Modifying
+    @Query("UPDATE DocumentDelivery d SET d.isDeleted = true WHERE d.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

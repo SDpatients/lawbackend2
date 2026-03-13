@@ -243,7 +243,7 @@ class BankAccountTransactionServiceTest {
         Page<BankAccountTransactionResponse> page = new PageImpl<>(responseList, PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "transactionDate", "createTime")), 1L);
 
         lenient().when(transactionRepository.findTransactionsWithDetails(
-            any(), any(), any(), any(), any(), any(), any(Pageable.class)
+            any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)
         )).thenReturn(page);
 
         com.lawbackend2.lawbackend2.common.PageResult<BankAccountTransactionResponse> result =
@@ -255,7 +255,7 @@ class BankAccountTransactionServiceTest {
         assertEquals(1L, result.getTotal());
         assertEquals(1, result.getList().size());
         verify(transactionRepository, times(1)).findTransactionsWithDetails(
-            any(), any(), any(), any(), any(), any(), any(Pageable.class)
+            any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)
         );
     }
 

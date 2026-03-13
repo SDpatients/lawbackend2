@@ -5,6 +5,7 @@ import com.lawbackend2.lawbackend2.dto.CaseStatisticsResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.CaseStatisticsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -26,6 +28,9 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
 
     @Autowired
     private BankruptCaseRepository caseRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public CaseStatisticsResponse getCaseStatistics(CaseStatisticsRequest request) {
@@ -47,20 +52,51 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
             Map<String, Long> progressDistribution = new HashMap<>();
 
             if (userId != null) {
-                // 非管理员用户，只能查看自己的案件
-                totalCases = caseRepository.countByCreateUserId(userId);
-                
-                List<Object[]> statusGroup = caseRepository.countByUserIdAndCaseStatusGroup(userId);
-                for (Object[] row : statusGroup) {
-                    statusDistribution.put((String) row[0], (Long) row[1]);
+                String realName = null;
+                Optional<String> realNameOpt = userRepository.findRealNameById(userId);
+                if (realNameOpt.isPresent()) {
+                    realName = realNameOpt.get();
+                }
+                log.info("用户ID: {}, realName: {}", userId, realName);
+
+                Long casesByCreator = caseRepository.countByCreateUserId(userId);
+                Long casesByUndertaking = 0L;
+                if (realName != null) {
+                    casesByUndertaking = caseRepository.countByUndertakingPersonnel(realName);
+                }
+                totalCases = casesByCreator + casesByUndertaking;
+                log.info("案件统计 - 创建人案件: {}, 承办人案件: {}, 总计: {}", casesByCreator, casesByUndertaking, totalCases);
+
+                List<Object[]> statusGroupByCreator = caseRepository.countByUserIdAndCaseStatusGroup(userId);
+                for (Object[] row : statusGroupByCreator) {
+                    String status = (String) row[0];
+                    Long count = (Long) row[1];
+                    statusDistribution.merge(status, count, Long::sum);
                 }
 
-                List<Object[]> progressGroup = caseRepository.countByUserIdAndCaseProgressGroup(userId);
-                for (Object[] row : progressGroup) {
-                    progressDistribution.put((String) row[0], (Long) row[1]);
+                List<Object[]> progressGroupByCreator = caseRepository.countByUserIdAndCaseProgressGroup(userId);
+                for (Object[] row : progressGroupByCreator) {
+                    String progress = (String) row[0];
+                    Long count = (Long) row[1];
+                    progressDistribution.merge(progress, count, Long::sum);
+                }
+
+                if (realName != null) {
+                    List<Object[]> statusGroupByUndertaking = caseRepository.countByUndertakingPersonnelAndCaseStatusGroup(realName);
+                    for (Object[] row : statusGroupByUndertaking) {
+                        String status = (String) row[0];
+                        Long count = (Long) row[1];
+                        statusDistribution.merge(status, count, Long::sum);
+                    }
+
+                    List<Object[]> progressGroupByUndertaking = caseRepository.countByUndertakingPersonnelAndCaseProgressGroup(realName);
+                    for (Object[] row : progressGroupByUndertaking) {
+                        String progress = (String) row[0];
+                        Long count = (Long) row[1];
+                        progressDistribution.merge(progress, count, Long::sum);
+                    }
                 }
             } else {
-                // 管理员用户，可以查看所有案件
                 if (startDate != null && endDate != null) {
                     LocalDateTime startDateTime = startDate.atStartOfDay();
                     LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
@@ -92,27 +128,49 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
 
             response.setTotalCases(totalCases);
 
-            // 根据用户ID过滤状态统计
             if (userId != null) {
+                String realName = userRepository.findRealNameById(userId).orElse(null);
+
                 Long pendingCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "PENDING");
+                if (realName != null) {
+                    pendingCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "PENDING");
+                }
                 response.setPendingCases(pendingCases != null ? pendingCases : 0L);
 
                 Long inProgressCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "IN_PROGRESS");
+                if (realName != null) {
+                    inProgressCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "IN_PROGRESS");
+                }
                 response.setInProgressCases(inProgressCases != null ? inProgressCases : 0L);
 
                 Long approvedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "APPROVED");
+                if (realName != null) {
+                    approvedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "APPROVED");
+                }
                 response.setApprovedCases(approvedCases != null ? approvedCases : 0L);
 
                 Long completedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "COMPLETED");
+                if (realName != null) {
+                    completedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "COMPLETED");
+                }
                 response.setCompletedCases(completedCases != null ? completedCases : 0L);
 
                 Long closedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "CLOSED");
+                if (realName != null) {
+                    closedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "CLOSED");
+                }
                 response.setClosedCases(closedCases != null ? closedCases : 0L);
 
                 Long terminatedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "TERMINATED");
+                if (realName != null) {
+                    terminatedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "TERMINATED");
+                }
                 response.setTerminatedCases(terminatedCases != null ? terminatedCases : 0L);
 
                 Long archivedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "ARCHIVED");
+                if (realName != null) {
+                    archivedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "ARCHIVED");
+                }
                 response.setArchivedCases(archivedCases != null ? archivedCases : 0L);
             } else {
                 Long pendingCases = caseRepository.countByCaseStatus("PENDING");
@@ -140,10 +198,7 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
             response.setStatusDistribution(statusDistribution);
             response.setProgressDistribution(progressDistribution);
 
-            // 根据用户ID过滤程序类型统计
             if (userId != null) {
-                // 简化程序和普通程序的统计需要根据用户ID过滤
-                // 这里暂时使用countByCreateUserId作为近似值，实际应该根据isSimplifiedTrial字段过滤
                 response.setSimplifiedTrialCases(0L);
                 response.setNormalTrialCases(totalCases);
             } else {
@@ -154,14 +209,11 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
                 response.setNormalTrialCases(normalTrialCases != null ? normalTrialCases : 0L);
             }
 
-            // 平均审查次数
             Double avgReviewCount = caseRepository.getAverageReviewCount();
             response.setAverageReviewCount(avgReviewCount != null ? BigDecimal.valueOf(avgReviewCount).setScale(2, RoundingMode.HALF_UP) : BigDecimal.ZERO);
 
-            // 今日、本月、本年创建的案件数
             LocalDate today = LocalDate.now();
             if (userId != null) {
-                // 非管理员用户，只能查看自己的案件
                 response.setTodayCreatedCases(0L);
                 response.setMonthCreatedCases(0L);
                 response.setYearCreatedCases(totalCases);

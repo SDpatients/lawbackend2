@@ -1,0 +1,18 @@
+package com.lawbackend2.lawbackend2.dto.request;
+
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+
+import javax.validation.constraints.NotBlank;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class UpdateUserEmailRequest {
+
+    @NotBlank(message = "邮箱不能为空")
+    private String email;
+}

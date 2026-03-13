@@ -39,7 +39,7 @@ public class CaseTaskServiceImpl implements CaseTaskService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public List<CaseTask> createTasksForCase(Long caseId) {
-        log.info("为案件创建22个核心任务, caseId: {}", caseId);
+        log.info("为案件创建23个核心任务, caseId: {}", caseId);
 
         List<CaseTask> tasks = new ArrayList<>();
 
@@ -47,25 +47,26 @@ public class CaseTaskServiceImpl implements CaseTaskService {
             {"TASK_001", "提交破产申请材料", "申请人"},
             {"TASK_002", "裁定受理并公告", "法院"},
             {"TASK_003", "全面接管债务人", "管理人"},
-            {"TASK_004", "调查财产及经营状况", "管理人"},
-            {"TASK_005", "决定合同继续履行或解除", "管理人"},
-            {"TASK_006", "追收债务人财产", "管理人"},
-            {"TASK_007", "通知已知债权人并公告", "管理人"},
-            {"TASK_008", "接收、登记债权申报", "管理人"},
-            {"TASK_009", "审查申报债权并编制债权表", "管理人"},
-            {"TASK_010", "筹备第一次债权人会议", "管理人"},
-            {"TASK_011", "召开会议核查债权与议决事项", "债权人会议"},
-            {"TASK_012", "表决通过财产变价/分配方案", "债权人会议、法院"},
-            {"TASK_013", "宣告重整与和解", "法院"},
-            {"TASK_014", "审查宣告破产条件", "法院"},
-            {"TASK_015", "裁定宣告债务人破产", "法院"},
-            {"TASK_016", "拟定并执行财产变价方案", "管理人"},
-            {"TASK_017", "执行破产财产分配", "管理人"},
-            {"TASK_018", "破产费用与共益债务", "管理人"},
-            {"TASK_019", "提请终结破产程序", "管理人"},
-            {"TASK_020", "法院裁定并公告", "法院"},
-            {"TASK_021", "办理企业注销登记", "管理人"},
-            {"TASK_022", "管理人终止执行职务并归档", "管理人"}
+            {"TASK_004", "管理人印章", "管理人"},
+            {"TASK_005", "调查财产及经营状况", "管理人"},
+            {"TASK_006", "决定合同继续履行或解除", "管理人"},
+            {"TASK_007", "追收债务人财产", "管理人"},
+            {"TASK_008", "通知已知债权人并公告", "管理人"},
+            {"TASK_009", "接收、登记债权申报", "管理人"},
+            {"TASK_010", "审查申报债权并编制债权表", "管理人"},
+            {"TASK_011", "筹备第一次债权人会议", "管理人"},
+            {"TASK_012", "召开会议核查债权与议决事项", "债权人会议"},
+            {"TASK_013", "表决通过财产变价/分配方案", "债权人会议、法院"},
+            {"TASK_014", "宣告重整与和解", "法院"},
+            {"TASK_015", "审查宣告破产条件", "法院"},
+            {"TASK_016", "裁定宣告债务人破产", "法院"},
+            {"TASK_017", "拟定并执行财产变价方案", "管理人"},
+            {"TASK_018", "执行破产财产分配", "管理人"},
+            {"TASK_019", "破产费用与共益债务", "管理人"},
+            {"TASK_020", "提请终结破产程序", "管理人"},
+            {"TASK_021", "法院裁定并公告", "法院"},
+            {"TASK_022", "办理企业注销登记", "管理人"},
+            {"TASK_023", "管理人终止执行职务并归档", "管理人"}
         };
 
         for (int i = 0; i < taskDefinitions.length; i++) {
@@ -96,7 +97,7 @@ public class CaseTaskServiceImpl implements CaseTaskService {
                     .collect(Collectors.toList());
             page = new org.springframework.data.domain.PageImpl<>(tasks, pageable, tasks.size());
         } else {
-            page = caseTaskRepository.findByCaseId(caseId, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.ASC, "sortOrder")));
+            page = caseTaskRepository.findByCaseIdWithPage(caseId, PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.ASC, "sortOrder")));
             if (taskCode != null) {
                 List<CaseTask> filteredTasks = page.getContent().stream()
                         .filter(t -> t.getTaskCode().equals(taskCode))

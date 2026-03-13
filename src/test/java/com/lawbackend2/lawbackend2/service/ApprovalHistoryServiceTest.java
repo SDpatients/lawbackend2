@@ -69,7 +69,7 @@ class ApprovalHistoryServiceTest {
         Page<ApprovalHistory> page = new PageImpl<>(Arrays.asList(mockHistory));
         when(approvalHistoryRepository.findAll(any(PageRequest.class))).thenReturn(page);
 
-        PageResult<ApprovalHistoryResponse> result = approvalHistoryService.getApprovalHistoryList(1, 10, null, null, null);
+        PageResult<ApprovalHistoryResponse> result = approvalHistoryService.getApprovalHistoryList(1, 10, null, null, null, null);
 
         assertNotNull(result);
         assertEquals(1, result.getTotal());

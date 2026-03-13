@@ -15,6 +15,7 @@ import com.lawbackend2.lawbackend2.service.ApprovalService;
 import com.lawbackend2.lawbackend2.service.CaseTaskService;
 import com.lawbackend2.lawbackend2.service.UserRoleService;
 import com.lawbackend2.lawbackend2.service.impl.ApprovalServiceImpl;
+import com.lawbackend2.lawbackend2.util.PermissionChecker;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,12 +40,14 @@ public class ApprovalController {
     private final ApprovalHistoryService approvalHistoryService;
     private final CaseTaskService caseTaskService;
     private final UserRoleService userRoleService;
+    private final PermissionChecker permissionChecker;
 
-    public ApprovalController(ApprovalService approvalService, ApprovalHistoryService approvalHistoryService, CaseTaskService caseTaskService, UserRoleService userRoleService) {
+    public ApprovalController(ApprovalService approvalService, ApprovalHistoryService approvalHistoryService, CaseTaskService caseTaskService, UserRoleService userRoleService, PermissionChecker permissionChecker) {
         this.approvalService = approvalService;
         this.approvalHistoryService = approvalHistoryService;
         this.caseTaskService = caseTaskService;
         this.userRoleService = userRoleService;
+        this.permissionChecker = permissionChecker;
     }
 
     @Operation(summary = "创建审批")
@@ -85,6 +88,7 @@ public class ApprovalController {
     @Operation(summary = "获取审批详情")
     @GetMapping("/{approvalId}")
     public Result<ApprovalResponse> getApprovalDetail(@Parameter(description = "审批ID") @PathVariable Long approvalId) {
+        permissionChecker.checkApprovalAccessPermission(approvalId);
         ApprovalResponse approval = approvalService.getApprovalDetail(approvalId);
         return Result.success(approval);
     }
@@ -95,6 +99,7 @@ public class ApprovalController {
             @Parameter(description = "审批ID") @PathVariable Long approvalId,
             @Valid @RequestBody ApprovalUpdateRequest request) {
 
+        permissionChecker.checkApprovalEditPermission(approvalId);
         approvalService.updateApproval(approvalId, request);
         return Result.success();
     }
@@ -105,6 +110,7 @@ public class ApprovalController {
             @Parameter(description = "审批ID") @PathVariable Long approvalId,
             @Valid @RequestBody ApprovalRequest request) {
         Long currentUserId = getCurrentUserId();
+        permissionChecker.checkApprovalApprovePermission(approvalId);
         approvalService.approveApproval(approvalId, request, currentUserId);
         return Result.success();
     }
@@ -115,6 +121,7 @@ public class ApprovalController {
             @Parameter(description = "审批ID") @PathVariable Long approvalId,
             @Valid @RequestBody ApprovalStatusRequest request) {
 
+        permissionChecker.checkApprovalEditPermission(approvalId);
         approvalService.updateApprovalStatus(approvalId, request);
         return Result.success();
     }
@@ -122,6 +129,7 @@ public class ApprovalController {
     @Operation(summary = "删除审批")
     @DeleteMapping("/{approvalId}")
     public Result<Void> deleteApproval(@Parameter(description = "审批ID") @PathVariable Long approvalId) {
+        permissionChecker.checkApprovalDeletePermission(approvalId);
         approvalService.deleteApproval(approvalId);
         return Result.success();
     }
@@ -133,7 +141,8 @@ public class ApprovalController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
 
-        PageResult<ApprovalHistoryResponse> result = approvalHistoryService.getApprovalHistoryList  (pageNum, pageSize, approvalId, null, null);
+        permissionChecker.checkApprovalAccessPermission(approvalId);
+        PageResult<ApprovalHistoryResponse> result = approvalHistoryService.getApprovalHistoryList(pageNum, pageSize, approvalId, null, null, null);
         return Result.success(result);
     }
 
@@ -150,20 +159,21 @@ public class ApprovalController {
     public Result<PageResult<ApprovalHistoryResponse>> getApprovalHistoryByCaseId(
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "审批类型: CASE_SUBMIT-案件审批, TASK_-流程审批(前缀), 不传则查询全部") @RequestParam(required = false) String approvalType) {
 
-        PageResult<ApprovalHistoryResponse> result = approvalHistoryService.getApprovalHistoryList(pageNum, pageSize, null, caseId, null);
+        PageResult<ApprovalHistoryResponse> result = approvalHistoryService.getApprovalHistoryList(pageNum, pageSize, null, caseId, null, approvalType);
         return Result.success(result);
     }
     
     @Operation(summary = "根据案件 ID 获取当前提交进度")
     @GetMapping("/case/{caseId}/progress")
     public Result<List<ApprovalResponse>> getApprovalProgressByCaseId(
-            @Parameter(description = "案件 ID") @PathVariable Long caseId) {
+            @Parameter(description = "案件 ID") @PathVariable Long caseId,
+            @Parameter(description = "审批类型: CASE_SUBMIT-案件审批, TASK_-流程审批(前缀), 不传则查询全部") @RequestParam(required = false) String approvalType) {
 
-        // 获取该案件下的所有审批信息，不分页，只筛选 approvalResult 为 null 的数据
-        PageResult<ApprovalResponse> result = ((ApprovalServiceImpl) approvalService).getApprovalList(1, Integer.MAX_VALUE, caseId, null, null, null, null, null, true);
-        return Result.success(result.getList());
+        List<ApprovalResponse> result = approvalService.getApprovalProgressByCaseId(caseId, approvalType);
+        return Result.success(result);
     }
 
     @Operation(summary = "新增审批历史记录")
@@ -182,6 +192,7 @@ public class ApprovalController {
             @Parameter(description = "是否包含图片二进制数据，默认false") @RequestParam(required = false) Boolean includeImages,
             @Parameter(description = "是否包含所有文件信息，默认true") @RequestParam(required = false) Boolean includeFiles) {
 
+        permissionChecker.checkApprovalAccessPermission(approvalId);
         Map<String, Object> data = approvalService.getApprovalAttachments(approvalId, includeImages, includeFiles);
         return Result.success(data);
     }
@@ -212,5 +223,47 @@ public class ApprovalController {
 
         approvalHistoryService.deleteApprovalHistory(historyId);
         return Result.success();
+    }
+
+    @Operation(summary = "获取待审批的CASE_SUBMIT类型数量")
+    @GetMapping("/pending/case-submit/count")
+    public Result<Map<String, Object>> getPendingCaseSubmitCount() {
+        Long currentUserId = getCurrentUserId();
+        List<String> roleCodes = userRoleService.getUserRoleCodes(currentUserId);
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("SUPER_ADMIN")) {
+            return Result.error("您没有权限访问");
+        }
+        long count = approvalService.getPendingCaseSubmitCount();
+        Map<String, Object> data = new HashMap<>();
+        data.put("count", count);
+        return Result.success(data);
+    }
+
+    @Operation(summary = "获取待审批的TASK_类型数量")
+    @GetMapping("/pending/task/count")
+    public Result<Map<String, Object>> getPendingTaskCount() {
+        Long currentUserId = getCurrentUserId();
+        List<String> roleCodes = userRoleService.getUserRoleCodes(currentUserId);
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("SUPER_ADMIN")) {
+            return Result.error("您没有权限访问");
+        }
+        long count = approvalService.getPendingTaskCount();
+        Map<String, Object> data = new HashMap<>();
+        data.put("count", count);
+        return Result.success(data);
+    }
+
+    @Operation(summary = "获取待审批的总数量(CASE_SUBMIT和TASK_类型合并)")
+    @GetMapping("/pending/total/count")
+    public Result<Map<String, Object>> getPendingTotalCount() {
+        Long currentUserId = getCurrentUserId();
+        List<String> roleCodes = userRoleService.getUserRoleCodes(currentUserId);
+        if (!roleCodes.contains("ADMIN") && !roleCodes.contains("SUPER_ADMIN")) {
+            return Result.error("您没有权限访问");
+        }
+        long count = approvalService.getPendingTotalCount();
+        Map<String, Object> data = new HashMap<>();
+        data.put("count", count);
+        return Result.success(data);
     }
 }

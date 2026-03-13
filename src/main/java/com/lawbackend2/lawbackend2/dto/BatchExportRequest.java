@@ -26,5 +26,7 @@ public class BatchExportRequest {
         private Boolean addIndex = true;
         private String sheetName;
         private Integer startRow = 2;
+        private Integer headerRow = 1;
+        private Boolean shiftRows = false;  // 是否自动移动下方的行
     }
 }

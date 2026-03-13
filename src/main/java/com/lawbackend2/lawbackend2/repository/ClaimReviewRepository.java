@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -76,7 +77,9 @@ public interface ClaimReviewRepository extends JpaRepository<ClaimReview, Long>,
     @Query("SELECT r FROM ClaimReview r WHERE r.reviewStatus = :reviewStatus AND r.isDeleted = false")
     List<ClaimReview> findByReviewStatus(@Param("reviewStatus") String reviewStatus);
 
-    void deleteByCaseId(Long caseId);
+    @Modifying
+    @Query("UPDATE ClaimReview r SET r.isDeleted = true WHERE r.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 
     List<ClaimReview> findAllByCreditorNameAndIsDeletedFalse(String creditorName);
 }

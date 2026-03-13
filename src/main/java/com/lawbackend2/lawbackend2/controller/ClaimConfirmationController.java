@@ -214,6 +214,16 @@ public class ClaimConfirmationController {
         return Result.success(PageResult.of(total, list));
     }
 
+    @Operation(summary = "同步债权审查数据到确认记录")
+    @PostMapping("/{confirmationId}/sync-review-data")
+    public Result<Void> syncReviewData(
+            @Parameter(description = "确认记录 ID") @PathVariable Long confirmationId) {
+        Long userId = getCurrentUserId();
+        claimConfirmationService.syncReviewDataToConfirmation(confirmationId, userId);
+        log.info("同步债权审查数据成功，confirmationId: {}", confirmationId);
+        return Result.success();
+    }
+
     private Long getCurrentUserId() {
         return SecurityUtil.getCurrentUserId();
     }

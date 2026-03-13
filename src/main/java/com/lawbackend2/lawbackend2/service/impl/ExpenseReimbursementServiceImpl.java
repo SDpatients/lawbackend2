@@ -14,6 +14,7 @@ import com.lawbackend2.lawbackend2.entity.BankAccount;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursement;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementAttachment;
 import com.lawbackend2.lawbackend2.entity.ExpenseReimbursementItem;
+import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
@@ -21,6 +22,7 @@ import com.lawbackend2.lawbackend2.repository.BankAccountRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementAttachmentRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementItemRepository;
 import com.lawbackend2.lawbackend2.repository.ExpenseReimbursementRepository;
+import com.lawbackend2.lawbackend2.repository.FileRecordRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.BankAccountTransactionService;
 import com.lawbackend2.lawbackend2.service.ExpenseReimbursementService;
@@ -51,6 +53,7 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
     private final BankAccountRepository bankAccountRepository;
     private final UserRepository userRepository;
     private final BankAccountTransactionService bankAccountTransactionService;
+    private final FileRecordRepository fileRecordRepository;
 
     public ExpenseReimbursementServiceImpl(ExpenseReimbursementRepository expenseReimbursementRepository,
                                         ExpenseReimbursementItemRepository expenseReimbursementItemRepository,
@@ -58,7 +61,8 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
                                         BankruptCaseRepository bankruptCaseRepository,
                                         BankAccountRepository bankAccountRepository,
                                         UserRepository userRepository,
-                                        BankAccountTransactionService bankAccountTransactionService) {
+                                        BankAccountTransactionService bankAccountTransactionService,
+                                        FileRecordRepository fileRecordRepository) {
         this.expenseReimbursementRepository = expenseReimbursementRepository;
         this.expenseReimbursementItemRepository = expenseReimbursementItemRepository;
         this.expenseReimbursementAttachmentRepository = expenseReimbursementAttachmentRepository;
@@ -66,6 +70,7 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         this.bankAccountRepository = bankAccountRepository;
         this.userRepository = userRepository;
         this.bankAccountTransactionService = bankAccountTransactionService;
+        this.fileRecordRepository = fileRecordRepository;
     }
 
     @Override
@@ -346,5 +351,30 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         String sequenceStr = String.format("%04d", sequence);
 
         return prefix + sequenceStr;
+    }
+
+    @Override
+    public Long linkAttachment(Long reimbursementId, Long fileId) {
+        ExpenseReimbursement reimbursement = expenseReimbursementRepository.findById(reimbursementId)
+                .orElseThrow(() -> new BusinessException("报销单不存在"));
+
+        if (!"PENDING".equals(reimbursement.getApprovalStatus())) {
+            throw new BusinessException("报销单已审批，不能关联附件");
+        }
+
+        FileRecord fileRecord = fileRecordRepository.findById(fileId)
+                .orElseThrow(() -> new BusinessException("文件不存在"));
+
+        ExpenseReimbursementAttachment attachment = new ExpenseReimbursementAttachment();
+        attachment.setReimbursementId(reimbursementId);
+        attachment.setFileName(fileRecord.getOriginalFileName());
+        attachment.setFilePath(fileRecord.getFilePath());
+        attachment.setFileSize(fileRecord.getFileSize());
+        attachment.setFileType(fileRecord.getMimeType());
+        attachment.setUploadTime(LocalDateTime.now());
+        attachment.setSortOrder(0);
+
+        ExpenseReimbursementAttachment saved = expenseReimbursementAttachmentRepository.save(attachment);
+        return saved.getId();
     }
 }

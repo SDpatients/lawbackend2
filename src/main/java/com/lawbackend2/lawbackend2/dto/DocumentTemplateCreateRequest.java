@@ -3,7 +3,6 @@ package com.lawbackend2.lawbackend2.dto;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import java.util.List;
 
 @Data
@@ -25,4 +24,6 @@ public class DocumentTemplateCreateRequest {
     private Boolean isDefault = false;
 
     private List<DocumentTemplateFieldDTO> fields;
+
+    private List<DocumentTemplateMappingDTO> mappings;
 }

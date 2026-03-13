@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -87,7 +88,12 @@ public interface ClaimRegistrationRepository extends JpaRepository<ClaimRegistra
     @Query("SELECT c.claimNature, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.claimNature IS NOT NULL AND c.isDeleted = false GROUP BY c.claimNature")
     List<Object[]> countByClaimNatureGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
-    void deleteByCaseId(Long caseId);
+    @Modifying
+    @Query("UPDATE ClaimRegistration c SET c.isDeleted = true WHERE c.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 
     List<ClaimRegistration> findAllByCreditorNameAndIsDeletedFalse(String creditorName);
+
+    @Query("SELECT MAX(c.claimNo) FROM ClaimRegistration c WHERE c.claimNo LIKE :prefix% AND c.isDeleted = false")
+    Optional<String> findMaxClaimNoByPrefix(@Param("prefix") String prefix);
 }

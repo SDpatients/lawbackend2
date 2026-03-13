@@ -190,11 +190,7 @@ public class WorkPlanServiceImpl implements WorkPlanService {
 
             if (!isAdminOrSuperAdmin(userId)) {
                 List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
-                predicates.add(cb.or(
-                    cb.equal(root.get("createUserId"), userId),
-                    cb.equal(root.get("responsibleUserId"), userId),
-                    root.get("caseId").in(accessibleCaseIds)
-                ));
+                predicates.add(root.get("caseId").in(accessibleCaseIds));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -203,14 +199,6 @@ public class WorkPlanServiceImpl implements WorkPlanService {
 
     private void checkPermission(WorkPlan workPlan, Long userId) {
         if (isAdminOrSuperAdmin(userId)) {
-            return;
-        }
-        
-        if (workPlan.getCreateUserId().equals(userId)) {
-            return;
-        }
-        
-        if (workPlan.getResponsibleUserId() != null && workPlan.getResponsibleUserId().equals(userId)) {
             return;
         }
         
@@ -239,25 +227,18 @@ public class WorkPlanServiceImpl implements WorkPlanService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // 解析时间字符串为LocalDate
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
             LocalDate startDate = LocalDate.parse(startDateStr, formatter);
             LocalDate endDate = LocalDate.parse(endDateStr, formatter);
 
-            // 添加时间区间查询条件：开始时间或结束时间在传入的时间范围内
             predicates.add(cb.or(
                 cb.between(root.get("startDate"), startDate, endDate),
                 cb.between(root.get("endDate"), startDate, endDate)
             ));
 
-            // 添加权限控制条件
             if (!isAdminOrSuperAdmin(userId)) {
                 List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
-                predicates.add(cb.or(
-                    cb.equal(root.get("createUserId"), userId),
-                    cb.equal(root.get("responsibleUserId"), userId),
-                    root.get("caseId").in(accessibleCaseIds)
-                ));
+                predicates.add(root.get("caseId").in(accessibleCaseIds));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

@@ -110,4 +110,49 @@ public class ClaimConfirmation extends BaseEntity {
 
     @Column(name = "remarks", columnDefinition = "TEXT")
     private String remarks;
+
+    @Column(name = "declared_principal", precision = 18, scale = 2)
+    private BigDecimal declaredPrincipal;
+
+    @Column(name = "declared_interest", precision = 18, scale = 2)
+    private BigDecimal declaredInterest;
+
+    @Column(name = "declared_penalty", precision = 18, scale = 2)
+    private BigDecimal declaredPenalty;
+
+    @Column(name = "declared_other_losses", precision = 18, scale = 2)
+    private BigDecimal declaredOtherLosses;
+
+    @Column(name = "declared_total_amount", precision = 18, scale = 2)
+    private BigDecimal declaredTotalAmount;
+
+    @Column(name = "confirmed_principal", precision = 18, scale = 2)
+    private BigDecimal confirmedPrincipal;
+
+    @Column(name = "confirmed_interest", precision = 18, scale = 2)
+    private BigDecimal confirmedInterest;
+
+    @Column(name = "confirmed_penalty", precision = 18, scale = 2)
+    private BigDecimal confirmedPenalty;
+
+    @Column(name = "confirmed_other_losses", precision = 18, scale = 2)
+    private BigDecimal confirmedOtherLosses;
+
+    @Column(name = "confirmed_total_amount", precision = 18, scale = 2)
+    private BigDecimal confirmedTotalAmount;
+
+    @Column(name = "unconfirmed_principal", precision = 18, scale = 2)
+    private BigDecimal unconfirmedPrincipal;
+
+    @Column(name = "unconfirmed_interest", precision = 18, scale = 2)
+    private BigDecimal unconfirmedInterest;
+
+    @Column(name = "unconfirmed_penalty", precision = 18, scale = 2)
+    private BigDecimal unconfirmedPenalty;
+
+    @Column(name = "unconfirmed_other_losses", precision = 18, scale = 2)
+    private BigDecimal unconfirmedOtherLosses;
+
+    @Column(name = "unconfirmed_total_amount", precision = 18, scale = 2)
+    private BigDecimal unconfirmedTotalAmount;
 }

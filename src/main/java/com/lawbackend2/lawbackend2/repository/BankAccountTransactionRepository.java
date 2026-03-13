@@ -47,8 +47,35 @@ public interface BankAccountTransactionRepository extends JpaRepository<BankAcco
            "AND (:startDate IS NULL OR bat.transactionDate >= :startDate) " +
            "AND (:endDate IS NULL OR bat.transactionDate <= :endDate) " +
            "AND (:caseId IS NULL OR bat.caseId = :caseId) " +
+           "AND (:createUserId IS NULL OR ba.createUserId = :createUserId) " +
            "ORDER BY bat.transactionDate DESC, bat.createTime DESC")
     Page<BankAccountTransactionResponse> findTransactionsWithDetails(@Param("accountId") Long accountId,
+                                                                        @Param("transactionType") String transactionType,
+                                                                        @Param("businessType") String businessType,
+                                                                        @Param("startDate") LocalDate startDate,
+                                                                        @Param("endDate") LocalDate endDate,
+                                                                        @Param("caseId") Long caseId,
+                                                                        @Param("createUserId") Long createUserId,
+                                                                        Pageable pageable);
+
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.response.BankAccountTransactionResponse(" +
+           "bat.id, bat.status, bat.isDeleted, bat.createTime, bat.updateTime, " +
+           "bat.createUserId, bat.updateUserId, bat.accountId, ba.accountName, ba.accountNumber, ba.bankName, " +
+           "bat.transactionType, bat.amount, bat.transactionDate, bat.summary, bat.businessType, " +
+           "bat.counterpartyAccount, bat.counterpartyName, bat.balanceAfter, bat.attachmentId, " +
+           "bat.relatedBusinessId, bat.remark, bat.caseId, bc.caseNumber, bc.caseName) " +
+           "FROM BankAccountTransaction bat " +
+           "LEFT JOIN BankAccount ba ON bat.accountId = ba.id " +
+           "LEFT JOIN BankruptCase bc ON bat.caseId = bc.id " +
+           "WHERE bat.isDeleted = false " +
+           "AND ba.createUserId = :createUserId " +
+           "AND (:transactionType IS NULL OR bat.transactionType = :transactionType) " +
+           "AND (:businessType IS NULL OR bat.businessType = :businessType) " +
+           "AND (:startDate IS NULL OR bat.transactionDate >= :startDate) " +
+           "AND (:endDate IS NULL OR bat.transactionDate <= :endDate) " +
+           "AND (:caseId IS NULL OR bat.caseId = :caseId) " +
+           "ORDER BY bat.transactionDate DESC, bat.createTime DESC")
+    Page<BankAccountTransactionResponse> findTransactionsByCreateUserId(@Param("createUserId") Long createUserId,
                                                                         @Param("transactionType") String transactionType,
                                                                         @Param("businessType") String businessType,
                                                                         @Param("startDate") LocalDate startDate,

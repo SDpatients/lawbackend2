@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -29,7 +30,10 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long>,
                                         Pageable pageable);
 
     boolean existsByAccountNumber(String accountNumber);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE BankAccount ba SET ba.isDeleted = true WHERE ba.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 
     @Query("SELECT new com.lawbackend2.lawbackend2.dto.response.BankAccountResponse(" +
            "ba.id, ba.status, ba.isDeleted, ba.createTime, ba.updateTime, " +
@@ -43,12 +47,13 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long>,
            "AND (:status IS NULL OR ba.status = :status) " +
            "AND (:accountName IS NULL OR ba.accountName LIKE %:accountName%) " +
            "AND (:caseId IS NULL OR ba.caseId = :caseId) " +
-           "AND (:accessibleCaseIds IS NULL OR ba.caseId IN :accessibleCaseIds OR :isAdmin = true)")
+           "AND (:isAdmin = true OR ba.createUserId = :userId OR (ba.caseId IS NOT NULL AND ba.caseId IN :accessibleCaseIds))")
     Page<BankAccountResponse> findBankAccountsWithCaseInfo(@Param("accountType") String accountType,
                                                             @Param("status") String status,
                                                             @Param("accountName") String accountName,
                                                             @Param("caseId") Long caseId,
                                                             @Param("accessibleCaseIds") java.util.List<Long> accessibleCaseIds,
                                                             @Param("isAdmin") Boolean isAdmin,
+                                                            @Param("userId") Long userId,
                                                             Pageable pageable);
 }

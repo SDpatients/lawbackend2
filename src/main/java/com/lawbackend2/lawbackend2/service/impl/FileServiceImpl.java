@@ -3,9 +3,13 @@ package com.lawbackend2.lawbackend2.service.impl;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.constant.VideoConstants;
 import com.lawbackend2.lawbackend2.dto.FileRecordInfo;
+import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
+import com.lawbackend2.lawbackend2.entity.ClaimReview;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
+import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
 import com.lawbackend2.lawbackend2.repository.FileRecordRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.FileService;
@@ -39,13 +43,20 @@ public class FileServiceImpl implements FileService {
 
     private final FileRecordRepository fileRecordRepository;
     private final UserRepository userRepository;
+    private final ClaimReviewRepository claimReviewRepository;
+    private final ClaimConfirmationRepository claimConfirmationRepository;
 
     @Value("${file.upload.path:C:\\law-upload}")
     private String uploadPath;
 
-    public FileServiceImpl(FileRecordRepository fileRecordRepository, UserRepository userRepository) {
+    public FileServiceImpl(FileRecordRepository fileRecordRepository, 
+                          UserRepository userRepository,
+                          ClaimReviewRepository claimReviewRepository,
+                          ClaimConfirmationRepository claimConfirmationRepository) {
         this.fileRecordRepository = fileRecordRepository;
         this.userRepository = userRepository;
+        this.claimReviewRepository = claimReviewRepository;
+        this.claimConfirmationRepository = claimConfirmationRepository;
     }
 
     @Override
@@ -127,6 +138,15 @@ public class FileServiceImpl implements FileService {
     public FileRecord getFileInfo(Long fileId) {
         return fileRecordRepository.findById(fileId)
                 .orElseThrow(() -> new BusinessException("文件不存在"));
+    }
+
+    @Override
+    public FileRecord getFileInfoByStoredName(String storedFileName) {
+        FileRecord fileRecord = fileRecordRepository.findByStoredFileName(storedFileName);
+        if (fileRecord == null) {
+            throw new BusinessException("文件不存在");
+        }
+        return fileRecord;
     }
 
     @Override
@@ -439,6 +459,50 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    public List<FileRecordInfo> getAllFilesInfoByBizTypeAndBizId(String bizType, String bizId) {
+        if (bizType == null || bizType.trim().isEmpty()) {
+            throw new BusinessException("业务类型不能为空");
+        }
+        if (bizId == null || bizId.trim().isEmpty()) {
+            throw new BusinessException("业务ID不能为空");
+        }
+
+        Long claimRegistrationId = resolveClaimRegistrationId(bizType, bizId);
+        if (claimRegistrationId == null) {
+            return new ArrayList<>();
+        }
+
+        return getAllFilesByClaimRegistrationId(claimRegistrationId);
+    }
+
+    private Long resolveClaimRegistrationId(String bizType, String bizId) {
+        Long id;
+        try {
+            id = Long.parseLong(bizId);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+
+        switch (bizType.toLowerCase()) {
+            case "claim":
+            case "claim-registration":
+                return id;
+            case "claim-review":
+                ClaimReview review = claimReviewRepository.findById(id)
+                        .filter(r -> !r.getIsDeleted())
+                        .orElse(null);
+                return review != null ? review.getClaimRegistrationId() : null;
+            case "claim-confirmation":
+                ClaimConfirmation confirmation = claimConfirmationRepository.findById(id)
+                        .filter(c -> !c.getIsDeleted())
+                        .orElse(null);
+                return confirmation != null ? confirmation.getClaimRegistrationId() : null;
+            default:
+                return null;
+        }
+    }
+
+    @Override
     public List<FileRecord> getAllFilesByBizTypeAndBizId(String bizType, String bizId) {
         if (bizType == null || bizType.trim().isEmpty()) {
             throw new BusinessException("业务类型不能为空");
@@ -453,34 +517,53 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public List<FileRecordInfo> getAllFilesInfoByBizTypeAndBizId(String bizType, String bizId) {
-        if (bizType == null || bizType.trim().isEmpty()) {
-            throw new BusinessException("业务类型不能为空");
-        }
-        if (bizId == null || bizId.trim().isEmpty()) {
-            throw new BusinessException("业务ID不能为空");
+    public List<FileRecordInfo> getAllFilesByClaimRegistrationId(Long claimRegistrationId) {
+        if (claimRegistrationId == null) {
+            throw new BusinessException("债权申报登记 ID 不能为空");
         }
 
-        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "uploadTime"));
-        Page<FileRecord> page = fileRecordRepository.findByConditions(bizType, bizId, null, pageable);
-        List<FileRecord> files = page.getContent();
+        List<String> oldFormatBizIds = new ArrayList<>();
+        List<String> newFormatBizIds = new ArrayList<>();
+        
+        oldFormatBizIds.add(String.valueOf(claimRegistrationId));
+        newFormatBizIds.add("claim-registration_" + claimRegistrationId);
+        
+        List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        for (ClaimReview review : reviews) {
+            oldFormatBizIds.add(String.valueOf(review.getId()));
+            newFormatBizIds.add("claim-review_" + review.getId());
+        }
+        
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        for (ClaimConfirmation confirmation : confirmations) {
+            oldFormatBizIds.add(String.valueOf(confirmation.getId()));
+            newFormatBizIds.add("claim-confirmation_" + confirmation.getId());
+        }
 
-        // Collect all uploadUserIds
+        List<FileRecord> files = new ArrayList<>();
+        
+        files.addAll(fileRecordRepository.findByBizTypeAndBizIds("claim", oldFormatBizIds, null));
+        
+        files.addAll(fileRecordRepository.findByBizTypeAndBizIds("CLAIM_FILE", newFormatBizIds, null));
+
+        Map<Long, FileRecord> uniqueFiles = new java.util.LinkedHashMap<>();
+        for (FileRecord file : files) {
+            uniqueFiles.putIfAbsent(file.getId(), file);
+        }
+        files = new ArrayList<>(uniqueFiles.values());
+
         List<Long> userIds = files.stream()
                 .map(FileRecord::getUploadUserId)
                 .filter(id -> id != null)
                 .distinct()
                 .collect(Collectors.toList());
 
-        // Get users from repository
         Map<Long, String> userIdToNameMap = new HashMap<>();
         if (!userIds.isEmpty()) {
             List<User> users = userRepository.findAllById(userIds);
-            users.stream()
-                    .forEach(user -> userIdToNameMap.put(user.getId(), user.getRealName()));
+            users.forEach(user -> userIdToNameMap.put(user.getId(), user.getRealName()));
         }
 
-        // Convert to FileRecordInfo with uploadUserName
         return files.stream().map(file -> {
             FileRecordInfo info = new FileRecordInfo();
             info.setId(file.getId());

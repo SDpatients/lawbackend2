@@ -14,6 +14,8 @@ public interface FileService {
 
     FileRecord getFileInfo(Long fileId);
 
+    FileRecord getFileInfoByStoredName(String storedFileName);
+
     PageResult<FileRecord> getFileList(Integer pageNum, Integer pageSize, String bizType, String bizId, String status);
 
     void deleteFile(Long fileId);
@@ -45,4 +47,6 @@ public interface FileService {
     FileRecord uploadVideo(MultipartFile file, String bizType, String bizId);
 
     boolean isVideoFile(Long fileId);
+
+    List<FileRecordInfo> getAllFilesByClaimRegistrationId(Long claimRegistrationId);
 }

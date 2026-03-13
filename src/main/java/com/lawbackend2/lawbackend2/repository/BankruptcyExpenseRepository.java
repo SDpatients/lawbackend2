@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.entity.BankruptcyExpense;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -28,5 +29,8 @@ public interface BankruptcyExpenseRepository extends JpaRepository<BankruptcyExp
                                             Pageable pageable);
 
     List<BankruptcyExpense> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE BankruptcyExpense be SET be.isDeleted = true WHERE be.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

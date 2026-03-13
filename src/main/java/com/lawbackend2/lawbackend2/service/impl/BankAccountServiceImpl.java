@@ -82,7 +82,7 @@ public class BankAccountServiceImpl implements BankAccountService {
         }
         
         Page<BankAccountResponse> page = bankAccountRepository.findBankAccountsWithCaseInfo(
-            accountType, status, accountName, caseId, accessibleCaseIds, isAdmin, pageable);
+            accountType, status, accountName, caseId, accessibleCaseIds, isAdmin, userId, pageable);
 
         PageResult<BankAccountResponse> result = new PageResult<>();
         result.setTotal(page.getTotalElements());
@@ -199,7 +199,7 @@ public class BankAccountServiceImpl implements BankAccountService {
 
         Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "transactionDate", "createTime"));
         Page<BankAccountTransactionResponse> transactionsPage = transactionRepository.findTransactionsWithDetails(
-                accountId, null, null, null, null, null, pageable);
+                accountId, null, null, null, null, null, null, pageable);
 
         List<BankAccountTransactionResponse> transactions = transactionsPage.getContent();
 

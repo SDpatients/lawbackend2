@@ -35,4 +35,6 @@ public class DocumentTemplateResponse {
     private Long updateUserId;
 
     private List<DocumentTemplateFieldDTO> fields;
+
+    private List<DocumentTemplateMappingDTO> mappings;
 }

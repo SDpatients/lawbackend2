@@ -1,0 +1,129 @@
+package com.lawbackend2.lawbackend2.controller;
+
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.request.LibShareCreateRequest;
+import com.lawbackend2.lawbackend2.dto.response.LibDocumentResponse;
+import com.lawbackend2.lawbackend2.dto.response.LibShareResponse;
+import com.lawbackend2.lawbackend2.service.LibDocumentShareService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/lib/share")
+@Tag(name = "文档库-分享管理", description = "文档分享API")
+@RequiredArgsConstructor
+public class LibDocumentShareController {
+
+    private final LibDocumentShareService shareService;
+
+    @PostMapping
+    @Operation(summary = "创建分享链接", description = "创建文档分享链接")
+    public Result<LibShareResponse> createShare(
+            @Valid @RequestBody LibShareCreateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("创建分享链接请求 - 文档ID: {}, 用户ID: {}", request.getDocumentId(), userId);
+        LibShareResponse response = shareService.createShare(request, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/{shareCode}")
+    @Operation(summary = "获取分享信息", description = "根据分享码获取分享信息")
+    public Result<LibShareResponse> getShareByCode(
+            @Parameter(description = "分享码") @PathVariable String shareCode) {
+        LibShareResponse response = shareService.getShareByCode(shareCode);
+        return Result.success(response);
+    }
+
+    @GetMapping("/{shareCode}/access")
+    @Operation(summary = "访问分享文档", description = "通过分享链接访问文档")
+    public Result<LibDocumentResponse> accessSharedDocument(
+            @Parameter(description = "分享码") @PathVariable String shareCode,
+            @Parameter(description = "分享密码") @RequestParam(required = false) String password,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentResponse response = shareService.accessSharedDocument(shareCode, password, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/{shareCode}/download")
+    @Operation(summary = "下载分享文档", description = "通过分享链接下载文档")
+    public void downloadSharedDocument(
+            @Parameter(description = "分享码") @PathVariable String shareCode,
+            @Parameter(description = "分享密码") @RequestParam(required = false) String password,
+            HttpServletResponse response,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("下载分享文档请求 - 分享码: {}", shareCode);
+        shareService.downloadSharedDocument(shareCode, password, response, userId);
+    }
+
+    @GetMapping("/detail/{id}")
+    @Operation(summary = "获取分享详情", description = "根据ID获取分享详情")
+    public Result<LibShareResponse> getShareById(
+            @Parameter(description = "分享ID") @PathVariable Long id) {
+        LibShareResponse response = shareService.getShareById(id);
+        return Result.success(response);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "删除分享链接", description = "删除指定的分享链接")
+    public Result<Void> deleteShare(
+            @Parameter(description = "分享ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("删除分享链接请求 - 分享ID: {}, 用户ID: {}", id, userId);
+        shareService.deleteShare(id, userId);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/disable")
+    @Operation(summary = "禁用分享链接", description = "禁用指定的分享链接")
+    public Result<Void> disableShare(
+            @Parameter(description = "分享ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("禁用分享链接请求 - 分享ID: {}, 用户ID: {}", id, userId);
+        shareService.disableShare(id, userId);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/enable")
+    @Operation(summary = "启用分享链接", description = "启用指定的分享链接")
+    public Result<Void> enableShare(
+            @Parameter(description = "分享ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("启用分享链接请求 - 分享ID: {}, 用户ID: {}", id, userId);
+        shareService.enableShare(id, userId);
+        return Result.success();
+    }
+
+    @GetMapping("/{shareCode}/valid")
+    @Operation(summary = "检查分享链接有效性", description = "检查分享链接是否有效")
+    public Result<Boolean> isShareValid(
+            @Parameter(description = "分享码") @PathVariable String shareCode) {
+        boolean valid = shareService.isShareValid(shareCode);
+        return Result.success(valid);
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userDetails.getUsername());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+}

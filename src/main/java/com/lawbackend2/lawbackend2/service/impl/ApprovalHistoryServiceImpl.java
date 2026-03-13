@@ -43,12 +43,11 @@ public class ApprovalHistoryServiceImpl implements ApprovalHistoryService {
     }
 
     @Override
-    public PageResult<ApprovalHistoryResponse> getApprovalHistoryList(Integer pageNum, Integer pageSize, Long approvalId, Long caseId, Long approverId) {
+    public PageResult<ApprovalHistoryResponse> getApprovalHistoryList(Integer pageNum, Integer pageSize, Long approvalId, Long caseId, Long approverId, String approvalType) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "approvalDate"));
         
         Page<ApprovalHistory> page;
         
-        // 根据参数进行过滤查询
         if (!ObjectUtils.isEmpty(approvalId)) {
             page = approvalHistoryRepository.findByApprovalId(approvalId, pageable);
         } else if (!ObjectUtils.isEmpty(caseId)) {
@@ -59,11 +58,34 @@ public class ApprovalHistoryServiceImpl implements ApprovalHistoryService {
             page = approvalHistoryRepository.findAll(pageable);
         }
         
+        List<ApprovalHistory> filteredList = page.getContent().stream()
+                .filter(history -> {
+                    if (approvalType == null || approvalType.isEmpty()) {
+                        if ("CASE_SUBMIT".equals(history.getApprovalType())) {
+                            return true;
+                        }
+                        if (history.getApprovalType() != null && history.getApprovalType().startsWith("TASK_")) {
+                            return true;
+                        }
+                        return false;
+                    }
+                    if ("CASE_SUBMIT".equals(approvalType)) {
+                        return "CASE_SUBMIT".equals(history.getApprovalType());
+                    }
+                    if (approvalType.startsWith("TASK_")) {
+                        return history.getApprovalType() != null && history.getApprovalType().startsWith("TASK_");
+                    }
+                    return history.getApprovalType() != null && history.getApprovalType().equals(approvalType);
+                })
+                .collect(Collectors.toList());
+        
         PageResult<ApprovalHistoryResponse> result = new PageResult<>();
-        result.setTotal(page.getTotalElements());
-        result.setList(page.getContent().stream()
+        result.setTotal((long) filteredList.size());
+        result.setList(filteredList.stream()
                 .map(ApprovalHistoryResponse::fromEntity)
                 .collect(Collectors.toList()));
+        result.setPageNum(pageNum);
+        result.setPageSize(pageSize);
         return result;
     }
 

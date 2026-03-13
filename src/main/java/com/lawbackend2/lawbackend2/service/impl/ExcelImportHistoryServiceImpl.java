@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lawbackend2.lawbackend2.dto.ExcelImportHistoryResponse;
 import com.lawbackend2.lawbackend2.entity.ExcelImportHistory;
 import com.lawbackend2.lawbackend2.entity.ExcelImportTemplate;
+import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.ExcelImportHistoryRepository;
 import com.lawbackend2.lawbackend2.repository.ExcelImportTemplateRepository;
 import com.lawbackend2.lawbackend2.service.ExcelImportHistoryService;
@@ -68,7 +69,7 @@ public class ExcelImportHistoryServiceImpl implements ExcelImportHistoryService 
                  id, totalRows, successRows, failRows, importStatus, processingTime);
         
         ExcelImportHistory history = historyRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("导入历史记录不存在: " + id));
+            .orElseThrow(() -> new BusinessException(404, "导入历史记录不存在: " + id));
         
         if (totalRows != null) {
             history.setTotalRows(totalRows);
@@ -100,7 +101,7 @@ public class ExcelImportHistoryServiceImpl implements ExcelImportHistoryService 
         log.info("查询Excel导入历史记录: id={}", id);
         
         ExcelImportHistory history = historyRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("导入历史记录不存在: " + id));
+            .orElseThrow(() -> new BusinessException(404, "导入历史记录不存在: " + id));
         
         return convertToResponse(history);
     }
@@ -162,7 +163,7 @@ public class ExcelImportHistoryServiceImpl implements ExcelImportHistoryService 
         log.info("删除Excel导入历史记录: id={}", id);
         
         if (!historyRepository.existsById(id)) {
-            throw new RuntimeException("导入历史记录不存在: " + id);
+            throw new BusinessException(404, "导入历史记录不存在: " + id);
         }
         
         historyRepository.deleteById(id);

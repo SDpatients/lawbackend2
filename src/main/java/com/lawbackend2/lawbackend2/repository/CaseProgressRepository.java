@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -52,5 +53,8 @@ public interface CaseProgressRepository extends JpaRepository<CaseProgress, Long
 
     @Query("SELECT cp FROM CaseProgress cp WHERE cp.caseId = :caseId ORDER BY cp.createTime DESC")
     List<CaseProgress> findLatestByCaseId(@Param("caseId") Long caseId, Pageable pageable);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE CaseProgress cp SET cp.isDeleted = true WHERE cp.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

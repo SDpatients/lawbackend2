@@ -5,10 +5,14 @@ import com.lawbackend2.lawbackend2.dto.request.ChangePasswordRequest;
 import com.lawbackend2.lawbackend2.dto.request.ForgotPasswordRequest;
 import com.lawbackend2.lawbackend2.dto.request.RefreshTokenRequest;
 import com.lawbackend2.lawbackend2.dto.request.SendSmsCodeRequest;
+import com.lawbackend2.lawbackend2.dto.request.UpdateUserEmailRequest;
+import com.lawbackend2.lawbackend2.dto.request.UpdateUserMobileRequest;
+import com.lawbackend2.lawbackend2.dto.request.UpdateUserRealNameRequest;
 import com.lawbackend2.lawbackend2.dto.request.UserLoginRequest;
 import com.lawbackend2.lawbackend2.dto.response.RefreshTokenResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserInfoResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserLoginResponse;
+import com.lawbackend2.lawbackend2.dto.response.UserResponse;
 import com.lawbackend2.lawbackend2.service.SmsService;
 import com.lawbackend2.lawbackend2.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -123,9 +127,75 @@ public class AuthController {
     @PostMapping("/forgot-password/reset")
     @Operation(summary = "忘记密码重置", description = "通过手机号和短信验证码重置密码，无需登录")
     public Result<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        log.info("忘记密码重置请求 - 手机号: {}", request.getMobile());
+        log.info("忘记密码重置请求 - 手机号：{}", request.getMobile());
         userService.forgotPassword(request.getMobile(), request.getSmsCode(), request.getNewPassword());
         return Result.success();
+    }
+
+    @PutMapping("/profile/mobile")
+    @Operation(summary = "修改当前用户手机号", description = "当前登录用户修改自己的手机号")
+    public Result<UserResponse> updateCurrentMobile(
+            @Valid @RequestBody UpdateUserMobileRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Result.error(401, "用户未登录或 Token 已过期");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof Long)) {
+            return Result.error(401, "用户未登录或 Token 已过期");
+        }
+
+        Long userId = (Long) principal;
+
+        log.info("修改当前用户手机号 - 用户 ID: {}, 新手机号：{}", userId, request.getMobile());
+        UserResponse response = userService.updateUserMobile(userId, request.getMobile(), request.getSmsCode());
+        return Result.success(response);
+    }
+
+    @PutMapping("/profile/email")
+    @Operation(summary = "修改当前用户邮箱", description = "当前登录用户修改自己的邮箱")
+    public Result<UserResponse> updateCurrentEmail(
+            @Valid @RequestBody UpdateUserEmailRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Result.error(401, "用户未登录或 Token 已过期");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof Long)) {
+            return Result.error(401, "用户未登录或 Token 已过期");
+        }
+
+        Long userId = (Long) principal;
+
+        log.info("修改当前用户邮箱 - 用户 ID: {}, 新邮箱：{}", userId, request.getEmail());
+        UserResponse response = userService.updateUserEmail(userId, request.getEmail());
+        return Result.success(response);
+    }
+
+    @PutMapping("/profile/real-name")
+    @Operation(summary = "修改当前用户真实姓名", description = "当前登录用户修改自己的真实姓名")
+    public Result<UserResponse> updateCurrentRealName(
+            @Valid @RequestBody UpdateUserRealNameRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Result.error(401, "用户未登录或 Token 已过期");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof Long)) {
+            return Result.error(401, "用户未登录或 Token 已过期");
+        }
+
+        Long userId = (Long) principal;
+
+        log.info("修改当前用户真实姓名 - 用户 ID: {}, 新姓名：{}", userId, request.getRealName());
+        UserResponse response = userService.updateUserRealName(userId, request.getRealName());
+        return Result.success(response);
     }
 
     private String getClientIp(HttpServletRequest request) {

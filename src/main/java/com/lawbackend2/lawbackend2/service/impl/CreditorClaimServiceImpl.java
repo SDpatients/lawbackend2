@@ -63,9 +63,9 @@ public class CreditorClaimServiceImpl implements CreditorClaimService {
         BeanUtils.copyProperties(request, creditorClaim);
         creditorClaim.setCreateUserId(userId);
         creditorClaim.setUpdateUserId(userId);
-        creditorClaim.setHasCourtJudgment(request.getHasCourtJudgment() != null && request.getHasCourtJudgment() == 1);
-        creditorClaim.setHasExecution(request.getHasExecution() != null && request.getHasExecution() == 1);
-        creditorClaim.setHasCollateral(request.getHasCollateral() != null && request.getHasCollateral() == 1);
+        creditorClaim.setHasCourtJudgment(request.getHasCourtJudgment() != null && request.getHasCourtJudgment());
+        creditorClaim.setHasExecution(request.getHasExecution() != null && request.getHasExecution());
+        creditorClaim.setHasCollateral(request.getHasCollateral() != null && request.getHasCollateral());
 
         return creditorClaimRepository.save(creditorClaim);
     }
@@ -143,13 +143,13 @@ public class CreditorClaimServiceImpl implements CreditorClaimService {
             creditorClaim.setClaimNature(request.getClaimNature());
         }
         if (request.getHasCourtJudgment() != null) {
-            creditorClaim.setHasCourtJudgment(request.getHasCourtJudgment() == 1);
+            creditorClaim.setHasCourtJudgment(request.getHasCourtJudgment());
         }
         if (request.getHasExecution() != null) {
-            creditorClaim.setHasExecution(request.getHasExecution() == 1);
+            creditorClaim.setHasExecution(request.getHasExecution());
         }
         if (request.getHasCollateral() != null) {
-            creditorClaim.setHasCollateral(request.getHasCollateral() == 1);
+            creditorClaim.setHasCollateral(request.getHasCollateral());
         }
 
         return creditorClaimRepository.save(creditorClaim);

@@ -3,7 +3,9 @@ package com.lawbackend2.lawbackend2.controller;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.FileRecordInfo;
+import com.lawbackend2.lawbackend2.dto.request.FileRenameRequest;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
+import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -51,16 +53,18 @@ public class FileController {
     }
 
     @Operation(summary = "文件下载")
-    @GetMapping("/download/{fileId}")
+    @GetMapping("/download/{fileIdOrName}")
     public void downloadFile(
-            @Parameter(description = "文件ID") @PathVariable Long fileId,
+            @Parameter(description = "文件ID或存储文件名") @PathVariable String fileIdOrName,
             HttpServletResponse response) throws IOException {
 
-        FileRecord fileRecord = fileService.getFileInfo(fileId);
+        FileRecord fileRecord = getFileRecordByIdOrName(fileIdOrName);
 
         java.io.File file = new java.io.File(fileRecord.getFilePath());
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在");
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":404,\"message\":\"文件不存在或已被删除\"}");
+            return;
         }
 
         Resource resource = new org.springframework.core.io.FileSystemResource(file);
@@ -79,9 +83,9 @@ public class FileController {
     }
 
     @Operation(summary = "获取文件信息")
-    @GetMapping("/{fileId}")
-    public Result<FileRecord> getFileInfo(@Parameter(description = "文件ID") @PathVariable Long fileId) {
-        FileRecord fileRecord = fileService.getFileInfo(fileId);
+    @GetMapping("/{fileIdOrName}")
+    public Result<FileRecord> getFileInfo(@Parameter(description = "文件ID或存储文件名") @PathVariable String fileIdOrName) {
+        FileRecord fileRecord = getFileRecordByIdOrName(fileIdOrName);
         return Result.success(fileRecord);
     }
 
@@ -99,9 +103,10 @@ public class FileController {
     }
 
     @Operation(summary = "删除文件")
-    @DeleteMapping("/{fileId}")
-    public Result<Void> deleteFile(@Parameter(description = "文件ID") @PathVariable Long fileId) {
-        fileService.deleteFile(fileId);
+    @DeleteMapping("/{fileIdOrName}")
+    public Result<Void> deleteFile(@Parameter(description = "文件ID或存储文件名") @PathVariable String fileIdOrName) {
+        FileRecord fileRecord = getFileRecordByIdOrName(fileIdOrName);
+        fileService.deleteFile(fileRecord.getId());
         return Result.success();
     }
 
@@ -116,8 +121,8 @@ public class FileController {
     @PutMapping("/{fileId}/rename")
     public Result<FileRecord> renameFile(
             @Parameter(description = "文件ID") @PathVariable Long fileId,
-            @Parameter(description = "新文件名") @RequestParam("newFileName") String newFileName) {
-        FileRecord fileRecord = fileService.renameFile(fileId, newFileName);
+            @Parameter(description = "新文件名") @RequestBody @Validated FileRenameRequest request) {
+        FileRecord fileRecord = fileService.renameFile(fileId, request.getNewFileName());
         return Result.success(fileRecord);
     }
 
@@ -158,14 +163,42 @@ public class FileController {
     }
 
     @Operation(summary = "文件预览")
-    @GetMapping("/preview/{fileId}")
-    public ResponseEntity<Resource> previewFile(
-            @Parameter(description = "文件ID") @PathVariable Long fileId) throws IOException {
-        FileRecord fileRecord = fileService.previewFile(fileId);
+    @GetMapping("/preview/{fileIdOrName}")
+    public ResponseEntity<?> previewFile(
+            @Parameter(description = "文件ID或存储文件名") @PathVariable String fileIdOrName) throws IOException {
+        FileRecord fileRecord = getFileRecordByIdOrName(fileIdOrName);
 
         java.io.File file = new java.io.File(fileRecord.getFilePath());
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在");
+            return ResponseEntity.status(404)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"code\":404,\"message\":\"文件不存在或已被删除\"}");
+        }
+
+        Resource resource = new org.springframework.core.io.FileSystemResource(file);
+
+        String contentType = fileRecord.getMimeType();
+        if (contentType == null) {
+            contentType = "application/octet-stream";
+        }
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileRecord.getOriginalFileName() + "\"")
+                .body(resource);
+    }
+
+    @Operation(summary = "文件预览（通过存储文件名）")
+    @GetMapping("/preview-by-name/{storedFileName}")
+    public ResponseEntity<?> previewFileByStoredName(
+            @Parameter(description = "存储文件名") @PathVariable String storedFileName) throws IOException {
+        FileRecord fileRecord = fileService.getFileInfoByStoredName(storedFileName);
+
+        java.io.File file = new java.io.File(fileRecord.getFilePath());
+        if (!file.exists()) {
+            return ResponseEntity.status(404)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"code\":404,\"message\":\"文件不存在或已被删除\"}");
         }
 
         Resource resource = new org.springframework.core.io.FileSystemResource(file);
@@ -216,13 +249,22 @@ public class FileController {
         return Result.success();
     }
 
-    @Operation(summary = "根据业务类型和业务ID查询所有文件列表")
+    @Operation(summary = "根据业务类型和业务 ID 查询所有文件列表")
     @GetMapping("/all")
     public Result<List<FileRecordInfo>> getAllFilesByBizTypeAndBizId(
             @Parameter(description = "业务类型") @RequestParam("bizType") String bizType,
-            @Parameter(description = "业务ID") @RequestParam("bizId") String bizId) {
+            @Parameter(description = "业务 ID") @RequestParam("bizId") String bizId) {
 
         List<FileRecordInfo> fileRecords = fileService.getAllFilesInfoByBizTypeAndBizId(bizType, bizId);
+        return Result.success(fileRecords);
+    }
+
+    @Operation(summary = "根据债权申报登记 ID 查询三个阶段的所有文件")
+    @GetMapping("/all-by-claim-registration")
+    public Result<List<FileRecordInfo>> getAllFilesByClaimRegistrationId(
+            @Parameter(description = "债权申报登记 ID") @RequestParam("claimRegistrationId") Long claimRegistrationId) {
+
+        List<FileRecordInfo> fileRecords = fileService.getAllFilesByClaimRegistrationId(claimRegistrationId);
         return Result.success(fileRecords);
     }
 
@@ -316,5 +358,14 @@ public class FileController {
         // 如果没有路径，返回原始路径
         log.debug("使用原始路径: {}", decodedFilePath);
         return decodedFilePath;
+    }
+
+    private FileRecord getFileRecordByIdOrName(String fileIdOrName) {
+        try {
+            Long fileId = Long.parseLong(fileIdOrName);
+            return fileService.getFileInfo(fileId);
+        } catch (NumberFormatException e) {
+            return fileService.getFileInfoByStoredName(fileIdOrName);
+        }
     }
 }

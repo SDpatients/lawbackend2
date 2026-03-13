@@ -36,4 +36,6 @@ public interface ClaimConfirmationService {
     List<ClaimConfirmation> getPendingConfirmations(Long caseId);
 
     Long getConfirmationCount(Long caseId, String confirmationStatus);
+
+    void syncReviewDataToConfirmation(Long confirmationId, Long userId);
 }

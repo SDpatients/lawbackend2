@@ -27,7 +27,7 @@ public interface UserService {
 
     void forgotPassword(String mobile, String smsCode, String newPassword);
 
-    void updateUserStatus(Long userId, String status);
+    UserResponse updateUserStatus(Long id, String status);
 
     void deleteUser(Long userId);
 
@@ -46,4 +46,16 @@ public interface UserService {
     void deleteUserById(Long id);
 
     List<UserResponse> getAdminUsers();
+
+    UserResponse getUserByUsername(String username);
+
+    UserResponse getUserByMobile(String mobile);
+
+    UserResponse updateUserMobile(Long id, String mobile, String smsCode);
+
+    UserResponse updateUserEmail(Long id, String email);
+
+    UserResponse updateUserRealName(Long id, String realName);
+
+    void batchUpdateUserStatus(List<Long> userIds, String status);
 }

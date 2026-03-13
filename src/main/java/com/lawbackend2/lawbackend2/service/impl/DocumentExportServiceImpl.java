@@ -32,6 +32,7 @@ import org.springframework.util.StringUtils;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -54,6 +55,16 @@ public class DocumentExportServiceImpl implements DocumentExportService {
     @Autowired
     private DocumentExportHistoryRepository historyRepository;
 
+    private void setResponseHeader(HttpServletResponse response, String fileName) {
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFileName);
+    }
+
+    private void setInlineResponseHeader(HttpServletResponse response, String fileName) {
+        String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        response.setHeader("Content-Disposition", "inline; filename*=UTF-8''" + encodedFileName);
+    }
+
     @Override
     @Transactional
     public DocumentExportTemplate createTemplate(DocumentTemplateCreateRequest request, Long userId) {
@@ -64,7 +75,6 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         DocumentExportTemplate template = new DocumentExportTemplate();
         BeanUtils.copyProperties(request, template);
         
-        // 处理 config_json 字段：空字符串转为 null，确保是有效的 JSON
         if (!StringUtils.hasText(template.getConfigJson())) {
             template.setConfigJson(null);
         }
@@ -76,9 +86,10 @@ public class DocumentExportServiceImpl implements DocumentExportService {
 
         DocumentExportTemplate savedTemplate = templateRepository.save(template);
 
-        // 保存字段映射
         if (request.getFields() != null && !request.getFields().isEmpty()) {
             saveTemplateFields(savedTemplate.getId(), request.getFields(), userId);
+        } else if (request.getMappings() != null && !request.getMappings().isEmpty()) {
+            saveTemplateMappings(savedTemplate.getId(), request.getMappings(), userId);
         }
 
         return savedTemplate;
@@ -90,16 +101,14 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         DocumentExportTemplate template = templateRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(404, "模板不存在，ID: " + id));
 
-        // 先处理字段映射更新
         if (request.getFields() != null) {
-            // 使用原生SQL强制删除，绕过Hibernate缓存
             fieldRepository.deleteByTemplateIdNative(id);
-            
-            // 保存新字段
             saveTemplateFields(id, request.getFields(), userId);
+        } else if (request.getMappings() != null) {
+            fieldRepository.deleteByTemplateIdNative(id);
+            saveTemplateMappings(id, request.getMappings(), userId);
         }
 
-        // 更新模板基本信息
         if (request.getTemplateName() != null) {
             template.setTemplateName(request.getTemplateName());
         }
@@ -110,7 +119,6 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             template.setFilePath(request.getFilePath());
         }
         if (request.getConfigJson() != null) {
-            // 处理 config_json 字段：空字符串转为 null，确保是有效的 JSON
             if (StringUtils.hasText(request.getConfigJson())) {
                 template.setConfigJson(request.getConfigJson());
             } else {
@@ -156,6 +164,14 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         BeanUtils.copyProperties(template, response);
         response.setFields(fields);
         
+        List<DocumentTemplateMappingDTO> mappings = fields.stream().map(field -> {
+            DocumentTemplateMappingDTO mapping = new DocumentTemplateMappingDTO();
+            mapping.setExcelHeader(field.getFieldLabel());
+            mapping.setTargetField(field.getFieldName());
+            return mapping;
+        }).collect(Collectors.toList());
+        response.setMappings(mappings);
+        
         return response;
     }
 
@@ -173,6 +189,14 @@ public class DocumentExportServiceImpl implements DocumentExportService {
     @Override
     public List<DocumentExportTemplate> getAllTemplates() {
         return templateRepository.findByStatusAndIsDeletedFalseOrderByCreateTimeDesc("ACTIVE");
+    }
+
+    @Override
+    public List<DocumentExportTemplate> getAllTemplates(String description) {
+        if (description == null || description.trim().isEmpty()) {
+            return getAllTemplates();
+        }
+        return templateRepository.findByStatusAndIsDeletedFalseAndDescriptionContainingOrderByCreateTimeDesc("ACTIVE", description.trim());
     }
 
     @Override
@@ -220,7 +244,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         exportFileName = exportFileName + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".docx";
 
         response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(exportFileName, "UTF-8"));
+        setResponseHeader(response, exportFileName);
 
         try (OutputStream out = response.getOutputStream()) {
             if (StringUtils.hasText(template.getFilePath())) {
@@ -272,7 +296,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         exportFileName = exportFileName + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".xlsx";
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(exportFileName, "UTF-8"));
+        setResponseHeader(response, exportFileName);
 
         try (OutputStream out = response.getOutputStream()) {
             // 如果有模板文件路径，使用模板填充
@@ -369,7 +393,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         // 设置响应头
         String fileName = template.getTemplateName() + "_预览.docx";
         response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-        response.setHeader("Content-Disposition", "inline; filename=" + java.net.URLEncoder.encode(fileName, "UTF-8"));
+        setInlineResponseHeader(response, fileName);
 
         try (java.io.OutputStream out = response.getOutputStream()) {
             // 如果有模板文件路径，使用模板文件
@@ -416,6 +440,27 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             return field;
         }).collect(Collectors.toList());
 
+        fieldRepository.saveAll(fields);
+    }
+
+    private void saveTemplateMappings(Long templateId, List<DocumentTemplateMappingDTO> mappings, Long userId) {
+        List<DocumentTemplateField> fields = new ArrayList<>();
+        for (int i = 0; i < mappings.size(); i++) {
+            DocumentTemplateMappingDTO mapping = mappings.get(i);
+            DocumentTemplateField field = new DocumentTemplateField();
+            field.setTemplateId(templateId);
+            field.setFieldName(mapping.getTargetField());
+            field.setFieldLabel(mapping.getExcelHeader());
+            field.setFieldType("TEXT");
+            field.setSourceField(mapping.getTargetField());
+            field.setSortOrder(i);
+            field.setIsRequired(false);
+            field.setCreateUserId(userId);
+            field.setUpdateUserId(userId);
+            field.setStatus("ACTIVE");
+            field.setIsDeleted(false);
+            fields.add(field);
+        }
         fieldRepository.saveAll(fields);
     }
 
@@ -639,7 +684,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
 
         String fileName = template.getTemplateName() + "_预览.pdf";
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "inline; filename=" + URLEncoder.encode(fileName, "UTF-8"));
+        setInlineResponseHeader(response, fileName);
 
         try (ByteArrayOutputStream wordOut = new ByteArrayOutputStream();
              OutputStream pdfOut = response.getOutputStream()) {
@@ -719,7 +764,7 @@ public class DocumentExportServiceImpl implements DocumentExportService {
         exportFileName = exportFileName + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".pdf";
 
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(exportFileName, "UTF-8"));
+        setResponseHeader(response, exportFileName);
 
         try (ByteArrayOutputStream wordOut = new ByteArrayOutputStream();
              OutputStream pdfOut = response.getOutputStream()) {
@@ -767,17 +812,37 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             throw new BusinessException(400, "模板 '" + template.getTemplateName() + "' 的类型是 " + template.getTemplateType() + "，不是 Excel 表格");
         }
 
+        List<DocumentTemplateField> fields = fieldRepository
+                .findByTemplateIdAndStatusAndIsDeletedFalseOrderBySortOrderAsc(templateId, "ACTIVE");
+        
+        log.info("模板字段数量：{}", fields.size());
+        for (DocumentTemplateField field : fields) {
+            log.info("字段映射 - fieldLabel: {}, fieldName: {}", field.getFieldLabel(), field.getFieldName());
+        }
+
+        Map<String, String> headerToFieldMap = new HashMap<>();
+        Map<String, String> fieldToHeaderMap = new HashMap<>();
+        for (DocumentTemplateField field : fields) {
+            if (field.getFieldLabel() != null && field.getFieldName() != null) {
+                headerToFieldMap.put(field.getFieldLabel(), field.getFieldName());
+                fieldToHeaderMap.put(field.getFieldName(), field.getFieldLabel());
+            }
+        }
+        
+        log.info("headerToFieldMap: {}", headerToFieldMap);
+
         String exportFileName = StringUtils.hasText(fileName) ? fileName : template.getTemplateName();
         exportFileName = exportFileName + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".xlsx";
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(exportFileName, "UTF-8"));
+        setResponseHeader(response, exportFileName);
 
         try (OutputStream out = response.getOutputStream()) {
             org.apache.poi.ss.usermodel.Workbook workbook;
 
             if (StringUtils.hasText(template.getFilePath())) {
                 File templateFile = new File(template.getFilePath());
+                log.info("模板文件路径：{}, 文件是否存在：{}", template.getFilePath(), templateFile.exists());
                 if (templateFile.exists()) {
                     workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new FileInputStream(templateFile));
                 } else {
@@ -785,45 +850,130 @@ public class DocumentExportServiceImpl implements DocumentExportService {
                     workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
                 }
             } else {
+                log.warn("模板文件路径为空，创建空白工作簿");
                 workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
             }
 
             org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+            log.info("原始 Sheet 名称：{}", sheet.getSheetName());
             
             if (options != null && options.getSheetName() != null) {
                 String sheetName = options.getSheetName();
+                log.info("使用指定的 Sheet 名称：{}", sheetName);
                 org.apache.poi.ss.usermodel.Sheet existingSheet = workbook.getSheet(sheetName);
                 if (existingSheet != null) {
                     sheet = existingSheet;
+                    log.info("找到指定的 Sheet：{}", sheetName);
                 } else {
-                    sheet = workbook.createSheet(sheetName);
+                    log.warn("未找到指定的 Sheet '{}'，使用原始 Sheet: {}", sheetName, sheet.getSheetName());
                 }
             }
 
             int startRow = (options != null && options.getStartRow() != null) ? options.getStartRow() : 2;
-            int rowNum = startRow - 1;
+            int headerRowNum = (options != null && options.getHeaderRow() != null) ? options.getHeaderRow() : 1;
+            Boolean shiftRows = (options != null && options.getShiftRows() != null) ? options.getShiftRows() : false;
+            log.info("startRow: {}, headerRowNum: {}, shiftRows: {}", startRow, headerRowNum, shiftRows);
 
-            org.apache.poi.ss.usermodel.Row headerRow = sheet.getRow(0);
+            org.apache.poi.ss.usermodel.Row headerRow = sheet.getRow(headerRowNum - 1);
             if (headerRow == null) {
-                headerRow = sheet.createRow(0);
+                log.error("模板文件的第 {} 行为空！请确保模板文件的第 {} 行包含表头", headerRowNum, headerRowNum);
+                throw new BusinessException(500, "模板文件格式错误：第 " + headerRowNum + " 行应为表头行");
+            }
+            
+            log.info("表头单元格数量：{}", headerRow.getLastCellNum());
+            
+            if (headerRow.getLastCellNum() <= 0) {
+                log.error("模板文件的表头单元格数量为 0！请确保模板文件的第 {} 行包含表头", headerRowNum);
+                throw new BusinessException(500, "模板文件格式错误：表头行没有单元格");
+            }
+            
+            // 如果需要移动行，先计算需要插入的行数
+            if (shiftRows && dataList != null) {
+                int dataRowCount = dataList.size();
+                int existingRows = sheet.getLastRowNum() - (headerRowNum - 1);
+                
+                if (dataRowCount > existingRows) {
+                    int rowsToInsert = dataRowCount - existingRows;
+                    log.info("数据行数 ({}) 超过模板行数 ({}), 需要插入 {} 行", dataRowCount, existingRows, rowsToInsert);
+                    
+                    // 从 startRow 开始向下移动现有行
+                    sheet.shiftRows(startRow - 1 + dataRowCount, sheet.getLastRowNum(), rowsToInsert);
+                }
             }
 
+            Map<Integer, String> cellFieldMap = new HashMap<>();
+            Map<Integer, String> cellHeaderMap = new HashMap<>();
+            for (int cellNum = 0; cellNum < headerRow.getLastCellNum(); cellNum++) {
+                org.apache.poi.ss.usermodel.Cell headerCell = headerRow.getCell(cellNum);
+                if (headerCell != null) {
+                    String headerValue = getCellValueAsString(headerCell);
+                    log.info("第 {} 列表头原始值：'{}'", cellNum, headerValue);
+                    
+                    if (headerValue != null && !headerValue.trim().isEmpty()) {
+                        String trimmedHeader = headerValue.trim();
+                        String fieldName = null;
+                        
+                        if (trimmedHeader.startsWith("{{.") && trimmedHeader.endsWith("}}")) {
+                            String placeholderName = trimmedHeader.substring(3, trimmedHeader.length() - 2);
+                            log.info("检测到占位符格式，提取名称：{}", placeholderName);
+                            
+                            if (headerToFieldMap.containsKey(placeholderName)) {
+                                fieldName = headerToFieldMap.get(placeholderName);
+                                log.info("通过 mappings 映射：{} -> {}", placeholderName, fieldName);
+                            } else {
+                                fieldName = placeholderName;
+                                log.info("mappings 中未找到，直接使用：{}", fieldName);
+                            }
+                            
+                            headerCell.setCellValue(placeholderName);
+                        } else {
+                            if (headerToFieldMap.containsKey(trimmedHeader)) {
+                                fieldName = headerToFieldMap.get(trimmedHeader);
+                                log.info("直接匹配表头，通过 mappings 映射：{} -> {}", trimmedHeader, fieldName);
+                            } else {
+                                fieldName = trimmedHeader;
+                                log.info("直接匹配表头，无映射：{}", fieldName);
+                            }
+                        }
+                        
+                        cellFieldMap.put(cellNum, fieldName);
+                        cellHeaderMap.put(cellNum, trimmedHeader);
+                    }
+                }
+            }
+            
+            log.info("cellFieldMap: {}", cellFieldMap);
+            log.info("dataList 第一条数据：{}", dataList.isEmpty() ? "无数据" : dataList.get(0));
+
+            int rowNum = startRow - 1;
+            int dataIndex = 0;
             for (Map<String, Object> rowData : dataList) {
                 org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowNum++);
                 
-                for (int cellNum = 0; cellNum < headerRow.getLastCellNum(); cellNum++) {
-                    org.apache.poi.ss.usermodel.Cell headerCell = headerRow.getCell(cellNum);
-                    if (headerCell != null) {
-                        String headerValue = headerCell.getStringCellValue();
-                        if (headerValue != null && !headerValue.trim().isEmpty()) {
-                            Object value = findFieldValue(rowData, headerValue.trim());
-                            org.apache.poi.ss.usermodel.Cell dataCell = row.createCell(cellNum);
-                            if (value != null) {
-                                setCellValue(dataCell, value);
-                            }
+                for (Map.Entry<Integer, String> entry : cellFieldMap.entrySet()) {
+                    Integer cellNum = entry.getKey();
+                    String fieldName = entry.getValue();
+                    String headerName = cellHeaderMap.get(cellNum);
+                    
+                    Object value = findFieldValue(rowData, fieldName);
+                    
+                    if (dataIndex == 0) {
+                        log.info("第一行数据 - 列 {}，fieldName: {}, headerName: {}, 查找结果：{}", cellNum, fieldName, headerName, value);
+                    }
+                    
+                    if (value == null && !fieldName.equals(headerName)) {
+                        value = findFieldValue(rowData, headerName);
+                        if (dataIndex == 0) {
+                            log.info("第一行数据 - 列 {}，用 headerName 再次查找：{}, 结果：{}", cellNum, headerName, value);
                         }
                     }
+                    
+                    if (value != null) {
+                        org.apache.poi.ss.usermodel.Cell dataCell = row.createCell(cellNum);
+                        setCellValue(dataCell, value);
+                    }
                 }
+                dataIndex++;
             }
 
             for (int i = 0; i < headerRow.getLastCellNum(); i++) {
@@ -842,6 +992,24 @@ public class DocumentExportServiceImpl implements DocumentExportService {
             log.error("Excel 批量导出失败", e);
             saveExportHistory(template, exportFileName, null, "EXCEL_BATCH", Map.of("dataList", dataList), "FAILED", e.getMessage(), userId, System.currentTimeMillis() - startTime);
             throw new BusinessException(500, "Excel 批量导出失败：" + e.getMessage());
+        }
+    }
+
+    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null) {
+            return null;
+        }
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                return String.valueOf(cell.getNumericCellValue());
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return null;
         }
     }
 

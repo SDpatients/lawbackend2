@@ -148,9 +148,9 @@ public class ClaimRegistrationTemplateHandler extends AbstractTemplateHandler {
         request.setPenalty(getBigDecimalValue(row, "penalty", "违约金", "罚息"));
         request.setOtherLosses(getBigDecimalValue(row, "otherLosses", "其他损失", "其他费用"));
         request.setTotalAmount(getBigDecimalValue(row, "totalAmount", "总金额", "申报金额", "债权金额"));
-        request.setHasCourtJudgment(getBooleanValue(row, "hasCourtJudgment", "是否有法院判决", "涉讼") ? 1 : 0);
-        request.setHasExecution(getBooleanValue(row, "hasExecution", "是否有执行") ? 1 : 0);
-        request.setHasCollateral(getBooleanValue(row, "hasCollateral", "是否有担保") ? 1 : 0);
+        request.setHasCourtJudgment(getBooleanValue(row, "hasCourtJudgment", "是否有法院判决", "涉讼"));
+        request.setHasExecution(getBooleanValue(row, "hasExecution", "是否有执行"));
+        request.setHasCollateral(getBooleanValue(row, "hasCollateral", "是否有担保"));
         request.setClaimNature(getStringValue(row, "claimNature", "债权性质"));
         request.setClaimType(getStringValue(row, "claimType", "债权类型", "债权种类"));
         request.setClaimFacts(getStringValue(row, "claimFacts", "债权事实"));

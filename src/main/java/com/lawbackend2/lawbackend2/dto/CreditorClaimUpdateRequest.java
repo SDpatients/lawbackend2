@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -26,9 +27,12 @@ public class CreditorClaimUpdateRequest {
 
     private String claimNature;
 
-    private Integer hasCourtJudgment;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasCourtJudgment;
 
-    private Integer hasExecution;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasExecution;
 
-    private Integer hasCollateral;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasCollateral;
 }

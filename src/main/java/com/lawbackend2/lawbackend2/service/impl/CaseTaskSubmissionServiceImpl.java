@@ -85,6 +85,10 @@ public class CaseTaskSubmissionServiceImpl implements CaseTaskSubmissionService 
         submission.setStatus(SubmissionStatus.APPROVED.name());
         submission.setCreateUserId(userId);
         submission.setUpdateUserId(userId);
+        
+        if (request.getCreateTime() != null) {
+            submission.setCreateTime(request.getCreateTime());
+        }
 
         CaseTaskSubmission savedSubmission = submissionRepository.save(submission);
         log.info("任务提交创建成功, submissionId: {}", savedSubmission.getId());

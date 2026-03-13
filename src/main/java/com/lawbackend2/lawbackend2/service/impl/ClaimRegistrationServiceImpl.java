@@ -87,9 +87,9 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
         claimRegistration.setCreateUserId(userId);
         claimRegistration.setUpdateUserId(userId);
-        claimRegistration.setHasCourtJudgment(request.getHasCourtJudgment() != null && request.getHasCourtJudgment() == 1);
-        claimRegistration.setHasExecution(request.getHasExecution() != null && request.getHasExecution() == 1);
-        claimRegistration.setHasCollateral(request.getHasCollateral() != null && request.getHasCollateral() == 1);
+        claimRegistration.setHasCourtJudgment(request.getHasCourtJudgment() != null && request.getHasCourtJudgment());
+        claimRegistration.setHasExecution(request.getHasExecution() != null && request.getHasExecution());
+        claimRegistration.setHasCollateral(request.getHasCollateral() != null && request.getHasCollateral());
 
         if (claimRegistration.getRegistrationDate() == null) {
             claimRegistration.setRegistrationDate(LocalDateTime.now());
@@ -201,16 +201,12 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     public List<ClaimRegistration> getClaimList(Integer pageNum, Integer pageSize, Long caseId, String registrationStatus) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
 
-        if (registrationStatus == null || registrationStatus.trim().isEmpty()) {
-            registrationStatus = "PENDING";
-        }
-
         Page<ClaimRegistration> page;
-        if (caseId != null && registrationStatus != null) {
+        if (caseId != null && registrationStatus != null && !registrationStatus.trim().isEmpty()) {
             page = claimRegistrationRepository.findByCaseIdAndRegistrationStatusAndIsDeletedFalse(caseId, registrationStatus, pageable);
         } else if (caseId != null) {
             page = claimRegistrationRepository.findByCaseIdAndIsDeletedFalse(caseId, pageable);
-        } else if (registrationStatus != null) {
+        } else if (registrationStatus != null && !registrationStatus.trim().isEmpty()) {
             page = claimRegistrationRepository.findByRegistrationStatusAndIsDeletedFalse(registrationStatus, pageable);
         } else {
             page = claimRegistrationRepository.findAll(pageable);
@@ -221,15 +217,11 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
     @Override
     public Long getClaimCount(Long caseId, String registrationStatus) {
-        if (registrationStatus == null || registrationStatus.trim().isEmpty()) {
-            registrationStatus = "PENDING";
-        }
-
-        if (caseId != null && registrationStatus != null) {
+        if (caseId != null && registrationStatus != null && !registrationStatus.trim().isEmpty()) {
             return claimRegistrationRepository.findByCaseIdAndRegistrationStatusAndIsDeletedFalse(caseId, registrationStatus, Pageable.unpaged()).getTotalElements();
         } else if (caseId != null) {
             return claimRegistrationRepository.findByCaseIdAndIsDeletedFalse(caseId, Pageable.unpaged()).getTotalElements();
-        } else if (registrationStatus != null) {
+        } else if (registrationStatus != null && !registrationStatus.trim().isEmpty()) {
             return claimRegistrationRepository.findByRegistrationStatusAndIsDeletedFalse(registrationStatus, Pageable.unpaged()).getTotalElements();
         } else {
             return claimRegistrationRepository.count();
@@ -293,13 +285,13 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             claimRegistration.setTotalAmount(request.getTotalAmount());
         }
         if (request.getHasCourtJudgment() != null) {
-            claimRegistration.setHasCourtJudgment(request.getHasCourtJudgment() == 1);
+            claimRegistration.setHasCourtJudgment(request.getHasCourtJudgment());
         }
         if (request.getHasExecution() != null) {
-            claimRegistration.setHasExecution(request.getHasExecution() == 1);
+            claimRegistration.setHasExecution(request.getHasExecution());
         }
         if (request.getHasCollateral() != null) {
-            claimRegistration.setHasCollateral(request.getHasCollateral() == 1);
+            claimRegistration.setHasCollateral(request.getHasCollateral());
         }
         if (request.getClaimNature() != null) {
             claimRegistration.setClaimNature(request.getClaimNature());
@@ -307,12 +299,13 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         if (request.getClaimType() != null) {
             claimRegistration.setClaimType(request.getClaimType());
         }
-        if (request.getClaimFacts() != null) {
-            claimRegistration.setClaimFacts(request.getClaimFacts());
-        }
-        if (request.getClaimIdentifier() != null) {
-            claimRegistration.setClaimIdentifier(request.getClaimIdentifier());
-        }
+        // TODO: 暂时注释，等待 Lombok 问题解决
+        // if (request.getClaimFacts() != null) {
+        //     claimRegistration.setClaimFacts(request.getClaimFacts());
+        // }
+        // if (request.getClaimIdentifier() != null) {
+        //     claimRegistration.setClaimIdentifier(request.getClaimIdentifier());
+        // }
         if (request.getEvidenceList() != null) {
             claimRegistration.setEvidenceList(request.getEvidenceList());
         }
@@ -401,9 +394,34 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             updateReviewRecordStatus(registration.getId(), "COMPLETED", userId);
         } else if ("CONFIRMED".equals(newStatus)) {
             updateConfirmationRecordStatus(registration.getId(), "COMPLETED", userId);
+            updateCreditorStatusToConfirmed(registration, userId);
         } else if ("REJECTED".equals(newStatus)) {
-            // 处理驳回状态
             handleRejectStatus(registration.getId(), userId);
+        }
+    }
+
+    private void updateCreditorStatusToConfirmed(ClaimRegistration registration, Long userId) {
+        String creditorName = registration.getCreditorName();
+        Long caseId = registration.getCaseId();
+        
+        if (creditorName == null || creditorName.trim().isEmpty() || caseId == null) {
+            return;
+        }
+        
+        List<CreditorInfo> creditors = creditorInfoRepository.findAll((root, query, cb) -> {
+            List<javax.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("caseId"), caseId));
+            predicates.add(cb.equal(root.get("creditorName"), creditorName));
+            predicates.add(cb.equal(root.get("isDeleted"), false));
+            return cb.and(predicates.toArray(new javax.persistence.criteria.Predicate[0]));
+        });
+        
+        for (CreditorInfo creditor : creditors) {
+            creditor.setCreditorStatus(CreditorStatus.CONFIRMED);
+            creditor.setUpdateUserId(userId);
+            creditorInfoRepository.save(creditor);
+            logger.info("更新债权人状态为CONFIRMED, creditorId: {}, creditorName: {}, caseId: {}", 
+                    creditor.getId(), creditorName, caseId);
         }
     }
 
@@ -556,8 +574,18 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
     private String generateClaimNo() {
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        long count = claimRegistrationRepository.count() + 1;
-        return "CLAIM" + dateStr + String.format("%06d", count);
+        String prefix = "CLAIM" + dateStr;
+        
+        Optional<String> maxClaimNo = claimRegistrationRepository.findMaxClaimNoByPrefix(prefix);
+        
+        long nextSeq = 1;
+        if (maxClaimNo.isPresent() && maxClaimNo.get() != null) {
+            String maxNo = maxClaimNo.get();
+            String seqStr = maxNo.substring(prefix.length());
+            nextSeq = Long.parseLong(seqStr) + 1;
+        }
+        
+        return prefix + String.format("%06d", nextSeq);
     }
 
     @Override
@@ -669,13 +697,13 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         request.setTotalAmount(getBigDecimalValueFromRow(row, "总金额"));
 
         Boolean hasCourtJudgment = getBooleanValueFromRow(row, "是否有法院判决");
-        request.setHasCourtJudgment(hasCourtJudgment != null && hasCourtJudgment ? 1 : 0);
+        request.setHasCourtJudgment(hasCourtJudgment != null && hasCourtJudgment);
 
         Boolean hasExecution = getBooleanValueFromRow(row, "是否有执行");
-        request.setHasExecution(hasExecution != null && hasExecution ? 1 : 0);
+        request.setHasExecution(hasExecution != null && hasExecution);
 
         Boolean hasCollateral = getBooleanValueFromRow(row, "是否有担保");
-        request.setHasCollateral(hasCollateral != null && hasCollateral ? 1 : 0);
+        request.setHasCollateral(hasCollateral != null && hasCollateral);
 
         request.setClaimNature(getValueFromRow(row, "债权性质"));
         request.setClaimType(getValueFromRow(row, "债权类型"));

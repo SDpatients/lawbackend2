@@ -52,15 +52,15 @@ class NotificationControllerIntegrationTest {
                 .build();
 
         when(notificationService.createNotification(any(Notification.class))).thenReturn(mockNotification);
-        when(notificationService.getNotificationById(1L)).thenReturn(mockNotification);
-        when(notificationService.markAsRead(1L)).thenReturn(mockNotification);
+        when(notificationService.getNotificationById(1L, 1L)).thenReturn(mockNotification);
+        when(notificationService.markAsRead(1L, 1L)).thenReturn(mockNotification);
     }
 
     @Test
     void testCreateNotification_Success() throws Exception {
         mockMvc.perform(post("/api/v1/notification")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(mockNotification)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(mockNotification)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.title").value("测试通知"));

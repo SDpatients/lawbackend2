@@ -27,6 +27,8 @@ public interface DocumentExportService {
 
     List<DocumentExportTemplate> getAllTemplates();
 
+    List<DocumentExportTemplate> getAllTemplates(String description);
+
     void setDefaultTemplate(Long id, String templateType, Long userId);
 
     void exportWord(Long templateId, Map<String, Object> data, String fileName, HttpServletResponse response, Long userId) throws IOException;

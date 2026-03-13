@@ -9,6 +9,7 @@ import com.lawbackend2.lawbackend2.dto.request.ExpenseReimbursementUpdateRequest
 import com.lawbackend2.lawbackend2.dto.response.ExpenseReimbursementResponse;
 import com.lawbackend2.lawbackend2.service.ExpenseReimbursementService;
 import com.lawbackend2.lawbackend2.service.UserRoleService;
+import com.lawbackend2.lawbackend2.util.PermissionChecker;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,13 +40,14 @@ public class ExpenseReimbursementController {
 
     private final ExpenseReimbursementService expenseReimbursementService;
     private final UserRoleService userRoleService;
+    private final PermissionChecker permissionChecker;
     
-    // 文件上传根路径，从文档中得知默认是C:\law-upload
     private static final String UPLOAD_ROOT_PATH = "C:\\law-upload";
 
-    public ExpenseReimbursementController(ExpenseReimbursementService expenseReimbursementService, UserRoleService userRoleService) {
+    public ExpenseReimbursementController(ExpenseReimbursementService expenseReimbursementService, UserRoleService userRoleService, PermissionChecker permissionChecker) {
         this.expenseReimbursementService = expenseReimbursementService;
         this.userRoleService = userRoleService;
+        this.permissionChecker = permissionChecker;
     }
 
     @Operation(summary = "创建报销单")
@@ -64,6 +66,7 @@ public class ExpenseReimbursementController {
     @GetMapping("/{id}")
     public Result<ExpenseReimbursementResponse> getExpenseReimbursementDetail(
             @Parameter(description = "报销单ID") @PathVariable Long id) {
+        permissionChecker.checkReimbursementAccessPermission(id);
         ExpenseReimbursementResponse response = expenseReimbursementService.getExpenseReimbursementDetail(id);
         return Result.success(response);
     }
@@ -96,6 +99,7 @@ public class ExpenseReimbursementController {
     public Result<Void> updateExpenseReimbursement(
             @Parameter(description = "报销单ID") @PathVariable Long id,
             @Valid @RequestBody ExpenseReimbursementUpdateRequest request) {
+        permissionChecker.checkReimbursementEditPermission(id);
         request.setId(id);
         expenseReimbursementService.updateExpenseReimbursement(request);
         return Result.success();
@@ -105,6 +109,7 @@ public class ExpenseReimbursementController {
     @DeleteMapping("/{id}")
     public Result<Void> deleteExpenseReimbursement(
             @Parameter(description = "报销单ID") @PathVariable Long id) {
+        permissionChecker.checkReimbursementDeletePermission(id);
         expenseReimbursementService.deleteExpenseReimbursement(id);
         return Result.success();
     }
@@ -115,6 +120,7 @@ public class ExpenseReimbursementController {
             @Parameter(description = "报销单ID") @PathVariable Long id,
             @Valid @RequestBody ExpenseReimbursementApprovalRequest request) {
         Long currentUserId = SecurityUtil.getCurrentUserId();
+        permissionChecker.checkReimbursementApprovePermission(id);
         expenseReimbursementService.approveExpenseReimbursement(id, request, currentUserId);
         return Result.success();
     }
@@ -124,6 +130,7 @@ public class ExpenseReimbursementController {
     public Result<Map<String, Object>> addExpenseReimbursementItem(
             @Parameter(description = "报销单ID") @PathVariable Long id,
             @Valid @RequestBody ExpenseReimbursementItemCreateRequest request) {
+        permissionChecker.checkReimbursementEditPermission(id);
         request.setReimbursementId(id);
         Long itemId = expenseReimbursementService.addExpenseReimbursementItem(request);
 
@@ -138,6 +145,7 @@ public class ExpenseReimbursementController {
     public Result<Void> deleteExpenseReimbursementItem(
             @Parameter(description = "报销单ID") @PathVariable Long id,
             @Parameter(description = "明细ID") @PathVariable Long itemId) {
+        permissionChecker.checkReimbursementEditPermission(id);
         expenseReimbursementService.deleteExpenseReimbursementItem(itemId);
         return Result.success();
     }
@@ -147,6 +155,7 @@ public class ExpenseReimbursementController {
     public Result<Map<String, Object>> uploadExpenseReimbursementAttachment(
             @Parameter(description = "报销单ID") @PathVariable Long id,
             @RequestParam("file") org.springframework.web.multipart.MultipartFile file) throws IOException {
+        permissionChecker.checkReimbursementEditPermission(id);
         String fileName = file.getOriginalFilename();
         String fileType = file.getContentType();
         Long fileSize = file.getSize();
@@ -154,13 +163,11 @@ public class ExpenseReimbursementController {
         String relativePath = "/uploads/expense/" + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd")) + "/" + java.util.UUID.randomUUID().toString() + "_" + fileName;
         String fullPath = UPLOAD_ROOT_PATH + relativePath;
 
-        // 确保目录存在
         java.io.File destFile = new java.io.File(fullPath);
         if (!destFile.getParentFile().exists()) {
             destFile.getParentFile().mkdirs();
         }
 
-        // 保存文件到磁盘
         file.transferTo(destFile);
 
         Long attachmentId = expenseReimbursementService.uploadExpenseReimbursementAttachment(id, fileName, relativePath, fileSize, fileType);
@@ -177,21 +184,37 @@ public class ExpenseReimbursementController {
     public Result<Void> deleteExpenseReimbursementAttachment(
             @Parameter(description = "报销单ID") @PathVariable Long id,
             @Parameter(description = "附件ID") @PathVariable Long attachmentId) {
+        permissionChecker.checkReimbursementEditPermission(id);
         expenseReimbursementService.deleteExpenseReimbursementAttachment(attachmentId);
         return Result.success();
+    }
+
+    @Operation(summary = "关联已存在的文件到报销单")
+    @PostMapping("/{id}/attachments/{fileId}")
+    public Result<Map<String, Object>> linkAttachment(
+            @Parameter(description = "报销单ID") @PathVariable Long id,
+            @Parameter(description = "文件ID") @PathVariable Long fileId) {
+        Long attachmentId = expenseReimbursementService.linkAttachment(id, fileId);
+        Map<String, Object> data = new HashMap<>();
+        data.put("attachmentId", attachmentId);
+        return Result.success(data);
     }
     
     @Operation(summary = "文件预览")
     @GetMapping("/attachments/{attachmentId}/preview")
     public ResponseEntity<Resource> previewAttachment(
-            @Parameter(description = "附件ID") @PathVariable Long attachmentId) throws IOException {
+            @Parameter(description = "附件 ID") @PathVariable Long attachmentId) throws IOException {
         com.lawbackend2.lawbackend2.entity.ExpenseReimbursementAttachment attachment = expenseReimbursementService.getAttachmentById(attachmentId);
         
-        // 构建完整的文件路径
-        String fullPath = UPLOAD_ROOT_PATH + attachment.getFilePath();
+        String filePath = attachment.getFilePath();
+        String fullPath = buildFullPath(filePath);
+        
+        log.info("预览文件，attachmentId: {}, filePath: {}, fullPath: {}", attachmentId, filePath, fullPath);
+        
         java.io.File file = new java.io.File(fullPath);
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在");
+            log.error("文件不存在，attachmentId: {}, fullPath: {}, UPLOAD_ROOT_PATH: {}", attachmentId, fullPath, UPLOAD_ROOT_PATH);
+            throw new RuntimeException("文件不存在，文件路径：" + fullPath);
         }
         
         Resource resource = new org.springframework.core.io.FileSystemResource(file);
@@ -200,6 +223,8 @@ public class ExpenseReimbursementController {
         if (contentType == null) {
             contentType = "application/octet-stream";
         }
+        
+        log.info("文件预览成功，contentType: {}, fileName: {}", contentType, attachment.getFileName());
         
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
@@ -214,14 +239,14 @@ public class ExpenseReimbursementController {
             HttpServletResponse response) throws IOException {
         com.lawbackend2.lawbackend2.entity.ExpenseReimbursementAttachment attachment = expenseReimbursementService.getAttachmentById(attachmentId);
         
-        // 构建完整的文件路径
-        String fullPath = UPLOAD_ROOT_PATH + attachment.getFilePath();
+        String filePath = attachment.getFilePath();
+        String fullPath = buildFullPath(filePath);
+        
         java.io.File file = new java.io.File(fullPath);
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在");
+            log.error("文件不存在，attachmentId: {}, fullPath: {}", attachmentId, fullPath);
+            throw new RuntimeException("文件不存在，文件路径：" + fullPath);
         }
-        
-        Resource resource = new org.springframework.core.io.FileSystemResource(file);
         
         String contentType = attachment.getFileType();
         if (contentType == null) {
@@ -234,5 +259,18 @@ public class ExpenseReimbursementController {
         response.setContentLengthLong(file.length());
         
         Files.copy(file.toPath(), response.getOutputStream());
+    }
+    
+    private String buildFullPath(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            throw new RuntimeException("文件路径为空");
+        }
+        if (filePath.contains(":\\") || filePath.contains(":/")) {
+            return filePath;
+        }
+        String normalizedPath = filePath.startsWith("/") || filePath.startsWith("\\") 
+            ? filePath.substring(1) 
+            : filePath;
+        return UPLOAD_ROOT_PATH + "\\" + normalizedPath.replace("/", "\\");
     }
 }

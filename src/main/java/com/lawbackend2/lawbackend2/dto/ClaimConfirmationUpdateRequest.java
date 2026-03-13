@@ -1,10 +1,11 @@
 package com.lawbackend2.lawbackend2.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ClaimConfirmationUpdateRequest {
@@ -18,7 +19,8 @@ public class ClaimConfirmationUpdateRequest {
 
     private String voteNotes;
 
-    private Integer hasObjection;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasObjection;
 
     private String objector;
 
@@ -44,7 +46,8 @@ public class ClaimConfirmationUpdateRequest {
 
     private String courtRulingNotes;
 
-    private Integer hasLawsuit;
+    @JsonDeserialize(using = BooleanDeserializer.class)
+    private Boolean hasLawsuit;
 
     private String lawsuitCaseNo;
 
@@ -62,9 +65,39 @@ public class ClaimConfirmationUpdateRequest {
 
     private String finalConfirmationBasis;
 
-    private String confirmationAttachments;
+    private List<String> confirmationAttachments;
 
     private String confirmationStatus;
 
     private String remarks;
+
+    private BigDecimal declaredPrincipal;
+
+    private BigDecimal declaredInterest;
+
+    private BigDecimal declaredPenalty;
+
+    private BigDecimal declaredOtherLosses;
+
+    private BigDecimal declaredTotalAmount;
+
+    private BigDecimal confirmedPrincipal;
+
+    private BigDecimal confirmedInterest;
+
+    private BigDecimal confirmedPenalty;
+
+    private BigDecimal confirmedOtherLosses;
+
+    private BigDecimal confirmedTotalAmount;
+
+    private BigDecimal unconfirmedPrincipal;
+
+    private BigDecimal unconfirmedInterest;
+
+    private BigDecimal unconfirmedPenalty;
+
+    private BigDecimal unconfirmedOtherLosses;
+
+    private BigDecimal unconfirmedTotalAmount;
 }

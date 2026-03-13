@@ -1,0 +1,234 @@
+package com.lawbackend2.lawbackend2.controller;
+
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.request.LibDocumentCreateRequest;
+import com.lawbackend2.lawbackend2.dto.request.LibDocumentQueryRequest;
+import com.lawbackend2.lawbackend2.dto.request.LibDocumentUpdateRequest;
+import com.lawbackend2.lawbackend2.dto.response.LibDocumentListResponse;
+import com.lawbackend2.lawbackend2.dto.response.LibDocumentResponse;
+import com.lawbackend2.lawbackend2.service.LibDocumentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/lib/documents")
+@Tag(name = "文档库-文档管理", description = "文档CRUD操作API")
+@RequiredArgsConstructor
+public class LibDocumentController {
+
+    private final LibDocumentService documentService;
+
+    @PostMapping
+    @Operation(summary = "创建文档", description = "创建新的文档记录")
+    public Result<LibDocumentResponse> createDocument(
+            @Valid @RequestBody LibDocumentCreateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("创建文档请求 - 文档名称: {}, 用户ID: {}", request.getDocumentName(), userId);
+        LibDocumentResponse response = documentService.createDocument(request, userId);
+        return Result.success(response);
+    }
+
+    @PostMapping("/upload")
+    @Operation(summary = "上传文档", description = "上传文档文件")
+    public Result<LibDocumentResponse> uploadDocument(
+            @Parameter(description = "文档文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "文件夹ID") @RequestParam(required = false) Long folderId,
+            @Parameter(description = "文档名称") @RequestParam(required = false) String documentName,
+            @Parameter(description = "描述") @RequestParam(required = false) String description,
+            @Parameter(description = "标签") @RequestParam(required = false) String tags,
+            @Parameter(description = "是否公开") @RequestParam(required = false, defaultValue = "false") Boolean isPublic,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("上传文档请求 - 文件名: {}, 用户ID: {}", file.getOriginalFilename(), userId);
+        LibDocumentResponse response = documentService.uploadDocument(file, folderId, documentName, description, tags, isPublic, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "获取文档详情", description = "根据ID获取文档详细信息")
+    public Result<LibDocumentResponse> getDocumentById(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentResponse response = documentService.getDocumentById(id, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/code/{code}")
+    @Operation(summary = "根据编码获取文档", description = "根据文档编码获取文档信息")
+    public Result<LibDocumentResponse> getDocumentByCode(
+            @Parameter(description = "文档编码") @PathVariable String code,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentResponse response = documentService.getDocumentByCode(code, userId);
+        return Result.success(response);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "更新文档", description = "更新文档信息")
+    public Result<LibDocumentResponse> updateDocument(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            @Valid @RequestBody LibDocumentUpdateRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("更新文档请求 - 文档ID: {}, 用户ID: {}", id, userId);
+        LibDocumentResponse response = documentService.updateDocument(id, request, userId);
+        return Result.success(response);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "删除文档", description = "删除指定文档（软删除）")
+    public Result<Void> deleteDocument(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("删除文档请求 - 文档ID: {}, 用户ID: {}", id, userId);
+        documentService.deleteDocument(id, userId);
+        return Result.success();
+    }
+
+    @GetMapping
+    @Operation(summary = "获取文档列表", description = "分页查询文档列表")
+    public Result<LibDocumentListResponse> getDocumentList(
+            LibDocumentQueryRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentListResponse response = documentService.getDocumentList(request, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "搜索文档", description = "根据关键词搜索文档")
+    public Result<LibDocumentListResponse> searchDocuments(
+            @Parameter(description = "搜索关键词") @RequestParam String keyword,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentListResponse response = documentService.searchDocuments(keyword, page, size, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/folder/{folderId}")
+    @Operation(summary = "获取文件夹下的文档", description = "获取指定文件夹下的文档列表")
+    public Result<LibDocumentListResponse> getDocumentsByFolder(
+            @Parameter(description = "文件夹ID") @PathVariable Long folderId,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentListResponse response = documentService.getDocumentsByFolder(folderId, page, size, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/type/{documentType}")
+    @Operation(summary = "按类型获取文档", description = "根据文档类型获取文档列表")
+    public Result<LibDocumentListResponse> getDocumentsByType(
+            @Parameter(description = "文档类型") @PathVariable String documentType,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentListResponse response = documentService.getDocumentsByType(documentType, page, size, userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/my")
+    @Operation(summary = "获取我的文档", description = "获取当前用户上传的文档列表")
+    public Result<LibDocumentListResponse> getMyDocuments(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibDocumentListResponse response = documentService.getMyDocuments(userId, page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/public")
+    @Operation(summary = "获取公开文档", description = "获取所有公开的文档列表")
+    public Result<LibDocumentListResponse> getPublicDocuments(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size) {
+        LibDocumentListResponse response = documentService.getPublicDocuments(page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/{id}/download")
+    @Operation(summary = "下载文档", description = "下载指定文档")
+    public void downloadDocument(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            HttpServletResponse response,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("下载文档请求 - 文档ID: {}, 用户ID: {}", id, userId);
+        documentService.downloadDocument(id, response, userId);
+    }
+
+    @PutMapping("/{id}/lock")
+    @Operation(summary = "锁定文档", description = "锁定文档防止他人编辑")
+    public Result<Void> lockDocument(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("锁定文档请求 - 文档ID: {}, 用户ID: {}", id, userId);
+        documentService.lockDocument(id, userId);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/unlock")
+    @Operation(summary = "解锁文档", description = "解锁文档")
+    public Result<Void> unlockDocument(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("解锁文档请求 - 文档ID: {}, 用户ID: {}", id, userId);
+        documentService.unlockDocument(id, userId);
+        return Result.success();
+    }
+
+    @PutMapping("/{id}/move")
+    @Operation(summary = "移动文档", description = "将文档移动到其他文件夹")
+    public Result<Void> moveDocument(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            @Parameter(description = "目标文件夹ID") @RequestParam Long targetFolderId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("移动文档请求 - 文档ID: {}, 目标文件夹ID: {}, 用户ID: {}", id, targetFolderId, userId);
+        documentService.moveDocument(id, targetFolderId, userId);
+        return Result.success();
+    }
+
+    @PostMapping("/{id}/copy")
+    @Operation(summary = "复制文档", description = "复制文档到其他文件夹")
+    public Result<Void> copyDocument(
+            @Parameter(description = "文档ID") @PathVariable Long id,
+            @Parameter(description = "目标文件夹ID") @RequestParam Long targetFolderId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("复制文档请求 - 文档ID: {}, 目标文件夹ID: {}, 用户ID: {}", id, targetFolderId, userId);
+        documentService.copyDocument(id, targetFolderId, userId);
+        return Result.success();
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userDetails.getUsername());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+}

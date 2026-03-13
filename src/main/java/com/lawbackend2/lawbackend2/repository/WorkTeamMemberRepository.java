@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.repository;
 
 import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -48,4 +49,8 @@ public interface WorkTeamMemberRepository extends JpaRepository<WorkTeamMember, 
            "AND wtm.isActive = 1 " +
            "AND wtm.teamId IS NOT NULL")
     List<Long> findTeamIdsByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query("UPDATE WorkTeamMember wtm SET wtm.isDeleted = true WHERE wtm.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }

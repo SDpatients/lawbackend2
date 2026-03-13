@@ -1,0 +1,114 @@
+package com.lawbackend2.lawbackend2.controller;
+
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.response.LibFavoriteListResponse;
+import com.lawbackend2.lawbackend2.dto.response.LibFavoriteResponse;
+import com.lawbackend2.lawbackend2.service.LibDocumentFavoriteService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/lib/favorites")
+@Tag(name = "文档库-收藏管理", description = "文档收藏API")
+@RequiredArgsConstructor
+public class LibDocumentFavoriteController {
+
+    private final LibDocumentFavoriteService favoriteService;
+
+    @PostMapping("/{documentId}")
+    @Operation(summary = "收藏文档", description = "将文档添加到收藏")
+    public Result<LibFavoriteResponse> addFavorite(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Parameter(description = "收藏夹名称") @RequestParam(required = false) String folderName,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("收藏文档请求 - 文档ID: {}, 用户ID: {}", documentId, userId);
+        LibFavoriteResponse response = favoriteService.addFavorite(documentId, folderName, userId);
+        return Result.success(response);
+    }
+
+    @DeleteMapping("/{documentId}")
+    @Operation(summary = "取消收藏", description = "取消收藏文档")
+    public Result<Void> removeFavorite(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("取消收藏请求 - 文档ID: {}, 用户ID: {}", documentId, userId);
+        favoriteService.removeFavorite(documentId, userId);
+        return Result.success();
+    }
+
+    @GetMapping
+    @Operation(summary = "获取我的收藏", description = "获取当前用户的所有收藏")
+    public Result<LibFavoriteListResponse> getMyFavorites(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibFavoriteListResponse response = favoriteService.getMyFavorites(userId, page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/folder")
+    @Operation(summary = "按收藏夹获取收藏", description = "获取指定收藏夹下的收藏")
+    public Result<LibFavoriteListResponse> getFavoritesByFolder(
+            @Parameter(description = "收藏夹名称") @RequestParam String folderName,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        LibFavoriteListResponse response = favoriteService.getFavoritesByFolder(folderName, userId, page, size);
+        return Result.success(response);
+    }
+
+    @GetMapping("/folders")
+    @Operation(summary = "获取收藏夹列表", description = "获取当前用户的所有收藏夹名称")
+    public Result<List<String>> getFavoriteFolders(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        List<String> folders = favoriteService.getFavoriteFolders(userId);
+        return Result.success(folders);
+    }
+
+    @GetMapping("/check/{documentId}")
+    @Operation(summary = "检查是否已收藏", description = "检查文档是否已被收藏")
+    public Result<Boolean> isFavorited(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        boolean favorited = favoriteService.isFavorited(documentId, userId);
+        return Result.success(favorited);
+    }
+
+    @PutMapping("/{documentId}/move")
+    @Operation(summary = "移动收藏", description = "将收藏移动到其他收藏夹")
+    public Result<Void> moveFavorite(
+            @Parameter(description = "文档ID") @PathVariable Long documentId,
+            @Parameter(description = "新收藏夹名称") @RequestParam String newFolderName,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = getUserId(userDetails);
+        log.info("移动收藏请求 - 文档ID: {}, 新收藏夹: {}, 用户ID: {}", documentId, newFolderName, userId);
+        favoriteService.moveFavorite(documentId, newFolderName, userId);
+        return Result.success();
+    }
+
+    private Long getUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            return null;
+        }
+        try {
+            return Long.parseLong(userDetails.getUsername());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+}

@@ -1,0 +1,42 @@
+package com.lawbackend2.lawbackend2.dto.response;
+
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class LibDocumentResponse {
+
+    private Long id;
+    private String documentName;
+    private String documentCode;
+    private Long folderId;
+    private String folderName;
+    private String folderPath;
+    private String documentType;
+    private String fileName;
+    private String filePath;
+    private Long fileSize;
+    private String fileExtension;
+    private String mimeType;
+    private Integer currentVersion;
+    private String description;
+    private String tags;
+    private Boolean isPublic;
+    private Boolean isLocked;
+    private Long lockedBy;
+    private String lockedByName;
+    private LocalDateTime lockedTime;
+    private Integer downloadCount;
+    private Integer viewCount;
+    private String status;
+    private LocalDateTime createTime;
+    private LocalDateTime updateTime;
+    private Long createUserId;
+    private String createUserName;
+
+    private Boolean isFavorited;
+}

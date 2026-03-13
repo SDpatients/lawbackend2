@@ -1,0 +1,33 @@
+package com.lawbackend2.lawbackend2.entity;
+
+import javax.persistence.*;
+import lombok.*;
+
+@Entity
+@Table(name = "tb_lib_document_share_access", indexes = {
+    @Index(name = "idx_lib_access_share_id", columnList = "share_id"),
+    @Index(name = "idx_lib_access_visitor_user_id", columnList = "visitor_user_id"),
+    @Index(name = "idx_lib_access_create_time", columnList = "create_time")
+})
+@Data
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class LibDocumentShareAccess extends LibBaseEntity {
+
+    @Column(name = "share_id", nullable = false)
+    private Long shareId;
+
+    @Column(name = "visitor_user_id")
+    private Long visitorUserId;
+
+    @Column(name = "visitor_ip", length = 50)
+    private String visitorIp;
+
+    @Column(name = "visitor_user_agent", length = 500)
+    private String visitorUserAgent;
+
+    @Column(name = "access_type", length = 20)
+    private String accessType;
+}

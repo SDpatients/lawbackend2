@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.entity.FundFlow;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -35,5 +36,8 @@ public interface FundFlowRepository extends JpaRepository<FundFlow, Long> {
 
     @Query("SELECT SUM(ff.amount) FROM FundFlow ff WHERE ff.isDeleted = false AND ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
     java.math.BigDecimal sumAmountByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
-    void deleteByCaseId(Long caseId);
+
+    @Modifying
+    @Query("UPDATE FundFlow ff SET ff.isDeleted = true WHERE ff.caseId = :caseId")
+    void deleteByCaseId(@Param("caseId") Long caseId);
 }
