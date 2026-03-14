@@ -8,6 +8,7 @@ import com.lawbackend2.lawbackend2.dto.AdministratorStaffUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.Administrator;
 import com.lawbackend2.lawbackend2.entity.AdministratorStaff;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.service.AdministratorService;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -93,6 +94,7 @@ public class AdministratorController {
             @Parameter(description = "管理人ID") @PathVariable Long administratorId,
             @Valid @RequestBody AdministratorStaffCreateRequest request) {
 
+        request.setAdministratorId(administratorId);
         Long userId = getCurrentUserId();
         AdministratorStaff staff = administratorService.createAdministratorStaff(request, userId);
 
@@ -110,6 +112,15 @@ public class AdministratorController {
 
         List<AdministratorStaff> list = administratorService.getAdministratorStaffList(administratorId);
         return Result.success(list);
+    }
+
+    @Operation(summary = "获取可关联的用户列表")
+    @GetMapping("/{administratorId}/staff/available-users")
+    public Result<List<User>> getAvailableUsers(
+            @Parameter(description = "管理人ID") @PathVariable Long administratorId) {
+
+        List<User> users = administratorService.getAvailableUsers();
+        return Result.success(users);
     }
 
     @Operation(summary = "获取员工详情")

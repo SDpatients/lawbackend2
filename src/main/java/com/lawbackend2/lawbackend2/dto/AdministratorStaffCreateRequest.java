@@ -2,19 +2,18 @@ package com.lawbackend2.lawbackend2.dto;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
 @Data
 public class AdministratorStaffCreateRequest {
 
-    @NotNull(message = "管理人ID不能为空")
     private Long administratorId;
 
-    @NotBlank(message = "姓名不能为空")
+    @NotNull(message = "用户ID不能为空")
+    private Long userId;
+
     private String name;
 
-    @NotBlank(message = "人员类型不能为空")
     private String staffType;
 
     private String idNumber;
@@ -28,6 +27,4 @@ public class AdministratorStaffCreateRequest {
     private String responsibility;
 
     private java.time.LocalDate appointmentDate;
-
-    private Long userId;
 }

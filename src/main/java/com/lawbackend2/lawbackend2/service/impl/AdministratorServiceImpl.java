@@ -23,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -156,13 +157,36 @@ public class AdministratorServiceImpl implements AdministratorService {
         Administrator administrator = administratorRepository.findById(request.getAdministratorId())
                 .orElseThrow(() -> new BusinessException("管理人不存在"));
 
-        if (request.getUserId() != null) {
-            User user = userRepository.findById(request.getUserId())
-                    .orElseThrow(() -> new BusinessException("用户不存在"));
-        }
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new BusinessException("用户不存在"));
 
         AdministratorStaff staff = new AdministratorStaff();
-        BeanUtils.copyProperties(request, staff);
+        staff.setAdministratorId(request.getAdministratorId());
+        staff.setUserId(request.getUserId());
+        
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            staff.setName(request.getName());
+        } else {
+            staff.setName(user.getRealName());
+        }
+        
+        if (request.getContactPhone() != null && !request.getContactPhone().trim().isEmpty()) {
+            staff.setContactPhone(request.getContactPhone());
+        } else {
+            staff.setContactPhone(user.getMobile());
+        }
+        
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            staff.setEmail(request.getEmail());
+        } else {
+            staff.setEmail(user.getEmail());
+        }
+        
+        staff.setStaffType(request.getStaffType());
+        staff.setIdNumber(request.getIdNumber());
+        staff.setLawyerLicenseNumber(request.getLawyerLicenseNumber());
+        staff.setResponsibility(request.getResponsibility());
+        staff.setAppointmentDate(request.getAppointmentDate());
         staff.setCreateUserId(userId);
         staff.setUpdateUserId(userId);
 
@@ -246,5 +270,28 @@ public class AdministratorServiceImpl implements AdministratorService {
         AdministratorStaff updated = administratorStaffRepository.save(staff);
         log.info("管理人员工信息更新成功, ID: {}", updated.getId());
         return updated;
+    }
+
+    @Override
+    public List<User> getAvailableUsers() {
+        log.debug("查询可用用户列表（未被员工关联的用户）");
+        
+        List<Long> usedUserIds = administratorStaffRepository.findAllUsedUserIds();
+        
+        if (usedUserIds.isEmpty()) {
+            return userRepository.findAllActive();
+        }
+        
+        List<User> allActiveUsers = userRepository.findAllActive();
+        List<User> availableUsers = new ArrayList<>();
+        
+        for (User user : allActiveUsers) {
+            if (!usedUserIds.contains(user.getId())) {
+                availableUsers.add(user);
+            }
+        }
+        
+        log.debug("可用用户数量: {}", availableUsers.size());
+        return availableUsers;
     }
 }

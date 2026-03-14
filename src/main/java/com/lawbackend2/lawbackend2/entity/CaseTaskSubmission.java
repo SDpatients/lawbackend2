@@ -18,6 +18,9 @@ import java.time.LocalDateTime;
 })
 public class CaseTaskSubmission extends BaseEntity {
 
+    @Column(name = "create_time", nullable = false, updatable = false)
+    private LocalDateTime createTime;
+
     @Column(name = "case_task_id", nullable = false)
     private Long caseTaskId;
 

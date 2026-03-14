@@ -88,6 +88,8 @@ public class CaseTaskSubmissionServiceImpl implements CaseTaskSubmissionService 
         
         if (request.getCreateTime() != null) {
             submission.setCreateTime(request.getCreateTime());
+        } else {
+            submission.setCreateTime(LocalDateTime.now());
         }
 
         CaseTaskSubmission savedSubmission = submissionRepository.save(submission);

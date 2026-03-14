@@ -6,6 +6,7 @@ import com.lawbackend2.lawbackend2.dto.AdministratorStaffUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.AdministratorUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.Administrator;
 import com.lawbackend2.lawbackend2.entity.AdministratorStaff;
+import com.lawbackend2.lawbackend2.entity.User;
 
 import java.util.List;
 
@@ -36,4 +37,6 @@ public interface AdministratorService {
     AdministratorStaff updateAdministratorStaff(Long staffId, AdministratorStaffUpdateRequest request);
 
     void deleteAdministratorStaff(Long staffId);
+
+    List<User> getAvailableUsers();
 }
