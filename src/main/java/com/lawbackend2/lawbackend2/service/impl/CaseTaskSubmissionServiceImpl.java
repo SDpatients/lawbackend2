@@ -369,17 +369,17 @@ public class CaseTaskSubmissionServiceImpl implements CaseTaskSubmissionService 
             int taskNum = Integer.parseInt(taskCode.substring(5));
             if (taskNum >= 1 && taskNum <= 2) {
                 return 1;
-            } else if (taskNum >= 3 && taskNum <= 6) {
+            } else if (taskNum >= 3 && taskNum <= 7) {
                 return 2;
-            } else if (taskNum >= 7 && taskNum <= 11) {
+            } else if (taskNum >= 8 && taskNum <= 11) {
                 return 3;
-            } else if (taskNum >= 12 && taskNum <= 14) {
+            } else if (taskNum >= 12 && taskNum <= 13) {
                 return 4;
-            } else if (taskNum >= 15 && taskNum <= 16) {
+            } else if (taskNum >= 14 && taskNum <= 16) {
                 return 5;
-            } else if (taskNum >= 17 && taskNum <= 18) {
+            } else if (taskNum >= 17 && taskNum <= 19) {
                 return 6;
-            } else if (taskNum >= 19 && taskNum <= 20) {
+            } else if (taskNum >= 20 && taskNum <= 23) {
                 return 7;
             }
         } catch (Exception e) {
@@ -393,17 +393,17 @@ public class CaseTaskSubmissionServiceImpl implements CaseTaskSubmissionService 
             case 1:
                 return "申请与受理";
             case 2:
-                return "管理人履职与财产接管";
+                return "管理人接管";
             case 3:
-                return "债权申报与核查";
+                return "债权申报与审查";
             case 4:
-                return "债权人会议与重整";
+                return "债权人会议";
             case 5:
-                return "财产变价与分配";
+                return "重整和解及破产宣告";
             case 6:
-                return "破产程序终结";
+                return "财产变价与分配";
             case 7:
-                return "注销与归档";
+                return "程序终结";
             default:
                 return "未知阶段";
         }

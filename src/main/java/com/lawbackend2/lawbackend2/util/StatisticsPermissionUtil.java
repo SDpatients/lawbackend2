@@ -72,8 +72,12 @@ public class StatisticsPermissionUtil {
         return hasRole("STAFF") || isManager();
     }
 
+    public boolean isLawyer() {
+        return hasRole("LAWYER") || isStaff();
+    }
+
     public void checkStatisticsPermission() {
-        if (!isStaff()) {
+        if (!isLawyer()) {
             throw new PermissionDeniedException("您没有权限查看统计数据");
         }
     }

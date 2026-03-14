@@ -39,6 +39,8 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final CreditorClaimRepository creditorClaimRepository;
     private final ClaimConfirmationRepository claimConfirmationRepository;
     private final UserRepository userRepository;
+    private final WorkTeamMemberRepository workTeamMemberRepository;
+    private final BankAccountTransactionRepository bankAccountTransactionRepository;
 
     public StatisticsServiceImpl(FundFlowRepository fundFlowRepository,
                                  FundApprovalRepository fundApprovalRepository,
@@ -47,7 +49,9 @@ public class StatisticsServiceImpl implements StatisticsService {
                                  BankruptCaseRepository bankruptCaseRepository,
                                  CreditorClaimRepository creditorClaimRepository,
                                  ClaimConfirmationRepository claimConfirmationRepository,
-                                 UserRepository userRepository) {
+                                 UserRepository userRepository,
+                                 WorkTeamMemberRepository workTeamMemberRepository,
+                                 BankAccountTransactionRepository bankAccountTransactionRepository) {
         this.fundFlowRepository = fundFlowRepository;
         this.fundApprovalRepository = fundApprovalRepository;
         this.fundAccountRepository = fundAccountRepository;
@@ -56,6 +60,8 @@ public class StatisticsServiceImpl implements StatisticsService {
         this.creditorClaimRepository = creditorClaimRepository;
         this.claimConfirmationRepository = claimConfirmationRepository;
         this.userRepository = userRepository;
+        this.workTeamMemberRepository = workTeamMemberRepository;
+        this.bankAccountTransactionRepository = bankAccountTransactionRepository;
     }
 
     @Override
@@ -916,5 +922,141 @@ public class StatisticsServiceImpl implements StatisticsService {
         export.setPlans(items);
 
         return export;
+    }
+
+    @Override
+    public List<LawyerCaseStatistics> getLawyerCaseStatistics(Integer year) {
+        List<Object[]> caseData;
+        if (year != null) {
+            caseData = workTeamMemberRepository.countCasesByUserAndRoleInYear(year);
+        } else {
+            caseData = workTeamMemberRepository.countCasesByUserAndRole();
+        }
+
+        Map<Long, LawyerCaseStatistics> statisticsMap = new HashMap<>();
+
+        for (Object[] row : caseData) {
+            Long userId = (Long) row[0];
+            String teamRole = (String) row[1];
+            Long caseCount = (Long) row[2];
+
+            LawyerCaseStatistics statistics = statisticsMap.computeIfAbsent(userId, id -> {
+                LawyerCaseStatistics stats = new LawyerCaseStatistics();
+                stats.setUserId(id);
+                stats.setTotalCaseCount(0L);
+                stats.setLeaderCaseCount(0L);
+                stats.setAdminCaseCount(0L);
+                stats.setYear(year);
+                return stats;
+            });
+
+            statistics.setTotalCaseCount(statistics.getTotalCaseCount() + caseCount);
+            if ("LEADER".equals(teamRole)) {
+                statistics.setLeaderCaseCount(statistics.getLeaderCaseCount() + caseCount);
+            } else if ("ADMIN".equals(teamRole)) {
+                statistics.setAdminCaseCount(statistics.getAdminCaseCount() + caseCount);
+            }
+        }
+
+        List<Long> userIds = new ArrayList<>(statisticsMap.keySet());
+        if (!userIds.isEmpty()) {
+            List<User> users = userRepository.findAllById(userIds);
+            for (User user : users) {
+                LawyerCaseStatistics stats = statisticsMap.get(user.getId());
+                if (stats != null) {
+                    stats.setRealName(user.getRealName());
+                    stats.setUsername(user.getUsername());
+                }
+            }
+        }
+
+        List<LawyerCaseStatistics> result = new ArrayList<>(statisticsMap.values());
+        result.sort((a, b) -> Long.compare(b.getTotalCaseCount(), a.getTotalCaseCount()));
+
+        return result;
+    }
+
+    @Override
+    public YearlyTransactionStatistics getYearlyTransactionStatistics(Integer year) {
+        if (year == null) {
+            year = LocalDate.now().getYear();
+        }
+
+        YearlyTransactionStatistics statistics = new YearlyTransactionStatistics();
+        statistics.setYear(year);
+        statistics.setTotalIncomeAmount(BigDecimal.ZERO);
+        statistics.setTotalExpenseAmount(BigDecimal.ZERO);
+        statistics.setNetAmount(BigDecimal.ZERO);
+        statistics.setTotalIncomeCount(0L);
+        statistics.setTotalExpenseCount(0L);
+        statistics.setTotalTransactionCount(0L);
+
+        List<Object[]> yearlyData = bankAccountTransactionRepository.sumAmountByTransactionTypeInYear(year);
+        for (Object[] row : yearlyData) {
+            String transactionType = (String) row[0];
+            BigDecimal amount = (BigDecimal) row[1];
+            Long count = (Long) row[2];
+
+            if (amount == null) {
+                amount = BigDecimal.ZERO;
+            }
+
+            if ("IN".equals(transactionType)) {
+                statistics.setTotalIncomeAmount(amount);
+                statistics.setTotalIncomeCount(count);
+            } else if ("OUT".equals(transactionType)) {
+                statistics.setTotalExpenseAmount(amount);
+                statistics.setTotalExpenseCount(count);
+            }
+        }
+
+        statistics.setNetAmount(statistics.getTotalIncomeAmount().subtract(statistics.getTotalExpenseAmount()));
+        statistics.setTotalTransactionCount(statistics.getTotalIncomeCount() + statistics.getTotalExpenseCount());
+
+        List<Object[]> monthlyData = bankAccountTransactionRepository.sumAmountByMonthAndTransactionTypeInYear(year);
+        Map<Integer, YearlyTransactionStatistics.MonthlyTransactionData> monthlyMap = new HashMap<>();
+
+        for (int i = 1; i <= 12; i++) {
+            YearlyTransactionStatistics.MonthlyTransactionData monthData = new YearlyTransactionStatistics.MonthlyTransactionData();
+            monthData.setMonth(i);
+            monthData.setMonthLabel(String.format("%d-%02d", year, i));
+            monthData.setIncomeAmount(BigDecimal.ZERO);
+            monthData.setExpenseAmount(BigDecimal.ZERO);
+            monthData.setNetAmount(BigDecimal.ZERO);
+            monthData.setIncomeCount(0L);
+            monthData.setExpenseCount(0L);
+            monthlyMap.put(i, monthData);
+        }
+
+        for (Object[] row : monthlyData) {
+            Integer month = (Integer) row[0];
+            String transactionType = (String) row[1];
+            BigDecimal amount = (BigDecimal) row[2];
+            Long count = (Long) row[3];
+
+            if (amount == null) {
+                amount = BigDecimal.ZERO;
+            }
+
+            YearlyTransactionStatistics.MonthlyTransactionData monthData = monthlyMap.get(month);
+            if (monthData != null) {
+                if ("IN".equals(transactionType)) {
+                    monthData.setIncomeAmount(amount);
+                    monthData.setIncomeCount(count);
+                } else if ("OUT".equals(transactionType)) {
+                    monthData.setExpenseAmount(amount);
+                    monthData.setExpenseCount(count);
+                }
+                monthData.setNetAmount(monthData.getIncomeAmount().subtract(monthData.getExpenseAmount()));
+            }
+        }
+
+        List<YearlyTransactionStatistics.MonthlyTransactionData> monthlyList = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            monthlyList.add(monthlyMap.get(i));
+        }
+        statistics.setMonthlyData(monthlyList);
+
+        return statistics;
     }
 }

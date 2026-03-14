@@ -12,9 +12,9 @@ spring:
       max-request-size: 500MB
 
   datasource:
-    url: jdbc:mysql://localhost:3306/law?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:law}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -36,9 +36,9 @@ spring:
     open-in-view: false
 
   redis:
-    host: 127.0.0.1
-    port: 6379
-    password:
+    host: ${REDIS_HOST:127.0.0.1}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
     database: 0
     timeout: 3000ms
     lettuce:
@@ -49,12 +49,13 @@ spring:
         min-idle: 0
 
 server:
-  address: 192.168.0.151
-  port: 8080
+  address: 0.0.0.0
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api/v1
+
 jwt:
-  secret: lawbackend2-secret-key-for-jwt-token-generation-and-verification-must-be-at-least-256-bits
+  secret: ${JWT_SECRET:lawbackend2-secret-key-for-jwt-token-generation-and-verification-must-be-at-least-256-bits}
   access-token-expiration: 180000000
   refresh-token-expiration: 2592000000
   header: Authorization
@@ -76,7 +77,7 @@ login:
 
 file:
   upload:
-    path: C:\\law-upload
+    path: ${FILE_UPLOAD_PATH:/data/law-upload}
     temp-token-expire-minutes: 30
 
 springdoc:
@@ -89,28 +90,28 @@ springdoc:
 
 app:
   server:
-    url: http://localhost:8080
+    url: ${APP_SERVER_URL:http://localhost:8080}
   file:
-    download-url: http://localhost:8080/api/v1/file/download/
+    download-url: ${APP_FILE_DOWNLOAD_URL:http://localhost:8080/api/v1/file/download/}
 
 onlyoffice:
-  server-url: http://localhost:8081
+  server-url: ${ONLYOFFICE_SERVER_URL:http://localhost:8081}
   jwt:
-    enabled: false
-    secret: onlyoffice-secret
+    enabled: ${ONLYOFFICE_JWT_ENABLED:false}
+    secret: ${ONLYOFFICE_JWT_SECRET:onlyoffice-secret}
   callback:
-    url: http://localhost:8080/api/v1/onlyoffice/callback
+    url: ${ONLYOFFICE_CALLBACK_URL:http://localhost:8080/api/v1/onlyoffice/callback}
 
 ai:
   gitee:
-    api-url: https://ai.gitee.com/v1/chat/completions
-    api-key: XC9P4NWOC5TLSJ0GC9DNZMATGNNKOLSBLYRIOF14
-    model: LegalOne-8B
+    api-url: ${AI_API_URL:https://ai.gitee.com/v1/chat/completions}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:LegalOne-8B}
 
 logging:
   level:
     root: INFO
-    com.lawbackend2.lawbackend2: DEBUG
+    com.lawbackend2.lawbackend2: INFO
     org.hibernate.type.descriptor.sql.BasicBinder: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

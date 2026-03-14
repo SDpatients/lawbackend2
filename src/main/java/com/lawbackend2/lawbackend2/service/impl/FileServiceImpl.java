@@ -467,12 +467,48 @@ public class FileServiceImpl implements FileService {
             throw new BusinessException("业务ID不能为空");
         }
 
+        if ("case".equalsIgnoreCase(bizType)) {
+            return getFilesByBizTypeAndBizIdDirectly(bizType, bizId);
+        }
+
         Long claimRegistrationId = resolveClaimRegistrationId(bizType, bizId);
         if (claimRegistrationId == null) {
             return new ArrayList<>();
         }
 
         return getAllFilesByClaimRegistrationId(claimRegistrationId);
+    }
+
+    private List<FileRecordInfo> getFilesByBizTypeAndBizIdDirectly(String bizType, String bizId) {
+        Pageable pageable = PageRequest.of(0, Integer.MAX_VALUE, Sort.by(Sort.Direction.DESC, "uploadTime"));
+        Page<FileRecord> page = fileRecordRepository.findByConditions(bizType, bizId, null, pageable);
+        List<FileRecord> files = page.getContent();
+
+        List<Long> userIds = files.stream()
+                .map(FileRecord::getUploadUserId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Long, String> userIdToNameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            List<User> users = userRepository.findAllById(userIds);
+            users.forEach(user -> userIdToNameMap.put(user.getId(), user.getRealName()));
+        }
+
+        return files.stream().map(file -> {
+            FileRecordInfo info = new FileRecordInfo();
+            info.setId(file.getId());
+            info.setOriginalFileName(file.getOriginalFileName());
+            info.setFilePath(file.getFilePath());
+            info.setFileSize(file.getFileSize());
+            info.setFileExtension(file.getFileExtension());
+            info.setMimeType(file.getMimeType());
+            info.setUploadTime(file.getUploadTime());
+            info.setUploadUserName(userIdToNameMap.getOrDefault(file.getUploadUserId(), ""));
+            info.setSortOrder(file.getSortOrder());
+            return info;
+        }).collect(Collectors.toList());
     }
 
     private Long resolveClaimRegistrationId(String bizType, String bizId) {

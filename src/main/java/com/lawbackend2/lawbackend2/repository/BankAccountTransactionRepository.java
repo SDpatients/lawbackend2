@@ -88,4 +88,19 @@ public interface BankAccountTransactionRepository extends JpaRepository<BankAcco
     void deleteByAccountId(Long accountId);
 
     void deleteByCaseId(Long caseId);
+
+    @Query("SELECT bat.transactionType, SUM(bat.amount), COUNT(bat) " +
+           "FROM BankAccountTransaction bat " +
+           "WHERE bat.isDeleted = false " +
+           "AND YEAR(bat.transactionDate) = :year " +
+           "GROUP BY bat.transactionType")
+    List<Object[]> sumAmountByTransactionTypeInYear(@Param("year") Integer year);
+
+    @Query("SELECT MONTH(bat.transactionDate), bat.transactionType, SUM(bat.amount), COUNT(bat) " +
+           "FROM BankAccountTransaction bat " +
+           "WHERE bat.isDeleted = false " +
+           "AND YEAR(bat.transactionDate) = :year " +
+           "GROUP BY MONTH(bat.transactionDate), bat.transactionType " +
+           "ORDER BY MONTH(bat.transactionDate)")
+    List<Object[]> sumAmountByMonthAndTransactionTypeInYear(@Param("year") Integer year);
 }

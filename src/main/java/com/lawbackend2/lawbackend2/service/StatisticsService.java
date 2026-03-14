@@ -11,7 +11,11 @@ import com.lawbackend2.lawbackend2.dto.response.RankingStatistics;
 import com.lawbackend2.lawbackend2.dto.response.FundApprovalExport;
 import com.lawbackend2.lawbackend2.dto.response.FundAccountExport;
 import com.lawbackend2.lawbackend2.dto.response.WorkPlanExport;
+import com.lawbackend2.lawbackend2.dto.response.LawyerCaseStatistics;
+import com.lawbackend2.lawbackend2.dto.response.YearlyTransactionStatistics;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 public interface StatisticsService {
 
@@ -56,4 +60,8 @@ public interface StatisticsService {
     FundAccountExport exportFundAccounts(Long caseId, Pageable pageable);
 
     WorkPlanExport exportWorkPlans(Long caseId, Pageable pageable);
+
+    List<LawyerCaseStatistics> getLawyerCaseStatistics(Integer year);
+
+    YearlyTransactionStatistics getYearlyTransactionStatistics(Integer year);
 }

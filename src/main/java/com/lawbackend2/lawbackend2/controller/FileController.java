@@ -118,11 +118,11 @@ public class FileController {
     }
 
     @Operation(summary = "文件重命名")
-    @PutMapping("/{fileId}/rename")
+    @PutMapping("/{fileIdOrName}/rename")
     public Result<FileRecord> renameFile(
-            @Parameter(description = "文件ID") @PathVariable Long fileId,
+            @Parameter(description = "文件ID或存储文件名") @PathVariable String fileIdOrName,
             @Parameter(description = "新文件名") @RequestBody @Validated FileRenameRequest request) {
-        FileRecord fileRecord = fileService.renameFile(fileId, request.getNewFileName());
+        FileRecord fileRecord = renameFileByIdOrName(fileIdOrName, request.getNewFileName());
         return Result.success(fileRecord);
     }
 
@@ -366,6 +366,15 @@ public class FileController {
             return fileService.getFileInfo(fileId);
         } catch (NumberFormatException e) {
             return fileService.getFileInfoByStoredName(fileIdOrName);
+        }
+    }
+
+    private FileRecord renameFileByIdOrName(String fileIdOrName, String newFileName) {
+        try {
+            Long fileId = Long.parseLong(fileIdOrName);
+            return fileService.renameFile(fileId, newFileName);
+        } catch (NumberFormatException e) {
+            return fileService.renameFileByStoredName(fileIdOrName, newFileName);
         }
     }
 }

@@ -57,9 +57,12 @@ public class WorkLogServiceImpl implements WorkLogService {
         WorkLog workLog = new WorkLog();
         BeanUtils.copyProperties(request, workLog);
         workLog.setStatus("ACTIVE");
+        
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        workLog.setCreateUserId(currentUserId);
+        
         WorkLog saved = workLogRepository.save(workLog);
 
-        Long currentUserId = SecurityUtil.getCurrentUserId();
         User user = userRepository.findById(currentUserId).orElse(null);
         String realName = user != null ? user.getRealName() : "未知用户";
         String content = String.format("%s 创建了工作日志：%s", realName, request.getWorkType());
@@ -81,6 +84,10 @@ public class WorkLogServiceImpl implements WorkLogService {
         WorkLog workLog = new WorkLog();
         BeanUtils.copyProperties(request, workLog);
         workLog.setStatus("ACTIVE");
+        
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        workLog.setCreateUserId(currentUserId);
+        
         WorkLog saved = workLogRepository.save(workLog);
         Long logId = saved.getId();
 
@@ -105,7 +112,6 @@ public class WorkLogServiceImpl implements WorkLogService {
         result.put("logId", logId);
         result.put("files", uploadedFiles);
 
-        Long currentUserId = SecurityUtil.getCurrentUserId();
         User user = userRepository.findById(currentUserId).orElse(null);
         String realName = user != null ? user.getRealName() : "未知用户";
         String content = String.format("%s 创建了工作日志：%s", realName, request.getWorkType());

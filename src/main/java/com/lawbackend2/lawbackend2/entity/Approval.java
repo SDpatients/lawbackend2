@@ -32,7 +32,7 @@ public class Approval extends BaseEntity {
     @Column(name = "approval_content", columnDefinition = "TEXT")
     private String approvalContent;
 
-    @Column(name = "approval_attachment", length = 4000)
+    @Column(name = "approval_attachment", columnDefinition = "TEXT")
     private String approvalAttachment;
 
     @Column(name = "approval_result", length = 20)

@@ -9,6 +9,7 @@ import com.lawbackend2.lawbackend2.repository.AiChatSessionRepository;
 import com.lawbackend2.lawbackend2.service.AiChatService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -30,6 +31,15 @@ public class AiChatServiceImpl implements AiChatService {
 
     private final AiChatSessionRepository sessionRepository;
     private final AiChatMessageRepository messageRepository;
+
+    @Value("${ai.gitee.api-url:https://ai.gitee.com/v1/chat/completions}")
+    private String aiApiUrl;
+
+    @Value("${ai.gitee.api-key:}")
+    private String aiApiKey;
+
+    @Value("${ai.gitee.model:LegalOne-8B}")
+    private String aiModel;
 
     @Autowired
     public AiChatServiceImpl(AiChatSessionRepository sessionRepository, AiChatMessageRepository messageRepository) {
@@ -138,11 +148,10 @@ public class AiChatServiceImpl implements AiChatService {
             // 设置请求头
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer XC9P4NWOC5TLSJ0GC9DNZMATGNNKOLSBLYRIOF14");
+            headers.set("Authorization", "Bearer " + aiApiKey);
             
-            // 构建请求体
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "LegalOne-8B");
+            requestBody.put("model", aiModel);
             
             List<Map<String, String>> messages = new ArrayList<>();
             
@@ -164,9 +173,8 @@ public class AiChatServiceImpl implements AiChatService {
             
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
             
-            // 发送请求
             ResponseEntity<Map> response = restTemplate.postForEntity(
-                    "https://ai.gitee.com/v1/chat/completions",
+                    aiApiUrl,
                     requestEntity,
                     Map.class
             );

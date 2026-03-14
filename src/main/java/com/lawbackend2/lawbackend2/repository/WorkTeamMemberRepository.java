@@ -53,4 +53,29 @@ public interface WorkTeamMemberRepository extends JpaRepository<WorkTeamMember, 
     @Modifying
     @Query("UPDATE WorkTeamMember wtm SET wtm.isDeleted = true WHERE wtm.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
+
+    @Query("SELECT wtm.userId, wtm.teamRole, COUNT(DISTINCT wtm.caseId) " +
+           "FROM WorkTeamMember wtm " +
+           "JOIN WorkTeam wt ON wtm.teamId = wt.id " +
+           "JOIN BankruptCase bc ON wtm.caseId = bc.id " +
+           "WHERE wtm.isDeleted = false " +
+           "AND wtm.isActive = 1 " +
+           "AND wt.isDeleted = false " +
+           "AND bc.isDeleted = false " +
+           "AND wtm.teamRole IN ('LEADER', 'ADMIN') " +
+           "AND YEAR(bc.acceptanceDate) = :year " +
+           "GROUP BY wtm.userId, wtm.teamRole")
+    List<Object[]> countCasesByUserAndRoleInYear(@Param("year") Integer year);
+
+    @Query("SELECT wtm.userId, wtm.teamRole, COUNT(DISTINCT wtm.caseId) " +
+           "FROM WorkTeamMember wtm " +
+           "JOIN WorkTeam wt ON wtm.teamId = wt.id " +
+           "JOIN BankruptCase bc ON wtm.caseId = bc.id " +
+           "WHERE wtm.isDeleted = false " +
+           "AND wtm.isActive = 1 " +
+           "AND wt.isDeleted = false " +
+           "AND bc.isDeleted = false " +
+           "AND wtm.teamRole IN ('LEADER', 'ADMIN') " +
+           "GROUP BY wtm.userId, wtm.teamRole")
+    List<Object[]> countCasesByUserAndRole();
 }

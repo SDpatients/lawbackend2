@@ -12,6 +12,8 @@ import com.lawbackend2.lawbackend2.dto.response.RankingStatistics;
 import com.lawbackend2.lawbackend2.dto.response.FundApprovalExport;
 import com.lawbackend2.lawbackend2.dto.response.FundAccountExport;
 import com.lawbackend2.lawbackend2.dto.response.WorkPlanExport;
+import com.lawbackend2.lawbackend2.dto.response.LawyerCaseStatistics;
+import com.lawbackend2.lawbackend2.dto.response.YearlyTransactionStatistics;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.StatisticsService;
@@ -273,5 +275,23 @@ public class StatisticsController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         WorkPlanExport export = statisticsService.exportWorkPlans(caseId, pageable);
         return Result.success(export);
+    }
+
+    @Operation(summary = "律师年度案件统计", description = "统计每个律师承办的案件数量（作为负责人或管理人）")
+    @GetMapping("/lawyer-case")
+    public Result<java.util.List<LawyerCaseStatistics>> getLawyerCaseStatistics(
+            @Parameter(description = "年份（可选，不传则统计所有年份）") @RequestParam(required = false) Integer year) {
+        statisticsPermissionUtil.checkStatisticsPermission();
+        java.util.List<LawyerCaseStatistics> statistics = statisticsService.getLawyerCaseStatistics(year);
+        return Result.success(statistics);
+    }
+
+    @Operation(summary = "年度交易金额统计", description = "统计所有账户的年度总交易金额")
+    @GetMapping("/yearly-transaction")
+    public Result<YearlyTransactionStatistics> getYearlyTransactionStatistics(
+            @Parameter(description = "年份（可选，不传则默认当前年份）") @RequestParam(required = false) Integer year) {
+        statisticsPermissionUtil.checkStatisticsPermission();
+        YearlyTransactionStatistics statistics = statisticsService.getYearlyTransactionStatistics(year);
+        return Result.success(statistics);
     }
 }

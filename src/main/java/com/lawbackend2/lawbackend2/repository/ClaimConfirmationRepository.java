@@ -78,22 +78,52 @@ public interface ClaimConfirmationRepository extends JpaRepository<ClaimConfirma
 
     List<ClaimConfirmation> findAllByCreditorNameAndIsDeletedFalse(String creditorName);
 
-    @Query("SELECT c.caseId, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL GROUP BY c.caseId ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    @Query(value = "SELECT c.case_id, SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) " +
+            "FROM tb_claim_confirmation c " +
+            "LEFT JOIN tb_claim_review r ON c.claim_registration_id = r.claim_registration_id AND r.is_deleted = false " +
+            "WHERE c.is_deleted = false " +
+            "GROUP BY c.case_id " +
+            "ORDER BY SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) DESC", nativeQuery = true)
     List<Object[]> sumFinalConfirmedAmountByCaseIdGroup();
 
-    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    @Query(value = "SELECT c.creditor_name, SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) " +
+            "FROM tb_claim_confirmation c " +
+            "LEFT JOIN tb_claim_review r ON c.claim_registration_id = r.claim_registration_id AND r.is_deleted = false " +
+            "WHERE c.is_deleted = false " +
+            "GROUP BY c.creditor_name " +
+            "ORDER BY SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) DESC", nativeQuery = true)
     List<Object[]> findTopConfirmationsByAmount();
 
-    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    @Query(value = "SELECT c.creditor_name, SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) " +
+            "FROM tb_claim_confirmation c " +
+            "LEFT JOIN tb_claim_review r ON c.claim_registration_id = r.claim_registration_id AND r.is_deleted = false " +
+            "WHERE c.is_deleted = false " +
+            "GROUP BY c.creditor_name " +
+            "ORDER BY SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) DESC", nativeQuery = true)
     List<Object[]> findTopConfirmationsByAmount(Pageable pageable);
 
-    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    @Query(value = "SELECT c.case_id, SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) " +
+            "FROM tb_claim_confirmation c " +
+            "LEFT JOIN tb_claim_review r ON c.claim_registration_id = r.claim_registration_id AND r.is_deleted = false " +
+            "WHERE c.is_deleted = false AND c.case_id IN (SELECT bc.id FROM tb_bankrupt_case bc WHERE bc.create_user_id = :userId) " +
+            "GROUP BY c.case_id " +
+            "ORDER BY SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) DESC", nativeQuery = true)
     List<Object[]> sumFinalConfirmedAmountByCaseIdGroupByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    @Query(value = "SELECT c.creditor_name, SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) " +
+            "FROM tb_claim_confirmation c " +
+            "LEFT JOIN tb_claim_review r ON c.claim_registration_id = r.claim_registration_id AND r.is_deleted = false " +
+            "WHERE c.is_deleted = false AND c.case_id IN (SELECT bc.id FROM tb_bankrupt_case bc WHERE bc.create_user_id = :userId) " +
+            "GROUP BY c.creditor_name " +
+            "ORDER BY SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) DESC", nativeQuery = true)
     List<Object[]> findTopConfirmationsByAmountByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT c.creditorName, SUM(c.finalConfirmedAmount) FROM ClaimConfirmation c WHERE c.isDeleted = false AND c.finalConfirmedAmount IS NOT NULL AND c.caseId IN (SELECT bc.id FROM BankruptCase bc WHERE bc.createUserId = :userId) GROUP BY c.creditorName ORDER BY SUM(c.finalConfirmedAmount) DESC")
+    @Query(value = "SELECT c.creditor_name, SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) " +
+            "FROM tb_claim_confirmation c " +
+            "LEFT JOIN tb_claim_review r ON c.claim_registration_id = r.claim_registration_id AND r.is_deleted = false " +
+            "WHERE c.is_deleted = false AND c.case_id IN (SELECT bc.id FROM tb_bankrupt_case bc WHERE bc.create_user_id = :userId) " +
+            "GROUP BY c.creditor_name " +
+            "ORDER BY SUM(COALESCE(NULLIF(c.final_confirmed_amount, 0), r.confirmed_total_amount, 0)) DESC", nativeQuery = true)
     List<Object[]> findTopConfirmationsByAmountByUserId(@Param("userId") Long userId, Pageable pageable);
 
 }

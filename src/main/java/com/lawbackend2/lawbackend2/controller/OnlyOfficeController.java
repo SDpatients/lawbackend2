@@ -48,6 +48,9 @@ public class OnlyOfficeController {
     @Value("${onlyoffice.callback.url:http://localhost:8080/api/v1/onlyoffice/callback}")
     private String callbackUrl;
 
+    @Value("${app.file.download-url:http://localhost:8080/api/v1/file/download/}")
+    private String fileDownloadUrl;
+
     /**
      * 获取 OnlyOffice 配置
      */
@@ -265,8 +268,7 @@ public class OnlyOfficeController {
      * 获取文件下载地址
      */
     private String getFileDownloadUrl(Long fileId) {
-        // 这里返回后端服务器的下载地址，OnlyOffice 服务可以访问
-        return "http://192.168.0.151:8080/api/v1/file/download/" + fileId;
+        return fileDownloadUrl + fileId;
     }
 
     /**
