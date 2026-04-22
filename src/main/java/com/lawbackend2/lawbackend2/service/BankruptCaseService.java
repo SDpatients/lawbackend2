@@ -10,9 +10,9 @@ public interface BankruptCaseService {
 
     BankruptCase getCaseById(Long caseId);
 
-    List<BankruptCase> getCaseList(Integer pageNum, Integer pageSize, String caseStatus, String caseProgress);
+    List<BankruptCase> getCaseList(Integer pageNum, Integer pageSize, String caseStatus, String caseProgress, String keyword);
 
-    Long getCaseCount(String caseStatus, String caseProgress);
+    Long getCaseCount(String caseStatus, String caseProgress, String keyword);
 
     BankruptCase updateCase(Long caseId, CaseUpdateRequest request);
 
@@ -40,6 +40,10 @@ public interface BankruptCaseService {
 
     Long getCaseSimpleCount(Long userId, String caseNumber);
 
+    List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleInfoByCaseNumber(Integer page, Integer size, String caseNumber);
+
+    Long countByCaseNumberLike(String caseNumber);
+
     List<BankruptCase> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber);
 
     Long getUserCaseCount(Long userId, String caseStatus, String caseNumber);
@@ -53,6 +57,8 @@ public interface BankruptCaseService {
     Long getCasesCountByReviewerId(Long reviewerId, String reviewStatus);
 
     List<Object[]> getReviewStatusStatistics();
+
+    com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse getMyCaseStatistics(Long userId);
 
     void deleteCase(Long caseId);
 

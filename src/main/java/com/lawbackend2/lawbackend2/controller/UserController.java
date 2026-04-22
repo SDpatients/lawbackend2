@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.annotation.RateLimit;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.*;
@@ -31,6 +32,7 @@ public class UserController {
     @PreAuthorize("hasAuthority('system:user:add')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "创建用户", description = "创建新用户，需要管理员权限")
+    @AuditLog(module = "user", moduleName = "用户管理", operationType = "CREATE", operationName = "创建用户")
     public Result<UserResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
         log.info("创建用户请求 - 用户名: {}", request.getUsername());
         UserResponse response = userService.createUser(request);
@@ -83,6 +85,7 @@ public class UserController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:user:edit')")
     @Operation(summary = "更新用户", description = "全量更新用户信息，需要管理员权限")
+    @AuditLog(module = "user", moduleName = "用户管理", operationType = "UPDATE", operationName = "更新用户")
     public Result<UserResponse> updateUser(
             @Parameter(description = "用户ID") @PathVariable Long id,
             @Valid @RequestBody UserUpdateRequest request) {
@@ -107,6 +110,7 @@ public class UserController {
     @PreAuthorize("hasAuthority('system:user:delete')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "删除用户", description = "逻辑删除用户，需要管理员权限")
+    @AuditLog(module = "user", moduleName = "用户管理", operationType = "DELETE", operationName = "删除用户")
     public Result<Void> deleteUser(
             @Parameter(description = "用户ID") @PathVariable Long id) {
         log.info("删除用户 - 用户ID: {}", id);
@@ -138,6 +142,7 @@ public class UserController {
     @PreAuthorize("hasAuthority('system:user:edit')")
     @RateLimit(limit = 20, timeout = 60)
     @Operation(summary = "更新用户状态", description = "更新指定用户的状态，需要管理员权限")
+    @AuditLog(module = "user", moduleName = "用户管理", operationType = "UPDATE", operationName = "更新用户状态")
     public Result<UserResponse> updateUserStatus(
             @Parameter(description = "用户ID") @PathVariable Long id,
             @Valid @RequestBody UpdateUserStatusRequest request) {
@@ -174,6 +179,7 @@ public class UserController {
     @PreAuthorize("hasAuthority('system:user:edit')")
     @RateLimit(limit = 5, timeout = 60)
     @Operation(summary = "批量更新用户状态", description = "批量更新多个用户的状态，需要管理员权限")
+    @AuditLog(module = "user", moduleName = "用户管理", operationType = "BATCH_UPDATE", operationName = "批量更新用户状态")
     public Result<Void> batchUpdateUserStatus(
             @Valid @RequestBody BatchUpdateUserStatusRequest request) {
         log.info("批量更新用户状态 - 用户数量: {}, 新状态: {}", request.getUserIds().size(), request.getStatus());

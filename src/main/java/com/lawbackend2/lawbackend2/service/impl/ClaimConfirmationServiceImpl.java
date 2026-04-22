@@ -85,7 +85,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
 
     @Override
     public ClaimConfirmation getConfirmationByClaimId(Long claimRegistrationId) {
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId);
         if (confirmations.isEmpty()) {
             throw new BusinessException("债权确认记录不存在");
         }
@@ -99,19 +99,19 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
         Page<ClaimConfirmation> page;
         if (confirmationStatus == null || confirmationStatus.trim().isEmpty()) {
             if (caseId != null) {
-                page = claimConfirmationRepository.findByCaseIdAndIsDeletedFalse(caseId, pageable);
+                page = claimConfirmationRepository.findByCaseId(caseId, pageable);
             } else {
-                page = claimConfirmationRepository.findAll(pageable);
+                page = claimConfirmationRepository.findAllActive(pageable);
             }
         } else {
             if (caseId != null && confirmationStatus != null) {
-                page = claimConfirmationRepository.findByCaseIdAndConfirmationStatusAndIsDeletedFalse(caseId, confirmationStatus, pageable);
+                page = claimConfirmationRepository.findByCaseIdAndConfirmationStatus(caseId, confirmationStatus, pageable);
             } else if (caseId != null) {
-                page = claimConfirmationRepository.findByCaseIdAndIsDeletedFalse(caseId, pageable);
+                page = claimConfirmationRepository.findByCaseId(caseId, pageable);
             } else if (confirmationStatus != null) {
-                page = claimConfirmationRepository.findByConfirmationStatusAndIsDeletedFalse(confirmationStatus, pageable);
+                page = claimConfirmationRepository.findByConfirmationStatus(confirmationStatus, pageable);
             } else {
-                page = claimConfirmationRepository.findAll(pageable);
+                page = claimConfirmationRepository.findAllActive(pageable);
             }
         }
         return page.getContent();
@@ -279,8 +279,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteConfirmation(Long confirmationId) {
         ClaimConfirmation confirmation = getConfirmationById(confirmationId);
-        confirmation.setIsDeleted(true);
-        claimConfirmationRepository.save(confirmation);
+        claimConfirmationRepository.delete(confirmation);
         log.info("债权确认记录删除成功, confirmationId: {}", confirmationId);
     }
 
@@ -367,7 +366,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
 
         if (confirmation.getFinalConfirmedAmount() == null) {
             Optional<ClaimReview> reviewOpt = claimReviewRepository
-                    .findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(confirmation.getClaimRegistrationId());
+                    .findFirstByClaimRegistrationIdOrderByReviewRoundDesc(confirmation.getClaimRegistrationId());
             if (reviewOpt.isPresent()) {
                 ClaimReview review = reviewOpt.get();
                 confirmation.setFinalConfirmedAmount(review.getConfirmedTotalAmount());
@@ -413,7 +412,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
             if (caseId != null) {
                 return claimConfirmationRepository.countByCaseId(caseId);
             } else {
-                return claimConfirmationRepository.count();
+                return claimConfirmationRepository.countAllActive();
             }
         }
 
@@ -434,7 +433,7 @@ public class ClaimConfirmationServiceImpl implements ClaimConfirmationService {
         ClaimConfirmation confirmation = getConfirmationById(confirmationId);
         
         Optional<ClaimReview> reviewOpt = claimReviewRepository
-                .findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(confirmation.getClaimRegistrationId());
+                .findFirstByClaimRegistrationIdOrderByReviewRoundDesc(confirmation.getClaimRegistrationId());
         
         if (reviewOpt.isPresent()) {
             ClaimReview review = reviewOpt.get();

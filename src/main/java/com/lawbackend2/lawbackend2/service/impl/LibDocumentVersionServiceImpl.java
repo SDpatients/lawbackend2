@@ -39,10 +39,6 @@ public class LibDocumentVersionServiceImpl implements LibDocumentVersionService 
         LibDocument document = documentRepository.findById(request.getDocumentId())
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         Integer versionNumber = getNextVersionNumber(request.getDocumentId());
         String versionName = "v" + versionNumber;
 
@@ -77,10 +73,6 @@ public class LibDocumentVersionServiceImpl implements LibDocumentVersionService 
     public LibVersionResponse uploadNewVersion(Long documentId, MultipartFile file, String changeSummary, Boolean isMajor, Long userId) {
         LibDocument document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
-
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
 
         if (file == null || file.isEmpty()) {
             throw new BusinessException("文件不能为空");
@@ -153,12 +145,17 @@ public class LibDocumentVersionServiceImpl implements LibDocumentVersionService 
         LibDocumentVersion version = versionRepository.findById(versionId)
                 .orElseThrow(() -> new BusinessException("版本不存在"));
 
-        if (version.getIsDeleted()) {
-            throw new BusinessException("版本已被删除");
+        // 删除物理文件
+        String filePath = version.getFilePath();
+        if (filePath != null) {
+            File file = new File(filePath);
+            if (file.exists()) {
+                file.delete();
+            }
         }
 
-        version.setIsDeleted(true);
-        versionRepository.save(version);
+        // 硬删除版本
+        versionRepository.deleteById(versionId);
 
         log.info("删除文档版本成功 - 版本ID: {}, 用户ID: {}", versionId, userId);
         operationLogService.logOperation(version.getDocumentId(), null, "DELETE", "删除版本: " + version.getVersionName(), null, null, userId, null, null);
@@ -173,10 +170,6 @@ public class LibDocumentVersionServiceImpl implements LibDocumentVersionService 
 
         LibDocumentVersion version = versionRepository.findByDocumentIdAndVersionNumber(documentId, versionNumber)
                 .orElseThrow(() -> new BusinessException("版本不存在"));
-
-        if (version.getIsDeleted()) {
-            throw new BusinessException("版本已被删除");
-        }
 
         Integer newVersionNumber = getNextVersionNumber(documentId);
 

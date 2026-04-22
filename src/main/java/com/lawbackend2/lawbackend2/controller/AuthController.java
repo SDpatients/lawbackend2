@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.ChangePasswordRequest;
 import com.lawbackend2.lawbackend2.dto.request.ForgotPasswordRequest;
@@ -40,6 +41,7 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "使用用户名密码登录，获取JWT Token")
+    @AuditLog(module = "auth", moduleName = "用户认证", operationType = "LOGIN", operationName = "用户登录", recordParams = false)
     public Result<UserLoginResponse> login(
             @Valid @RequestBody UserLoginRequest request,
             HttpServletRequest httpRequest) {
@@ -59,6 +61,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     @Operation(summary = "用户登出", description = "退出登录，使Token失效")
+    @AuditLog(module = "auth", moduleName = "用户认证", operationType = "LOGOUT", operationName = "用户登出")
     public Result<Void> logout(@RequestHeader(value = "Authorization", required = false) String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
@@ -97,6 +100,7 @@ public class AuthController {
 
     @PostMapping("/change-password")
     @Operation(summary = "修改当前用户密码", description = "当前登录用户修改自己的密码，需要提供原密码和新密码")
+    @AuditLog(module = "auth", moduleName = "用户认证", operationType = "UPDATE", operationName = "修改密码", recordParams = false)
     public Result<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 

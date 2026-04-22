@@ -19,6 +19,12 @@ public interface DocumentExportTemplateRepository extends JpaRepository<Document
     Optional<DocumentExportTemplate> findByTemplateCode(String templateCode);
 
     /**
+     * 根据模板编码查询（包含已删除）
+     */
+    @org.springframework.data.jpa.repository.Query("SELECT t FROM DocumentExportTemplate t WHERE t.templateCode = :templateCode")
+    Optional<DocumentExportTemplate> findByTemplateCodeIncludeDeleted(@org.springframework.data.repository.query.Param("templateCode") String templateCode);
+
+    /**
      * 根据类型和状态查询模板列表
      */
     List<DocumentExportTemplate> findByTemplateTypeAndStatusAndIsDeletedFalse(String templateType, String status);

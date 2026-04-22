@@ -15,8 +15,8 @@ import java.util.List;
 @Repository
 public interface FundFlowRepository extends JpaRepository<FundFlow, Long> {
 
-    @Query("SELECT ff FROM FundFlow ff WHERE ff.isDeleted = false " +
-           "AND (:caseId IS NULL OR ff.caseId = :caseId) " +
+    @Query("SELECT ff FROM FundFlow ff WHERE " +
+           "(:caseId IS NULL OR ff.caseId = :caseId) " +
            "AND (:fundAccountId IS NULL OR ff.fundAccountId = :fundAccountId) " +
            "AND (:flowType IS NULL OR ff.flowType = :flowType) " +
            "AND (:status IS NULL OR ff.status = :status)")
@@ -26,18 +26,22 @@ public interface FundFlowRepository extends JpaRepository<FundFlow, Long> {
                                      @Param("status") String status,
                                      Pageable pageable);
 
-    List<FundFlow> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<FundFlow> findByCaseId(Long caseId);
 
-    @Query("SELECT ff FROM FundFlow ff WHERE ff.isDeleted = false AND ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
+    @Query("SELECT ff FROM FundFlow ff WHERE ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
     List<FundFlow> findByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT COUNT(ff) FROM FundFlow ff WHERE ff.isDeleted = false AND ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
+    @Query("SELECT COUNT(ff) FROM FundFlow ff WHERE ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
     Long countByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT SUM(ff.amount) FROM FundFlow ff WHERE ff.isDeleted = false AND ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
+    @Query("SELECT SUM(ff.amount) FROM FundFlow ff WHERE ff.caseId = :caseId AND ff.transactionDate BETWEEN :startDate AND :endDate")
     java.math.BigDecimal sumAmountByCaseIdAndDateRange(@Param("caseId") Long caseId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Modifying
-    @Query("UPDATE FundFlow ff SET ff.isDeleted = true WHERE ff.caseId = :caseId")
+    @Query("DELETE FROM FundFlow ff WHERE ff.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
+
+    @Modifying
+    @Query("DELETE FROM FundFlow ff WHERE ff.fundAccountId = :fundAccountId")
+    void deleteByFundAccountId(@Param("fundAccountId") Long fundAccountId);
 }

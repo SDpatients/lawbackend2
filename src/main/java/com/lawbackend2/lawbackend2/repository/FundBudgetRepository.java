@@ -15,10 +15,10 @@ import java.util.Optional;
 @Repository
 public interface FundBudgetRepository extends JpaRepository<FundBudget, Long> {
 
-    Optional<FundBudget> findByBudgetNoAndIsDeleted(String budgetNo, Boolean isDeleted);
+    Optional<FundBudget> findByBudgetNo(String budgetNo);
 
-    @Query("SELECT fb FROM FundBudget fb WHERE fb.isDeleted = false " +
-           "AND (:caseId IS NULL OR fb.caseId = :caseId) " +
+    @Query("SELECT fb FROM FundBudget fb WHERE " +
+           "(:caseId IS NULL OR fb.caseId = :caseId) " +
            "AND (:budgetType IS NULL OR fb.budgetType = :budgetType) " +
            "AND (:budgetStatus IS NULL OR fb.budgetStatus = :budgetStatus) " +
            "AND (:approvalStatus IS NULL OR fb.approvalStatus = :approvalStatus)")
@@ -28,9 +28,9 @@ public interface FundBudgetRepository extends JpaRepository<FundBudget, Long> {
                                       @Param("approvalStatus") String approvalStatus,
                                       Pageable pageable);
 
-    List<FundBudget> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<FundBudget> findByCaseId(Long caseId);
 
     @Modifying
-    @Query("UPDATE FundBudget fb SET fb.isDeleted = true WHERE fb.caseId = :caseId")
+    @Query("DELETE FROM FundBudget fb WHERE fb.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

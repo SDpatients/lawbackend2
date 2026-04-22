@@ -9,6 +9,7 @@ import com.lawbackend2.lawbackend2.dto.response.FundAccountSimpleResponse;
 import com.lawbackend2.lawbackend2.entity.FundAccount;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.FundAccountRepository;
+import com.lawbackend2.lawbackend2.repository.FundFlowRepository;
 import com.lawbackend2.lawbackend2.service.FundAccountService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -23,9 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class FundAccountServiceImpl implements FundAccountService {
 
     private final FundAccountRepository fundAccountRepository;
+    private final FundFlowRepository fundFlowRepository;
 
-    public FundAccountServiceImpl(FundAccountRepository fundAccountRepository) {
+    public FundAccountServiceImpl(FundAccountRepository fundAccountRepository, FundFlowRepository fundFlowRepository) {
         this.fundAccountRepository = fundAccountRepository;
+        this.fundFlowRepository = fundFlowRepository;
     }
 
     @Override
@@ -86,13 +89,15 @@ public class FundAccountServiceImpl implements FundAccountService {
     @Override
     public void deleteFundAccount(Long fundAccountId, Long userId) {
         FundAccount fundAccount = getFundAccountDetail(fundAccountId);
-        fundAccount.setUpdateUserId(userId);
+        
+        fundFlowRepository.deleteByFundAccountId(fundAccountId);
+        
         fundAccountRepository.delete(fundAccount);
     }
 
     @Override
     public java.util.List<FundAccountSimpleResponse> getSimpleFundAccountListByCaseId(Long caseId) {
-        java.util.List<FundAccount> fundAccounts = fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false);
+        java.util.List<FundAccount> fundAccounts = fundAccountRepository.findByCaseId(caseId);
         return fundAccounts.stream().map(fundAccount -> {
             FundAccountSimpleResponse response = new FundAccountSimpleResponse();
             response.setId(fundAccount.getId());

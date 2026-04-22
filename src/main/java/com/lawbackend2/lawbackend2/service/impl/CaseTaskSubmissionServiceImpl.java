@@ -162,10 +162,7 @@ public class CaseTaskSubmissionServiceImpl implements CaseTaskSubmissionService 
         CaseTaskSubmission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new BusinessException("提交记录不存在"));
 
-        submission.setIsDeleted(true);
-        submission.setUpdateUserId(userId);
-
-        submissionRepository.save(submission);
+        submissionRepository.delete(submission);
         log.info("任务提交删除成功, submissionId: {}", submissionId);
     }
 

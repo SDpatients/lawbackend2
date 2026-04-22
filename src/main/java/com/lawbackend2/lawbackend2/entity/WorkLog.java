@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -39,4 +40,7 @@ public class WorkLog extends BaseEntity {
 
     @Column(name = "remark", length = 500)
     private String remark;
+
+    @Transient
+    private String creatorName;
 }

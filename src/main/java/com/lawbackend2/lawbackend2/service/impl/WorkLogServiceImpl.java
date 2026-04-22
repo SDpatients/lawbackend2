@@ -132,9 +132,31 @@ public class WorkLogServiceImpl implements WorkLogService {
     public PageResult<WorkLog> getWorkLogList(Integer pageNum, Integer pageSize, Long caseId, String workType, LocalDate startDate, LocalDate endDate, Long createUserId, String status) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "workDate"));
         Page<WorkLog> page = workLogRepository.findByConditions(caseId, workType, startDate, endDate, createUserId, status, pageable);
+        List<WorkLog> list = page.getContent();
+        
+        if (!list.isEmpty()) {
+            List<Long> creatorIds = list.stream()
+                    .map(WorkLog::getCreateUserId)
+                    .filter(id -> id != null)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            if (!creatorIds.isEmpty()) {
+                List<User> users = userRepository.findAllById(creatorIds);
+                Map<Long, String> userIdToNameMap = users.stream()
+                        .collect(Collectors.toMap(User::getId, User::getRealName));
+                
+                list.forEach(log -> {
+                    if (log.getCreateUserId() != null) {
+                        log.setCreatorName(userIdToNameMap.get(log.getCreateUserId()));
+                    }
+                });
+            }
+        }
+        
         PageResult<WorkLog> result = new PageResult<>();
         result.setTotal(page.getTotalElements());
-        result.setList(page.getContent());
+        result.setList(list);
         return result;
     }
 

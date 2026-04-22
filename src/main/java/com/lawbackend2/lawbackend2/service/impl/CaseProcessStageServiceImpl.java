@@ -77,8 +77,7 @@ public class CaseProcessStageServiceImpl implements CaseProcessStageService {
             CaseProcessStage stage = caseProcessStageRepository.findById(id)
                     .orElseThrow(() -> new BusinessException("阶段数据不存在"));
             
-            stage.setIsDeleted(true);
-            caseProcessStageRepository.save(stage);
+            caseProcessStageRepository.delete(stage);
             log.info("删除阶段数据成功, id: {}", id);
             return true;
         } catch (BusinessException e) {

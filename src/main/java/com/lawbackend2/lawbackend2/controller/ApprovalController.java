@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.ApprovalCreateRequest;
@@ -52,6 +53,7 @@ public class ApprovalController {
 
     @Operation(summary = "创建审批")
     @PostMapping
+    @AuditLog(module = "approval", moduleName = "审批管理", operationType = "CREATE", operationName = "创建审批")
     public Result<Map<String, Object>> createApproval(@Valid @RequestBody ApprovalCreateRequest request) {
         Long userId = getCurrentUserId();
         Long approvalId = approvalService.createApproval(request, userId);
@@ -106,6 +108,7 @@ public class ApprovalController {
 
     @Operation(summary = "审批操作")
     @PostMapping("/{approvalId}/approve")
+    @AuditLog(module = "approval", moduleName = "审批管理", operationType = "APPROVE", operationName = "审批操作")
     public Result<Void> approveApproval(
             @Parameter(description = "审批ID") @PathVariable Long approvalId,
             @Valid @RequestBody ApprovalRequest request) {

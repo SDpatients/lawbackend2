@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimCreateRequest;
@@ -35,6 +36,7 @@ public class CreditorClaimController {
 
     @Operation(summary = "创建债权申报")
     @PostMapping
+    @AuditLog(module = "creditor-claim", moduleName = "债权申报管理", operationType = "CREATE", operationName = "创建债权申报")
     public Result<Map<String, Object>> createClaim(@Valid @RequestBody CreditorClaimCreateRequest request) {
         Long userId = getCurrentUserId();
         CreditorClaim creditorClaim = creditorClaimService.createClaim(request, userId);
@@ -68,6 +70,7 @@ public class CreditorClaimController {
 
     @Operation(summary = "更新债权申报")
     @PutMapping("/{claimId}")
+    @AuditLog(module = "creditor-claim", moduleName = "债权申报管理", operationType = "UPDATE", operationName = "更新债权申报")
     public Result<Void> updateClaim(
             @Parameter(description = "债权申报ID") @PathVariable Long claimId,
             @Valid @RequestBody CreditorClaimUpdateRequest request) {
@@ -78,6 +81,7 @@ public class CreditorClaimController {
 
     @Operation(summary = "债权申报审核")
     @PostMapping("/{claimId}/review")
+    @AuditLog(module = "creditor-claim", moduleName = "债权申报管理", operationType = "REVIEW", operationName = "债权申报审核")
     public Result<Void> reviewClaim(
             @Parameter(description = "债权申报ID") @PathVariable Long claimId,
             @Valid @RequestBody CreditorClaimReviewRequest request) {

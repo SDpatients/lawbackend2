@@ -86,8 +86,8 @@ public class LibDocumentPermissionServiceImpl implements LibDocumentPermissionSe
             throw new BusinessException("权限不存在");
         }
 
-        permission.setIsDeleted(true);
-        folderPermissionRepository.save(permission);
+        // 硬删除权限
+        folderPermissionRepository.deleteById(permission.getId());
 
         log.info("撤销文件夹权限成功 - 文件夹ID: {}, 权限ID: {}, 目标类型: {}, 目标ID: {}", 
                 folderId, permissionId, targetType, targetId);
@@ -133,8 +133,8 @@ public class LibDocumentPermissionServiceImpl implements LibDocumentPermissionSe
                 .findFirst()
                 .orElseThrow(() -> new BusinessException("权限不存在"));
 
-        permission.setIsDeleted(true);
-        documentPermissionRelRepository.save(permission);
+        // 硬删除权限
+        documentPermissionRelRepository.deleteById(permission.getId());
 
         log.info("撤销文档权限成功 - 文档ID: {}, 权限ID: {}, 目标类型: {}, 目标ID: {}", 
                 documentId, permissionId, targetType, targetId);
@@ -142,7 +142,7 @@ public class LibDocumentPermissionServiceImpl implements LibDocumentPermissionSe
 
     @Override
     public List<Map<String, Object>> getFolderPermissions(Long folderId) {
-        List<LibFolderPermission> permissions = folderPermissionRepository.findByFolderIdAndIsDeletedFalse(folderId);
+        List<LibFolderPermission> permissions = folderPermissionRepository.findByFolderId(folderId);
 
         return permissions.stream()
                 .map(p -> {
@@ -168,7 +168,7 @@ public class LibDocumentPermissionServiceImpl implements LibDocumentPermissionSe
 
     @Override
     public List<Map<String, Object>> getDocumentPermissions(Long documentId) {
-        List<LibDocumentPermissionRel> permissions = documentPermissionRelRepository.findByDocumentIdAndIsDeletedFalse(documentId);
+        List<LibDocumentPermissionRel> permissions = documentPermissionRelRepository.findByDocumentId(documentId);
 
         return permissions.stream()
                 .map(p -> {
@@ -202,7 +202,7 @@ public class LibDocumentPermissionServiceImpl implements LibDocumentPermissionSe
         }
 
         if ("FOLDER".equals(resourceType)) {
-            List<LibFolderPermission> folderPermissions = folderPermissionRepository.findByFolderIdAndIsDeletedFalse(resourceId);
+            List<LibFolderPermission> folderPermissions = folderPermissionRepository.findByFolderId(resourceId);
             return folderPermissions.stream()
                     .anyMatch(p -> {
                         if ("USER".equals(p.getTargetType()) && p.getTargetId().equals(userId)) {
@@ -211,7 +211,7 @@ public class LibDocumentPermissionServiceImpl implements LibDocumentPermissionSe
                         return false;
                     });
         } else if ("DOCUMENT".equals(resourceType)) {
-            List<LibDocumentPermissionRel> docPermissions = documentPermissionRelRepository.findByDocumentIdAndIsDeletedFalse(resourceId);
+            List<LibDocumentPermissionRel> docPermissions = documentPermissionRelRepository.findByDocumentId(resourceId);
             return docPermissions.stream()
                     .anyMatch(p -> {
                         if ("USER".equals(p.getTargetType()) && p.getTargetId().equals(userId)) {

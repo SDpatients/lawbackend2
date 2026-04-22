@@ -12,56 +12,53 @@ import java.util.List;
 @Repository
 public interface WorkTeamMemberRepository extends JpaRepository<WorkTeamMember, Long> {
 
-    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
-           "AND wtm.teamId = :teamId " +
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE " +
+           "wtm.teamId = :teamId " +
            "AND wtm.isActive = 1")
     List<WorkTeamMember> findByTeamId(@Param("teamId") Long teamId);
 
-    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
-           "AND wtm.id = :memberId " +
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE " +
+           "wtm.id = :memberId " +
            "AND wtm.isActive = 1")
     WorkTeamMember findMemberById(@Param("memberId") Long memberId);
 
-    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
-           "AND wtm.userId = :userId " +
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE " +
+           "wtm.userId = :userId " +
            "AND wtm.isActive = 1")
     List<WorkTeamMember> findByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
-           "AND wtm.caseId = :caseId " +
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE " +
+           "wtm.caseId = :caseId " +
            "AND wtm.isActive = 1")
     List<WorkTeamMember> findByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
-           "AND wtm.caseId = :caseId " +
+    @Query("SELECT wtm FROM WorkTeamMember wtm WHERE " +
+           "wtm.caseId = :caseId " +
            "AND wtm.userId = :userId " +
            "AND wtm.isActive = 1")
     List<WorkTeamMember> findByCaseIdAndUserId(@Param("caseId") Long caseId, @Param("userId") Long userId);
 
-    @Query("SELECT DISTINCT wtm.caseId FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
-           "AND wtm.userId = :userId " +
+    @Query("SELECT DISTINCT wtm.caseId FROM WorkTeamMember wtm WHERE " +
+           "wtm.userId = :userId " +
            "AND wtm.isActive = 1 " +
            "AND wtm.caseId IS NOT NULL")
     List<Long> findCaseIdsByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT DISTINCT wtm.teamId FROM WorkTeamMember wtm WHERE wtm.isDeleted = false " +
-           "AND wtm.userId = :userId " +
+    @Query("SELECT DISTINCT wtm.teamId FROM WorkTeamMember wtm WHERE " +
+           "wtm.userId = :userId " +
            "AND wtm.isActive = 1 " +
            "AND wtm.teamId IS NOT NULL")
     List<Long> findTeamIdsByUserId(@Param("userId") Long userId);
 
     @Modifying
-    @Query("UPDATE WorkTeamMember wtm SET wtm.isDeleted = true WHERE wtm.caseId = :caseId")
+    @Query("DELETE FROM WorkTeamMember wtm WHERE wtm.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
     @Query("SELECT wtm.userId, wtm.teamRole, COUNT(DISTINCT wtm.caseId) " +
            "FROM WorkTeamMember wtm " +
            "JOIN WorkTeam wt ON wtm.teamId = wt.id " +
            "JOIN BankruptCase bc ON wtm.caseId = bc.id " +
-           "WHERE wtm.isDeleted = false " +
-           "AND wtm.isActive = 1 " +
-           "AND wt.isDeleted = false " +
-           "AND bc.isDeleted = false " +
+           "WHERE wtm.isActive = 1 " +
            "AND wtm.teamRole IN ('LEADER', 'ADMIN') " +
            "AND YEAR(bc.acceptanceDate) = :year " +
            "GROUP BY wtm.userId, wtm.teamRole")
@@ -71,10 +68,7 @@ public interface WorkTeamMemberRepository extends JpaRepository<WorkTeamMember, 
            "FROM WorkTeamMember wtm " +
            "JOIN WorkTeam wt ON wtm.teamId = wt.id " +
            "JOIN BankruptCase bc ON wtm.caseId = bc.id " +
-           "WHERE wtm.isDeleted = false " +
-           "AND wtm.isActive = 1 " +
-           "AND wt.isDeleted = false " +
-           "AND bc.isDeleted = false " +
+           "WHERE wtm.isActive = 1 " +
            "AND wtm.teamRole IN ('LEADER', 'ADMIN') " +
            "GROUP BY wtm.userId, wtm.teamRole")
     List<Object[]> countCasesByUserAndRole();

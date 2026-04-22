@@ -10,6 +10,7 @@ import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.LibDocumentFolderRepository;
 import com.lawbackend2.lawbackend2.repository.LibDocumentRepository;
+import com.lawbackend2.lawbackend2.repository.LibFolderPermissionRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.LibDocumentFolderService;
 import com.lawbackend2.lawbackend2.service.LibDocumentOperationLogService;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +36,7 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
 
     private final LibDocumentFolderRepository folderRepository;
     private final LibDocumentRepository documentRepository;
+    private final LibFolderPermissionRepository folderPermissionRepository;
     private final LibDocumentOperationLogService operationLogService;
     private final UserRepository userRepository;
 
@@ -48,7 +51,7 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
                 throw new BusinessException("没有权限在该文件夹下创建");
             }
 
-            if (folderRepository.existsByParentIdAndFolderNameAndIsDeletedFalse(request.getParentId(), request.getFolderName())) {
+            if (folderRepository.existsByParentIdAndFolderName(request.getParentId(), request.getFolderName())) {
                 throw new BusinessException("该文件夹下已存在同名文件夹");
             }
         }
@@ -86,10 +89,6 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
         LibDocumentFolder folder = folderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文件夹不存在"));
 
-        if (folder.getIsDeleted()) {
-            throw new BusinessException("文件夹已被删除");
-        }
-
         if (!canAccessFolder(id, userId)) {
             throw new BusinessException("没有权限访问该文件夹");
         }
@@ -107,10 +106,6 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
         LibDocumentFolder folder = folderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文件夹不存在"));
 
-        if (folder.getIsDeleted()) {
-            throw new BusinessException("文件夹已被删除");
-        }
-
         if (!canAccessFolder(id, userId)) {
             throw new BusinessException("没有权限修改该文件夹");
         }
@@ -118,7 +113,7 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
         String oldPath = folder.getFolderPath();
 
         if (request.getFolderName() != null && !request.getFolderName().equals(folder.getFolderName())) {
-            if (folderRepository.existsByParentIdAndFolderNameAndIsDeletedFalse(folder.getParentId(), request.getFolderName())) {
+            if (folderRepository.existsByParentIdAndFolderName(folder.getParentId(), request.getFolderName())) {
                 throw new BusinessException("该文件夹下已存在同名文件夹");
             }
             folder.setFolderName(request.getFolderName());
@@ -159,30 +154,55 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
         LibDocumentFolder folder = folderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文件夹不存在"));
 
-        if (folder.getIsDeleted()) {
-            throw new BusinessException("文件夹已被删除");
-        }
-
         if (!canAccessFolder(id, userId)) {
             throw new BusinessException("没有权限删除该文件夹");
         }
 
-        Long docCount = documentRepository.countByFolderId(id);
-        if (docCount > 0) {
-            throw new BusinessException("该文件夹下存在文档，无法删除");
-        }
+        // 递归删除子文件夹及其内容
+        deleteSubFolders(id);
 
-        Long subFolderCount = folderRepository.countByParentId(id);
-        if (subFolderCount > 0) {
-            throw new BusinessException("该文件夹下存在子文件夹，无法删除");
-        }
+        // 删除文件夹内的所有文档
+        deleteDocumentsByFolderId(id);
 
-        folder.setIsDeleted(true);
-        folder.setUpdateUserId(userId);
-        folderRepository.save(folder);
+        // 删除文件夹权限
+        folderPermissionRepository.deleteByFolderId(id);
+
+        // 硬删除文件夹
+        folderRepository.deleteById(id);
 
         log.info("删除文件夹成功 - 文件夹ID: {}, 用户ID: {}", id, userId);
         operationLogService.logOperation(null, id, "DELETE", "删除文件夹", folder.getFolderName(), null, userId, null, null);
+    }
+
+    private void deleteSubFolders(Long parentId) {
+        List<LibDocumentFolder> subFolders = folderRepository.findByParentIdOrderBySortOrderAsc(parentId);
+        for (LibDocumentFolder folder : subFolders) {
+            // 递归删除子文件夹
+            deleteSubFolders(folder.getId());
+            // 删除子文件夹内的文档
+            deleteDocumentsByFolderId(folder.getId());
+            // 删除子文件夹权限
+            folderPermissionRepository.deleteByFolderId(folder.getId());
+            // 删除子文件夹
+            folderRepository.deleteById(folder.getId());
+        }
+    }
+
+    private void deleteDocumentsByFolderId(Long folderId) {
+        // 获取文件夹内所有文档
+        List<com.lawbackend2.lawbackend2.entity.LibDocument> documents = documentRepository.findByFolderIdOrderByCreateTimeDesc(folderId);
+        for (com.lawbackend2.lawbackend2.entity.LibDocument document : documents) {
+            // 删除物理文件
+            String filePath = document.getFilePath();
+            if (filePath != null) {
+                File file = new File(filePath);
+                if (file.exists()) {
+                    file.delete();
+                }
+            }
+        }
+        // 删除文档记录
+        documentRepository.deleteByFolderId(folderId);
     }
 
     @Override
@@ -194,9 +214,9 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
         if (keyword != null && !keyword.isEmpty()) {
             allFolders = folderRepository.searchByKeyword(keyword);
         } else if (parentId != null) {
-            allFolders = folderRepository.findByParentIdAndIsDeletedFalseOrderBySortOrderAsc(parentId);
+            allFolders = folderRepository.findByParentIdOrderBySortOrderAsc(parentId);
         } else {
-            allFolders = folderRepository.findByParentIdIsNullAndIsDeletedFalseOrderBySortOrderAsc();
+            allFolders = folderRepository.findByParentIdIsNullOrderBySortOrderAsc();
         }
 
         final Long currentUserId = userId;
@@ -227,9 +247,9 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
     public List<LibFolderResponse> getSubFolders(Long parentId, Long userId) {
         List<LibDocumentFolder> folders;
         if (parentId == null) {
-            folders = folderRepository.findByParentIdIsNullAndIsDeletedFalseOrderBySortOrderAsc();
+            folders = folderRepository.findByParentIdIsNullOrderBySortOrderAsc();
         } else {
-            folders = folderRepository.findByParentIdAndIsDeletedFalseOrderBySortOrderAsc(parentId);
+            folders = folderRepository.findByParentIdOrderBySortOrderAsc(parentId);
         }
 
         final Long currentUserId = userId;
@@ -330,10 +350,6 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
         LibDocumentFolder folder = folderRepository.findById(folderId)
                 .orElseThrow(() -> new BusinessException("文件夹不存在"));
 
-        if (folder.getIsDeleted()) {
-            throw new BusinessException("文件夹已被删除");
-        }
-
         if (!canAccessFolder(folderId, userId)) {
             throw new BusinessException("没有权限移动该文件夹");
         }
@@ -354,7 +370,7 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
                 throw new BusinessException("不能将文件夹移动到其子文件夹中");
             }
 
-            if (folderRepository.existsByParentIdAndFolderNameAndIsDeletedFalse(newParentId, folder.getFolderName())) {
+            if (folderRepository.existsByParentIdAndFolderName(newParentId, folder.getFolderName())) {
                 throw new BusinessException("目标文件夹下已存在同名文件夹");
             }
         }
@@ -422,9 +438,6 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
             return false;
         }
         
-        if (folder.getIsDeleted()) {
-            return false;
-        }
         if (folder.getIsPublic()) {
             return true;
         }

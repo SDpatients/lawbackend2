@@ -12,16 +12,13 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CreditorInfoRepository extends JpaRepository<CreditorInfo, Long>, JpaSpecificationExecutor<CreditorInfo> {
-    @Query("SELECT c FROM CreditorInfo c WHERE c.isDeleted = false AND c.caseId = :caseId")
-    Page<CreditorInfo> findByCaseId(@Param("caseId") Long caseId, Pageable pageable);
+    Page<CreditorInfo> findByCaseId(Long caseId, Pageable pageable);
 
-    @Query("SELECT c FROM CreditorInfo c WHERE c.isDeleted = false AND c.creditorType = :creditorType")
-    Page<CreditorInfo> findByCreditorType(@Param("creditorType") String creditorType, Pageable pageable);
+    Page<CreditorInfo> findByCreditorType(String creditorType, Pageable pageable);
 
-    @Query("SELECT c FROM CreditorInfo c WHERE c.isDeleted = false AND c.caseId = :caseId AND c.creditorType = :creditorType")
-    Page<CreditorInfo> findByCaseIdAndCreditorType(@Param("caseId") Long caseId, @Param("creditorType") String creditorType, Pageable pageable);
+    Page<CreditorInfo> findByCaseIdAndCreditorType(Long caseId, String creditorType, Pageable pageable);
 
     @Modifying
-    @Query("UPDATE CreditorInfo c SET c.isDeleted = true WHERE c.caseId = :caseId")
+    @Query("DELETE FROM CreditorInfo c WHERE c.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

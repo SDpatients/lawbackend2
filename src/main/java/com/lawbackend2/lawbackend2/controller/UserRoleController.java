@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.annotation.RateLimit;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.AssignUserRolesRequest;
@@ -34,10 +35,11 @@ public class UserRoleController {
         return Result.success(userRoleList);
     }
 
-    @PostMapping("/{userId}/roles")
+    @PostMapping("/{userId:\\d+}/roles")
     @PreAuthorize("hasAuthority('system:user:assign')")
     @RateLimit(limit = 20, timeout = 60)
     @Operation(summary = "为用户分配角色", description = "为用户分配角色，需要管理员权限")
+    @AuditLog(module = "user-role", moduleName = "用户角色管理", operationType = "ASSIGN", operationName = "为用户分配角色")
     public Result<Void> assignRolesToUser(
             @Parameter(description = "用户ID") @PathVariable Long userId,
             @Valid @RequestBody AssignUserRolesRequest request) {
@@ -46,7 +48,7 @@ public class UserRoleController {
         return Result.success();
     }
 
-    @GetMapping("/{userId}/roles")
+    @GetMapping("/{userId:\\d+}/roles")
     @PreAuthorize("hasAuthority('system:user:query')")
     @Operation(summary = "查询用户角色", description = "查询用户已分配的角色列表")
     public Result<List<Long>> getUserRoles(
@@ -56,10 +58,11 @@ public class UserRoleController {
         return Result.success(roleIds);
     }
 
-    @DeleteMapping("/{userId}/roles")
+    @DeleteMapping("/{userId:\\d+}/roles")
     @PreAuthorize("hasAuthority('system:user:assign')")
     @RateLimit(limit = 20, timeout = 60)
     @Operation(summary = "移除用户角色", description = "移除用户的指定角色，需要管理员权限")
+    @AuditLog(module = "user-role", moduleName = "用户角色管理", operationType = "REMOVE", operationName = "移除用户角色")
     public Result<Void> removeRolesFromUser(
             @Parameter(description = "用户ID") @PathVariable Long userId,
             @RequestBody AssignUserRolesRequest request) {
@@ -68,10 +71,11 @@ public class UserRoleController {
         return Result.success();
     }
 
-    @DeleteMapping("/{userId}/roles/all")
+    @DeleteMapping("/{userId:\\d+}/roles/all")
     @PreAuthorize("hasAuthority('system:user:assign')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "清空用户角色", description = "清空用户的所有角色，需要管理员权限")
+    @AuditLog(module = "user-role", moduleName = "用户角色管理", operationType = "CLEAR", operationName = "清空用户角色")
     public Result<Void> clearUserRoles(
             @Parameter(description = "用户ID") @PathVariable Long userId) {
         log.info("清空用户角色 - 用户ID: {}", userId);

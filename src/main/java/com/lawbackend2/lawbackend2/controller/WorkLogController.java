@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.WorkLogCreateRequest;
@@ -39,6 +40,7 @@ public class WorkLogController {
 
     @Operation(summary = "创建工作日志")
     @PostMapping
+    @AuditLog(module = "work-log", moduleName = "工作日志", operationType = "CREATE", operationName = "创建工作日志")
     public Result<Map<String, Object>> createWorkLog(@Valid @RequestBody WorkLogCreateRequest request) {
         Long logId = workLogService.createWorkLog(request);
 
@@ -103,6 +105,7 @@ public class WorkLogController {
 
     @Operation(summary = "更新工作日志信息")
     @PutMapping("/{logId}")
+    @AuditLog(module = "work-log", moduleName = "工作日志", operationType = "UPDATE", operationName = "更新工作日志信息")
     public Result<Void> updateWorkLog(
             @Parameter(description = "日志ID") @PathVariable Long logId,
             @Valid @RequestBody WorkLogUpdateRequest request) {
@@ -143,6 +146,7 @@ public class WorkLogController {
 
     @Operation(summary = "删除工作日志")
     @DeleteMapping("/{logId}")
+    @AuditLog(module = "work-log", moduleName = "工作日志", operationType = "DELETE", operationName = "删除工作日志")
     public Result<Void> deleteWorkLog(@Parameter(description = "日志ID") @PathVariable Long logId) {
         workLogService.deleteWorkLog(logId);
         return Result.success();

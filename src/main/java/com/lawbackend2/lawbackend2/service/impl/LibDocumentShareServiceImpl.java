@@ -36,10 +36,6 @@ public class LibDocumentShareServiceImpl implements LibDocumentShareService {
         LibDocument document = documentRepository.findById(request.getDocumentId())
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         String shareCode = generateShareCode();
 
         LibDocumentShare share = LibDocumentShare.builder()
@@ -161,9 +157,8 @@ public class LibDocumentShareServiceImpl implements LibDocumentShareService {
         LibDocumentShare share = shareRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("分享链接不存在"));
 
-        share.setIsDeleted(true);
-        share.setUpdateUserId(userId);
-        shareRepository.save(share);
+        // 硬删除分享
+        shareRepository.deleteById(id);
 
         log.info("删除分享链接成功 - 分享ID: {}, 用户ID: {}", id, userId);
         operationLogService.logOperation(share.getDocumentId(), null, "DELETE", "删除分享链接", share.getShareCode(), null, userId, null, null);

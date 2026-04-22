@@ -15,10 +15,10 @@ import java.util.Optional;
 @Repository
 public interface CommonDebtRepository extends JpaRepository<CommonDebt, Long> {
 
-    Optional<CommonDebt> findByDebtNoAndIsDeleted(String debtNo, Boolean isDeleted);
+    Optional<CommonDebt> findByDebtNo(String debtNo);
 
-    @Query("SELECT cd FROM CommonDebt cd WHERE cd.isDeleted = false " +
-           "AND (:caseId IS NULL OR cd.caseId = :caseId) " +
+    @Query("SELECT cd FROM CommonDebt cd WHERE " +
+           "(:caseId IS NULL OR cd.caseId = :caseId) " +
            "AND (:debtType IS NULL OR cd.debtType = :debtType) " +
            "AND (:approvalStatus IS NULL OR cd.approvalStatus = :approvalStatus) " +
            "AND (:repaymentStatus IS NULL OR cd.repaymentStatus = :repaymentStatus)")
@@ -28,9 +28,9 @@ public interface CommonDebtRepository extends JpaRepository<CommonDebt, Long> {
                                       @Param("repaymentStatus") String repaymentStatus,
                                       Pageable pageable);
 
-    List<CommonDebt> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<CommonDebt> findByCaseId(Long caseId);
 
     @Modifying
-    @Query("UPDATE CommonDebt cd SET cd.isDeleted = true WHERE cd.caseId = :caseId")
+    @Query("DELETE FROM CommonDebt cd WHERE cd.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

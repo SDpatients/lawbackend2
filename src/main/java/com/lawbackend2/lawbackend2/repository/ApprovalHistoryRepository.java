@@ -21,6 +21,10 @@ public interface ApprovalHistoryRepository extends JpaRepository<ApprovalHistory
     Page<ApprovalHistory> findByApproverId(Long approverId, Pageable pageable);
 
     @Modifying
-    @Query("UPDATE ApprovalHistory ah SET ah.isDeleted = true WHERE ah.caseId = :caseId")
+    @Query("DELETE FROM ApprovalHistory h WHERE h.approvalId = :approvalId")
+    void deleteByApprovalId(@Param("approvalId") Long approvalId);
+
+    @Modifying
+    @Query("DELETE FROM ApprovalHistory h WHERE h.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

@@ -54,7 +54,9 @@ public class BankAccountServiceImpl implements BankAccountService {
 
     @Override
     public Long createBankAccount(BankAccountCreateRequest request, Long userId) {
-        if (bankAccountRepository.existsByAccountNumber(request.getAccountNumber())) {
+        java.util.Optional<BankAccount> existingAccount = bankAccountRepository.findByAccountNumber(request.getAccountNumber());
+        
+        if (existingAccount.isPresent()) {
             throw new BusinessException("银行账号已存在");
         }
 
@@ -159,6 +161,9 @@ public class BankAccountServiceImpl implements BankAccountService {
         if (!bankAccountRepository.existsById(accountId)) {
             throw new BusinessException("银行账户不存在");
         }
+        // 先删除关联的交易记录
+        transactionRepository.deleteByAccountId(accountId);
+        // 再删除银行账户
         bankAccountRepository.deleteById(accountId);
     }
 
@@ -216,7 +221,6 @@ public class BankAccountServiceImpl implements BankAccountService {
         BankAccountWithTransactionsResponse response = new BankAccountWithTransactionsResponse();
         response.setId(bankAccount.getId());
         response.setStatus(bankAccount.getStatus());
-        response.setIsDeleted(bankAccount.getIsDeleted());
         response.setCreateTime(bankAccount.getCreateTime());
         response.setUpdateTime(bankAccount.getUpdateTime());
         response.setCreateUserId(bankAccount.getCreateUserId());

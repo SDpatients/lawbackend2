@@ -12,8 +12,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface WorkLogRepository extends JpaRepository<WorkLog, Long> {
 
-    @Query("SELECT wl FROM WorkLog wl WHERE wl.isDeleted = false " +
-           "AND (:caseId IS NULL OR wl.caseId = :caseId) " +
+    @Query("SELECT wl FROM WorkLog wl WHERE " +
+           "(:caseId IS NULL OR wl.caseId = :caseId) " +
            "AND (:workType IS NULL OR wl.workType = :workType) " +
            "AND (:startDate IS NULL OR wl.workDate >= :startDate) " +
            "AND (:endDate IS NULL OR wl.workDate <= :endDate) " +
@@ -28,6 +28,6 @@ public interface WorkLogRepository extends JpaRepository<WorkLog, Long> {
                                     Pageable pageable);
 
     @Modifying
-    @Query("UPDATE WorkLog wl SET wl.isDeleted = true WHERE wl.caseId = :caseId")
+    @Query("DELETE FROM WorkLog wl WHERE wl.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

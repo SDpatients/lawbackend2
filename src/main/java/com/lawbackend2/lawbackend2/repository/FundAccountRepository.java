@@ -15,17 +15,17 @@ import java.util.Optional;
 @Repository
 public interface FundAccountRepository extends JpaRepository<FundAccount, Long> {
 
-    @Query("SELECT fa FROM FundAccount fa WHERE fa.isDeleted = false " +
-           "AND (:caseId IS NULL OR fa.caseId = :caseId) " +
+    @Query("SELECT fa FROM FundAccount fa WHERE " +
+           "(:caseId IS NULL OR fa.caseId = :caseId) " +
            "AND (:status IS NULL OR fa.status = :status)")
     Page<FundAccount> findByConditions(@Param("caseId") Long caseId,
                                         @Param("status") String status,
                                         Pageable pageable);
 
-    List<FundAccount> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<FundAccount> findByCaseId(Long caseId);
     FundAccount findByAccountName(String accountName);
 
     @Modifying
-    @Query("UPDATE FundAccount fa SET fa.isDeleted = true WHERE fa.caseId = :caseId")
+    @Query("DELETE FROM FundAccount fa WHERE fa.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

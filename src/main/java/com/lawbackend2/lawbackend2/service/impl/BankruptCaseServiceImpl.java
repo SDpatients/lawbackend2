@@ -67,6 +67,8 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     private final CaseTaskSubmissionRepository caseTaskSubmissionRepository;
     private final WorkLogRepository workLogRepository;
     private final BankAccountRepository bankAccountRepository;
+    private final BankAccountTransactionRepository bankAccountTransactionRepository;
+    private final ExpenseReimbursementRepository expenseReimbursementRepository;
     private final ClaimRegistrationRepository claimRegistrationRepository;
     private final ClaimReviewRepository claimReviewRepository;
 
@@ -107,6 +109,8 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
                                  CaseTaskSubmissionRepository caseTaskSubmissionRepository,
                                  WorkLogRepository workLogRepository,
                                  BankAccountRepository bankAccountRepository,
+                                 BankAccountTransactionRepository bankAccountTransactionRepository,
+                                 ExpenseReimbursementRepository expenseReimbursementRepository,
                                  ClaimRegistrationRepository claimRegistrationRepository,
                                  ClaimReviewRepository claimReviewRepository) {
         this.bankruptCaseRepository = bankruptCaseRepository;
@@ -146,6 +150,8 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         this.caseTaskSubmissionRepository = caseTaskSubmissionRepository;
         this.workLogRepository = workLogRepository;
         this.bankAccountRepository = bankAccountRepository;
+        this.bankAccountTransactionRepository = bankAccountTransactionRepository;
+        this.expenseReimbursementRepository = expenseReimbursementRepository;
         this.claimRegistrationRepository = claimRegistrationRepository;
         this.claimReviewRepository = claimReviewRepository;
     }
@@ -185,33 +191,60 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     }
 
     @Override
-    public List<BankruptCase> getCaseList(Integer pageNum, Integer pageSize, String caseStatus, String caseProgress) {
+    public List<BankruptCase> getCaseList(Integer pageNum, Integer pageSize, String caseStatus, String caseProgress, String keyword) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
 
         Page<BankruptCase> page;
-        if (caseStatus != null && caseProgress != null) {
-            page = bankruptCaseRepository.findByCaseStatusAndCaseProgress(caseStatus, caseProgress, pageable);
-        } else if (caseStatus != null) {
-            page = bankruptCaseRepository.findByCaseStatus(caseStatus, pageable);
-        } else if (caseProgress != null) {
-            page = bankruptCaseRepository.findByCaseProgress(caseProgress, pageable);
+        
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            if (caseStatus != null && caseProgress != null) {
+                page = bankruptCaseRepository.searchByKeywordAndStatusAndProgress(keyword.trim(), caseStatus, caseProgress, pageable);
+            } else if (caseStatus != null) {
+                page = bankruptCaseRepository.searchByKeywordAndCaseStatus(keyword.trim(), caseStatus, pageable);
+            } else if (caseProgress != null) {
+                page = bankruptCaseRepository.searchByKeywordAndCaseProgress(keyword.trim(), caseProgress, pageable);
+            } else {
+                page = bankruptCaseRepository.searchByKeyword(keyword.trim(), pageable);
+            }
         } else {
-            page = bankruptCaseRepository.findAll(pageable);
+            if (caseStatus != null && caseProgress != null) {
+                page = bankruptCaseRepository.findByCaseStatusAndCaseProgress(caseStatus, caseProgress, pageable);
+            } else if (caseStatus != null) {
+                page = bankruptCaseRepository.findByCaseStatus(caseStatus, pageable);
+            } else if (caseProgress != null) {
+                page = bankruptCaseRepository.findByCaseProgress(caseProgress, pageable);
+            } else {
+                page = bankruptCaseRepository.findAll(pageable);
+            }
         }
 
         return page.getContent();
     }
 
     @Override
-    public Long getCaseCount(String caseStatus, String caseProgress) {
-        if (caseStatus != null && caseProgress != null) {
-            return bankruptCaseRepository.findByCaseStatusAndCaseProgress(caseStatus, caseProgress, Pageable.unpaged()).getTotalElements();
-        } else if (caseStatus != null) {
-            return bankruptCaseRepository.findByCaseStatus(caseStatus, Pageable.unpaged()).getTotalElements();
-        } else if (caseProgress != null) {
-            return bankruptCaseRepository.findByCaseProgress(caseProgress, Pageable.unpaged()).getTotalElements();
+    public Long getCaseCount(String caseStatus, String caseProgress, String keyword) {
+        Pageable pageable = PageRequest.of(0, 1);
+        
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            if (caseStatus != null && caseProgress != null) {
+                return bankruptCaseRepository.searchByKeywordAndStatusAndProgress(keyword.trim(), caseStatus, caseProgress, pageable).getTotalElements();
+            } else if (caseStatus != null) {
+                return bankruptCaseRepository.searchByKeywordAndCaseStatus(keyword.trim(), caseStatus, pageable).getTotalElements();
+            } else if (caseProgress != null) {
+                return bankruptCaseRepository.searchByKeywordAndCaseProgress(keyword.trim(), caseProgress, pageable).getTotalElements();
+            } else {
+                return bankruptCaseRepository.searchByKeyword(keyword.trim(), pageable).getTotalElements();
+            }
         } else {
-            return bankruptCaseRepository.count();
+            if (caseStatus != null && caseProgress != null) {
+                return bankruptCaseRepository.findByCaseStatusAndCaseProgress(caseStatus, caseProgress, Pageable.unpaged()).getTotalElements();
+            } else if (caseStatus != null) {
+                return bankruptCaseRepository.findByCaseStatus(caseStatus, Pageable.unpaged()).getTotalElements();
+            } else if (caseProgress != null) {
+                return bankruptCaseRepository.findByCaseProgress(caseProgress, Pageable.unpaged()).getTotalElements();
+            } else {
+                return bankruptCaseRepository.count();
+            }
         }
     }
 
@@ -374,6 +407,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
 
         int successCount = 0;
         int failCount = 0;
+        List<String> errorMessages = new ArrayList<>();
 
         for (Long caseId : request.getCaseIds()) {
             try {
@@ -382,6 +416,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
                 if (!"PENDING".equals(bankruptCase.getReviewStatus())) {
                     log.warn("案件{}当前状态不允许审核，跳过", caseId);
                     failCount++;
+                    errorMessages.add(String.format("案件%s: 当前状态不允许审核", caseId));
                     continue;
                 }
 
@@ -400,13 +435,27 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
                 bankruptCaseRepository.save(bankruptCase);
                 successCount++;
                 log.info("案件{}审核成功", caseId);
-            } catch (Exception e) {
-                log.error("案件{}审核失败: {}", caseId, e.getMessage());
+            } catch (BusinessException e) {
+                log.error("案件{}审核失败，业务异常: {}", caseId, e.getMessage(), e);
                 failCount++;
+                errorMessages.add(String.format("案件%s: %s", caseId, e.getMessage()));
+            } catch (Exception e) {
+                log.error("案件{}审核失败，系统异常", caseId, e);
+                failCount++;
+                errorMessages.add(String.format("案件%s: 系统异常 - %s", caseId, e.getMessage()));
             }
         }
 
         log.info("批量审核完成, 成功: {}, 失败: {}", successCount, failCount);
+
+        if (failCount > 0) {
+            StringBuilder errorMsg = new StringBuilder();
+            errorMsg.append(String.format("批量审核完成，成功%d个，失败%d个。失败详情：", successCount, failCount));
+            for (int i = 0; i < errorMessages.size(); i++) {
+                errorMsg.append("\n").append(i + 1).append(". ").append(errorMessages.get(i));
+            }
+            throw new BusinessException(errorMsg.toString());
+        }
     }
 
     @Override
@@ -534,6 +583,18 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         }
         
         return result.getTotalElements();
+    }
+
+    @Override
+    public List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleInfoByCaseNumber(Integer page, Integer size, String caseNumber) {
+        Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "createTime"));
+        Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result = bankruptCaseRepository.findSimpleInfoByCaseNumber(caseNumber, pageable);
+        return result.getContent();
+    }
+
+    @Override
+    public Long countByCaseNumberLike(String caseNumber) {
+        return bankruptCaseRepository.countByCaseNumberLike(caseNumber);
     }
 
     @Override
@@ -684,6 +745,46 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     }
 
     @Override
+    public com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse getMyCaseStatistics(Long userId) {
+        log.info("查询当前用户的案件统计数据, userId: {}", userId);
+
+        com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse response = 
+            new com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse();
+
+        // 查询所有案件数量
+        Long totalCount = bankruptCaseRepository.countByCreateUserId(userId);
+        response.setTotalCases(totalCount);
+
+        // 查询进行中案件数量（caseStatus 不为 CLOSED, COMPLETED, TERMINATED, ARCHIVED）
+        List<Object[]> statusGroup = bankruptCaseRepository.countByUserIdAndStatusGroup(userId);
+        long inProgressCount = 0;
+        long completedCount = 0;
+        
+        for (Object[] row : statusGroup) {
+            String status = (String) row[0];
+            Long count = (Long) row[1];
+            
+            // 进行中的状态
+            if ("PENDING".equals(status) || "ONGOING".equals(status) || "APPROVED".equals(status)) {
+                inProgressCount += count;
+            }
+            
+            // 已结案的状态
+            if ("COMPLETED".equals(status)) {
+                completedCount += count;
+            }
+        }
+        
+        response.setInProgressCases(inProgressCount);
+        response.setCompletedCases(completedCount);
+
+        log.info("当前用户的案件统计数据: 总数={}, 进行中={}, 已结案={}", 
+            response.getTotalCases(), response.getInProgressCases(), response.getCompletedCases());
+        
+        return response;
+    }
+
+    @Override
     public com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse getCaseRelatedData(Long caseId) {
         log.info("查询案件关联数据, caseId: {}", caseId);
 
@@ -730,41 +831,41 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
         response.setAnnouncementData(announcementData);
 
-        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.FundData fundData = 
+        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.FundData fundData =
             new com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.FundData();
-        fundData.setFundReimbursementCount(fundReimbursementRepository.findByCaseIdAndIsDeleted(caseId, false).size());
-        fundData.setFundFlowCount(fundFlowRepository.findByCaseIdAndIsDeleted(caseId, false).size());
-        fundData.setFundOperationLogCount((int) fundOperationLogRepository.findByConditions(caseId, null, null, 
+        fundData.setFundReimbursementCount(fundReimbursementRepository.findByCaseId(caseId).size());
+        fundData.setFundFlowCount(fundFlowRepository.findByCaseId(caseId).size());
+        fundData.setFundOperationLogCount((int) fundOperationLogRepository.findByConditions(caseId, null, null,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        fundData.setFundBudgetCount(fundBudgetRepository.findByCaseIdAndIsDeleted(caseId, false).size());
-        fundData.setEscrowManagementCount(escrowManagementRepository.findByCaseIdAndIsDeleted(caseId, false).size());
-        fundData.setFundAccountCount(fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false).size());
-        fundData.setFundApprovalCount(fundApprovalRepository.findByCaseIdAndIsDeleted(caseId, false).size());
-        fundData.setBankruptcyExpenseCount(bankruptcyExpenseRepository.findByCaseIdAndIsDeleted(caseId, false).size());
+        fundData.setFundBudgetCount(fundBudgetRepository.findByCaseId(caseId).size());
+        fundData.setEscrowManagementCount(escrowManagementRepository.findByCaseId(caseId).size());
+        fundData.setFundAccountCount(fundAccountRepository.findByCaseId(caseId).size());
+        fundData.setFundApprovalCount(fundApprovalRepository.findByCaseId(caseId).size());
+        fundData.setBankruptcyExpenseCount(bankruptcyExpenseRepository.findByCaseId(caseId).size());
         response.setFundData(fundData);
 
-        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.DistributionData distributionData = 
+        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.DistributionData distributionData =
             new com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.DistributionData();
-        distributionData.setDistributionDetailCount(distributionDetailRepository.findByCaseIdAndIsDeleted(caseId, false).size());
-        distributionData.setDistributionExecutionCount(distributionExecutionRepository.findByCaseIdAndIsDeleted(caseId, false).size());
+        distributionData.setDistributionDetailCount(distributionDetailRepository.findByCaseId(caseId).size());
+        distributionData.setDistributionExecutionCount(distributionExecutionRepository.findByCaseId(caseId).size());
         response.setDistributionData(distributionData);
 
-        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.DebtData debtData = 
+        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.DebtData debtData =
             new com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.DebtData();
-        debtData.setCommonDebtCount(commonDebtRepository.findByCaseIdAndIsDeleted(caseId, false).size());
+        debtData.setCommonDebtCount(commonDebtRepository.findByCaseId(caseId).size());
         response.setDebtData(debtData);
 
         com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.ClaimData claimData =
             new com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse.ClaimData();
-        claimData.setClaimConfirmationCount((int) claimConfirmationRepository.findByCaseIdAndIsDeletedFalse(caseId,
+        claimData.setClaimConfirmationCount((int) claimConfirmationRepository.findByCaseId(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
         claimData.setCreditorClaimCount((int) creditorClaimRepository.findByCaseId(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
         claimData.setCreditorInfoCount((int) creditorInfoRepository.findByCaseId(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        claimData.setClaimRegistrationCount((int) claimRegistrationRepository.findByCaseIdAndIsDeletedFalse(caseId,
+        claimData.setClaimRegistrationCount((int) claimRegistrationRepository.findByCaseId(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        claimData.setClaimReviewCount((int) claimReviewRepository.findByCaseIdAndIsDeletedFalse(caseId,
+        claimData.setClaimReviewCount((int) claimReviewRepository.findByCaseId(caseId,
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
         response.setClaimData(claimData);
 
@@ -774,7 +875,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
         workData.setWorkTeamCount((int) workTeamRepository.findByConditions(caseId, null, null, null, 
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
-        workData.setWorkPlanCount(workPlanRepository.findByCaseIdAndIsDeleted(caseId, false).size());
+        workData.setWorkPlanCount(workPlanRepository.findByCaseId(caseId).size());
         workData.setWorkLogCount((int) workLogRepository.findByConditions(caseId, null, null, null, null, null, 
             org.springframework.data.domain.Pageable.unpaged()).getTotalElements());
         workData.setCaseProgressCount((int) caseProgressRepository.findByCaseId(caseId, 
@@ -805,7 +906,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteCase(Long caseId) {
-        log.info("开始软删除案件及其关联数据, caseId: {}", caseId);
+        log.info("开始硬删除案件及其关联数据, caseId: {}", caseId);
 
         BankruptCase bankruptCase = getCaseById(caseId);
 
@@ -837,17 +938,18 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         debtorEnterpriseRepository.deleteByCaseId(caseId);
         caseProgressRepository.deleteByCaseId(caseId);
         creditorInfoRepository.deleteByCaseId(caseId);
-        caseTaskRepository.deleteByCaseId(caseId);
         caseTaskSubmissionRepository.deleteByCaseId(caseId);
+        caseTaskRepository.deleteByCaseId(caseId);
         workLogRepository.deleteByCaseId(caseId);
+        bankAccountTransactionRepository.deleteByCaseId(caseId);
         bankAccountRepository.deleteByCaseId(caseId);
+        expenseReimbursementRepository.deleteByCaseId(caseId);
         claimRegistrationRepository.deleteByCaseId(caseId);
         claimReviewRepository.deleteByCaseId(caseId);
 
-        bankruptCase.setIsDeleted(true);
-        bankruptCaseRepository.save(bankruptCase);
+        bankruptCaseRepository.delete(bankruptCase);
 
-        log.info("案件及其关联数据软删除成功，caseId: {}", caseId);
+        log.info("案件及其关联数据硬删除成功，caseId: {}", caseId);
     }
 
     /**

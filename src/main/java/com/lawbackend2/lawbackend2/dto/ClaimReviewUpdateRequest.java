@@ -75,7 +75,7 @@ public class ClaimReviewUpdateRequest {
 
     private String reviewReport;
 
-    private List<String> reviewAttachments;
+    private List<ReviewAttachmentDto> reviewAttachments;
 
     private String reviewStatus;
 

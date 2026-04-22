@@ -12,16 +12,19 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface AdministratorRepository extends JpaRepository<Administrator, Long> {
 
-    @Query("SELECT a FROM Administrator a WHERE a.isDeleted = false AND a.caseId = :caseId")
-    Page<Administrator> findByCaseId(@Param("caseId") Long caseId, Pageable pageable);
+    Page<Administrator> findAll(Pageable pageable);
 
-    @Query("SELECT a FROM Administrator a WHERE a.isDeleted = false AND (:caseId IS NULL OR a.caseId = :caseId) AND (:administratorName IS NULL OR a.administratorName LIKE %:administratorName%)")
+    long count();
+
+    Page<Administrator> findByCaseId(Long caseId, Pageable pageable);
+
+    @Query("SELECT a FROM Administrator a WHERE (:caseId IS NULL OR a.caseId = :caseId) AND (:administratorName IS NULL OR a.administratorName LIKE %:administratorName%)")
     Page<Administrator> findByConditions(@Param("caseId") Long caseId, @Param("administratorName") String administratorName, Pageable pageable);
 
-    @Query("SELECT COUNT(a) FROM Administrator a WHERE a.isDeleted = false AND (:caseId IS NULL OR a.caseId = :caseId) AND (:administratorName IS NULL OR a.administratorName LIKE %:administratorName%)")
+    @Query("SELECT COUNT(a) FROM Administrator a WHERE (:caseId IS NULL OR a.caseId = :caseId) AND (:administratorName IS NULL OR a.administratorName LIKE %:administratorName%)")
     Long countByConditions(@Param("caseId") Long caseId, @Param("administratorName") String administratorName);
 
     @Modifying
-    @Query("UPDATE Administrator a SET a.isDeleted = true WHERE a.caseId = :caseId")
+    @Query("DELETE FROM Administrator a WHERE a.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

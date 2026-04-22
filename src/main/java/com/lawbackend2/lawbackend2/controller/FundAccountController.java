@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.FundAccountBalanceRequest;
@@ -35,6 +36,7 @@ public class FundAccountController {
 
     @Operation(summary = "创建资金账户")
     @PostMapping
+    @AuditLog(module = "fund-account", moduleName = "资金账户管理", operationType = "CREATE", operationName = "创建资金账户")
     public Result<Map<String, Object>> createFundAccount(@Valid @RequestBody FundAccountCreateRequest request) {
         Long userId = getCurrentUserId();
         Long fundAccountId = fundAccountService.createFundAccount(request, userId);
@@ -75,6 +77,7 @@ public class FundAccountController {
 
     @Operation(summary = "更新资金账户信息")
     @PutMapping("/{fundAccountId}")
+    @AuditLog(module = "fund-account", moduleName = "资金账户管理", operationType = "UPDATE", operationName = "更新资金账户信息")
     public Result<Void> updateFundAccount(
             @Parameter(description = "资金账户ID") @PathVariable Long fundAccountId,
             @Valid @RequestBody FundAccountUpdateRequest request) {
@@ -86,6 +89,7 @@ public class FundAccountController {
 
     @Operation(summary = "更新资金账户余额")
     @PutMapping("/{fundAccountId}/balance")
+    @AuditLog(module = "fund-account", moduleName = "资金账户管理", operationType = "UPDATE", operationName = "更新资金账户余额")
     public Result<Void> updateFundAccountBalance(
             @Parameter(description = "资金账户ID") @PathVariable Long fundAccountId,
             @Valid @RequestBody FundAccountBalanceRequest request) {
@@ -108,6 +112,7 @@ public class FundAccountController {
 
     @Operation(summary = "删除资金账户")
     @DeleteMapping("/{fundAccountId}")
+    @AuditLog(module = "fund-account", moduleName = "资金账户管理", operationType = "DELETE", operationName = "删除资金账户")
     public Result<Void> deleteFundAccount(@Parameter(description = "资金账户ID") @PathVariable Long fundAccountId) {
         Long userId = getCurrentUserId();
         fundAccountService.deleteFundAccount(fundAccountId, userId);

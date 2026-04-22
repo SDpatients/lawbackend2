@@ -16,10 +16,13 @@ import java.util.Optional;
 @Repository
 public interface BankAccountRepository extends JpaRepository<BankAccount, Long>, JpaSpecificationExecutor<BankAccount> {
 
+    @Query("SELECT ba FROM BankAccount ba WHERE ba.accountNumber = :accountNumber")
+    Optional<BankAccount> findByAccountNumberIncludeDeleted(@Param("accountNumber") String accountNumber);
+
     Optional<BankAccount> findByAccountNumber(String accountNumber);
 
-    @Query("SELECT ba FROM BankAccount ba WHERE ba.isDeleted = false " +
-           "AND (:accountType IS NULL OR ba.accountType = :accountType) " +
+    @Query("SELECT ba FROM BankAccount ba WHERE " +
+           "(:accountType IS NULL OR ba.accountType = :accountType) " +
            "AND (:status IS NULL OR ba.status = :status) " +
            "AND (:accountName IS NULL OR ba.accountName LIKE %:accountName%) " +
            "AND (:caseId IS NULL OR ba.caseId = :caseId)")
@@ -32,18 +35,17 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long>,
     boolean existsByAccountNumber(String accountNumber);
 
     @Modifying
-    @Query("UPDATE BankAccount ba SET ba.isDeleted = true WHERE ba.caseId = :caseId")
+    @Query("DELETE FROM BankAccount ba WHERE ba.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
     @Query("SELECT new com.lawbackend2.lawbackend2.dto.response.BankAccountResponse(" +
-           "ba.id, ba.status, ba.isDeleted, ba.createTime, ba.updateTime, " +
+           "ba.id, ba.status, ba.createTime, ba.updateTime, " +
            "ba.createUserId, ba.updateUserId, ba.accountName, ba.bankName, " +
            "ba.accountNumber, ba.accountType, ba.currency, ba.currentBalance, " +
            "ba.openingDate, ba.closingDate, ba.caseId, bc.caseNumber, bc.caseName) " +
            "FROM BankAccount ba " +
            "LEFT JOIN BankruptCase bc ON ba.caseId = bc.id " +
-           "WHERE ba.isDeleted = false " +
-           "AND (:accountType IS NULL OR ba.accountType = :accountType) " +
+           "WHERE (:accountType IS NULL OR ba.accountType = :accountType) " +
            "AND (:status IS NULL OR ba.status = :status) " +
            "AND (:accountName IS NULL OR ba.accountName LIKE %:accountName%) " +
            "AND (:caseId IS NULL OR ba.caseId = :caseId) " +

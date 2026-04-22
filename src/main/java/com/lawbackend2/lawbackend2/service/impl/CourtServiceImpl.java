@@ -36,8 +36,31 @@ public class CourtServiceImpl implements CourtService {
     public Court createCourt(CourtCreateRequest request, Long userId) {
         log.info("创建法院信息, 简称: {}, 创建人ID: {}", request.getShortName(), userId);
 
-        if (courtRepository.findByShortName(request.getShortName()).isPresent()) {
-            throw new BusinessException("法院简称已存在");
+        java.util.Optional<Court> existingCourt = courtRepository.findByShortNameIncludeDeleted(request.getShortName());
+        
+        if (existingCourt.isPresent()) {
+            Court existing = existingCourt.get();
+            if (!existing.getIsDeleted()) {
+                throw new BusinessException("法院简称已存在");
+            }
+            
+            log.info("发现已删除的同简称法院，将恢复该记录, shortName: {}, courtId: {}", 
+                     request.getShortName(), existing.getId());
+            
+            existing.setIsDeleted(false);
+            existing.setFullName(request.getFullName());
+            existing.setCourtLevel(request.getCourtLevel());
+            existing.setContactPhone(request.getContactPhone());
+            existing.setAddress(request.getAddress());
+            existing.setUndertakingJudge(request.getUndertakingJudge());
+            if (request.getResponsibleUserId() != null) {
+                existing.setResponsibleUserId(request.getResponsibleUserId());
+            }
+            existing.setUpdateUserId(userId);
+            
+            Court saved = courtRepository.save(existing);
+            log.info("法院信息恢复成功, ID: {}", saved.getId());
+            return saved;
         }
 
         if (request.getResponsibleUserId() != null) {

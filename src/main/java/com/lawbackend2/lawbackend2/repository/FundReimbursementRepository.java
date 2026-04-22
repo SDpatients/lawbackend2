@@ -15,10 +15,10 @@ import java.util.Optional;
 @Repository
 public interface FundReimbursementRepository extends JpaRepository<FundReimbursement, Long> {
 
-    Optional<FundReimbursement> findByReimbursementNoAndIsDeleted(String reimbursementNo, Boolean isDeleted);
+    Optional<FundReimbursement> findByReimbursementNo(String reimbursementNo);
 
-    @Query("SELECT fr FROM FundReimbursement fr WHERE fr.isDeleted = false " +
-           "AND (:caseId IS NULL OR fr.caseId = :caseId) " +
+    @Query("SELECT fr FROM FundReimbursement fr WHERE " +
+           "(:caseId IS NULL OR fr.caseId = :caseId) " +
            "AND (:reimbursementType IS NULL OR fr.reimbursementType = :reimbursementType) " +
            "AND (:applicantId IS NULL OR fr.applicantId = :applicantId) " +
            "AND (:approvalStatus IS NULL OR fr.approvalStatus = :approvalStatus) " +
@@ -30,9 +30,9 @@ public interface FundReimbursementRepository extends JpaRepository<FundReimburse
                                               @Param("paymentStatus") String paymentStatus,
                                               Pageable pageable);
 
-    List<FundReimbursement> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<FundReimbursement> findByCaseId(Long caseId);
 
     @Modifying
-    @Query("UPDATE FundReimbursement fr SET fr.isDeleted = true WHERE fr.caseId = :caseId")
+    @Query("DELETE FROM FundReimbursement fr WHERE fr.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

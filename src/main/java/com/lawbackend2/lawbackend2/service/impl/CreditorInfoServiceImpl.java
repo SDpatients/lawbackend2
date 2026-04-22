@@ -127,6 +127,8 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
+
+
             if (caseId != null) {
                 predicates.add(cb.equal(root.get("caseId"), caseId));
             }
@@ -191,8 +193,6 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                 }
             }
 
-            predicates.add(cb.equal(root.get("isDeleted"), false));
-
             if (!isAdminOrSuperAdmin(userId)) {
                 List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
                 predicates.add(cb.or(
@@ -241,8 +241,6 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
                     // Ignore invalid status values
                 }
             }
-
-            predicates.add(cb.equal(root.get("isDeleted"), false));
 
             if (!isAdminOrSuperAdmin(userId)) {
                 List<Long> accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
@@ -327,46 +325,34 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
     public void deleteCreditor(Long creditorId, Long userId) {
         CreditorInfo creditorInfo = getCreditorById(creditorId);
         
-        if (creditorInfo.getIsDeleted()) {
-            throw new BusinessException("该债权人已被删除，无法重复删除");
-        }
-        
         // 检查权限
         checkPermission(creditorInfo, userId);
         
         // 级联删除：债权确认 → 债权审查 → 债权申报
         // 1. 查找该债权人的所有债权申报
-        List<ClaimRegistration> registrations = claimRegistrationRepository.findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName());
+        List<ClaimRegistration> registrations = claimRegistrationRepository.findAllByCreditorName(creditorInfo.getCreditorName());
         for (ClaimRegistration registration : registrations) {
             // 删除相关的确认记录
-            List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(registration.getId());
+            List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(registration.getId());
             for (ClaimConfirmation confirmation : confirmations) {
-                confirmation.setIsDeleted(true);
-                confirmation.setUpdateUserId(userId);
-                claimConfirmationRepository.save(confirmation);
+                claimConfirmationRepository.delete(confirmation);
                 log.info("级联删除债权确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), registration.getId());
             }
             
             // 删除相关的审查记录
-            List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationIdAndIsDeletedFalse(registration.getId());
+            List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationId(registration.getId());
             for (ClaimReview review : reviews) {
-                review.setIsDeleted(true);
-                review.setUpdateUserId(userId);
-                claimReviewRepository.save(review);
+                claimReviewRepository.delete(review);
                 log.info("级联删除债权审查记录, reviewId: {}, claimRegistrationId: {}", review.getId(), registration.getId());
             }
             
             // 删除债权申报
-            registration.setIsDeleted(true);
-            registration.setUpdateUserId(userId);
-            claimRegistrationRepository.save(registration);
+            claimRegistrationRepository.delete(registration);
             log.info("级联删除债权申报记录, claimId: {}, creditorName: {}", registration.getId(), creditorInfo.getCreditorName());
         }
         
-        // 逻辑删除债权人
-        creditorInfo.setIsDeleted(true);
-        creditorInfo.setUpdateUserId(userId);
-        creditorInfoRepository.save(creditorInfo);
+        // 硬删除债权人
+        creditorInfoRepository.delete(creditorInfo);
         
         log.info("债权人删除成功, creditorId: {}, creditorName: {}", creditorId, creditorInfo.getCreditorName());
     }
@@ -430,9 +416,8 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         response.setCreditorName(creditorInfo.getCreditorName());
         
         List<CreditorClaimStagesResponse.ClaimRegistrationInfo> claimRegistrations = claimRegistrationRepository
-                .findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName())
+                .findAllByCreditorName(creditorInfo.getCreditorName())
                 .stream()
-                .filter(reg -> "PENDING".equals(reg.getRegistrationStatus())) // 只返回PENDING状态的债权申报
                 .map(reg -> {
                     CreditorClaimStagesResponse.ClaimRegistrationInfo info = new CreditorClaimStagesResponse.ClaimRegistrationInfo();
                     BeanUtils.copyProperties(reg, info);
@@ -442,9 +427,8 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         response.setClaimRegistrations(claimRegistrations);
 
         List<CreditorClaimStagesResponse.ClaimReviewInfo> claimReviews = claimReviewRepository
-                .findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName())
+                .findAllByCreditorName(creditorInfo.getCreditorName())
                 .stream()
-                .filter(review -> "IN_PROGRESS".equals(review.getReviewStatus())) // 只返回IN_PROGRESS状态的债权审查
                 .map(review -> {
                     CreditorClaimStagesResponse.ClaimReviewInfo info = new CreditorClaimStagesResponse.ClaimReviewInfo();
                     BeanUtils.copyProperties(review, info);
@@ -454,7 +438,7 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
         response.setClaimReviews(claimReviews);
 
         List<CreditorClaimStagesResponse.ClaimConfirmationInfo> claimConfirmations = claimConfirmationRepository
-                .findAllByCreditorNameAndIsDeletedFalse(creditorInfo.getCreditorName())
+                .findAllByCreditorName(creditorInfo.getCreditorName())
                 .stream()
                 .map(confirmation -> {
                     CreditorClaimStagesResponse.ClaimConfirmationInfo info = new CreditorClaimStagesResponse.ClaimConfirmationInfo();

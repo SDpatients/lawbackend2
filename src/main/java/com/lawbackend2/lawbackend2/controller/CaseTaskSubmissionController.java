@@ -207,6 +207,27 @@ public class CaseTaskSubmissionController {
         return Result.success(response);
     }
 
+    @Operation(summary = "更新任务提交（路径参数ID）")
+    @PutMapping("/{id:\\d+}")
+    public Result<CaseTaskSubmissionResponse> updateSubmissionById(
+            @Parameter(description = "提交ID") @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        Long userId = 1L;
+        CaseTaskSubmissionUpdateRequest updateRequest = new CaseTaskSubmissionUpdateRequest();
+        updateRequest.setId(id);
+        if (request.containsKey("submissionContent")) {
+            updateRequest.setSubmissionContent((String) request.get("submissionContent"));
+        }
+        if (request.containsKey("submissionTitle")) {
+            updateRequest.setSubmissionTitle((String) request.get("submissionTitle"));
+        }
+        if (request.containsKey("submissionType")) {
+            updateRequest.setSubmissionType((String) request.get("submissionType"));
+        }
+        CaseTaskSubmissionResponse response = submissionService.updateSubmission(updateRequest, userId);
+        return Result.success(response);
+    }
+
     @Operation(summary = "更新任务提交文件描述")
     @PutMapping("/{submissionId}/files/{fileId}")
     public Result<Void> updateFileDescription(

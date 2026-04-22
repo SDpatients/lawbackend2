@@ -12,7 +12,6 @@ import java.time.LocalDateTime;
 public class BankAccountTransactionResponse {
     private Long id;
     private String status;
-    private Boolean isDeleted;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long createUserId;

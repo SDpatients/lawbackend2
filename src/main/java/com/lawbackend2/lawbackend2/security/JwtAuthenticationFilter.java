@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.security;
 
+import com.lawbackend2.lawbackend2.service.PermissionCacheService;
 import com.lawbackend2.lawbackend2.service.PermissionService;
 import com.lawbackend2.lawbackend2.service.TokenBlacklistService;
 import com.lawbackend2.lawbackend2.util.JwtTokenUtil;
@@ -33,6 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private PermissionService permissionService;
 
     @Autowired
+    private PermissionCacheService permissionCacheService;
+
+    @Autowired
     private TokenBlacklistService tokenBlacklistService;
 
     @Value("${jwt.header}")
@@ -61,37 +65,50 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 对于文件上传请求，确保从请求头中提取token，不读取请求体
         String token = extractToken(request);
 
-        if (StringUtils.hasText(token) && jwtTokenUtil.validateToken(token)) {
-            if (tokenBlacklistService.isTokenBlacklisted(token)) {
-                log.warn("Token已在黑名单中 - URI: {}", requestURI);
-                filterChain.doFilter(request, response);
-                return;
+        if (StringUtils.hasText(token)) {
+            try {
+                if (jwtTokenUtil.validateToken(token)) {
+                    boolean isBlacklisted = false;
+                    try {
+                        isBlacklisted = tokenBlacklistService.isTokenBlacklisted(token);
+                    } catch (Exception e) {
+                        log.warn("检查Token黑名单时出错（Redis可能未启动），继续处理 - URI: {}, 错误: {}", requestURI, e.getMessage());
+                    }
+                    
+                    if (!isBlacklisted) {
+                        Long userId = jwtTokenUtil.getUserIdFromToken(token);
+                        String username = jwtTokenUtil.getUsernameFromToken(token);
+
+                        List<String> permissions = permissionService.getUserPermissions(userId);
+                        
+                        List<SimpleGrantedAuthority> authorities = permissions.stream()
+                                .map(SimpleGrantedAuthority::new)
+                                .collect(Collectors.toList());
+
+                        UsernamePasswordAuthenticationToken authentication = 
+                                new UsernamePasswordAuthenticationToken(
+                                        userId,
+                                        null,
+                                        authorities
+                                );
+
+                        // 只设置基本信息，不读取请求体
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                        log.debug("用户认证成功 - 用户ID: {}, 用户名: {}, 权限数量: {}, URI: {}", userId, username, authorities.size(), requestURI);
+                    } else {
+                        log.warn("Token已在黑名单中 - URI: {}", requestURI);
+                    }
+                } else {
+                    log.warn("Token验证失败 - URI: {}", requestURI);
+                }
+            } catch (Exception e) {
+                log.warn("处理Token时发生异常 - URI: {}, 错误: {}", requestURI, e.getMessage());
             }
-
-            Long userId = jwtTokenUtil.getUserIdFromToken(token);
-            String username = jwtTokenUtil.getUsernameFromToken(token);
-
-            List<String> permissions = permissionService.getUserPermissions(userId);
-            
-            List<SimpleGrantedAuthority> authorities = permissions.stream()
-                    .map(SimpleGrantedAuthority::new)
-                    .collect(Collectors.toList());
-
-            UsernamePasswordAuthenticationToken authentication = 
-                    new UsernamePasswordAuthenticationToken(
-                            userId,
-                            null,
-                            authorities
-                    );
-
-            // 只设置基本信息，不读取请求体
-            authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            log.debug("用户认证成功 - 用户ID: {}, 用户名: {}, 权限数量: {}, URI: {}", userId, username, authorities.size(), requestURI);
         } else {
-            log.warn("Token验证失败 - URI: {}", requestURI);
+            log.warn("未提供Token - URI: {}", requestURI);
         }
 
         // 继续执行过滤器链

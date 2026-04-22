@@ -141,6 +141,6 @@ public interface DocumentDeliveryRepository extends JpaRepository<DocumentDelive
     Long findMaxDocumentNumberByPrefix(@Param("prefix") String prefix);
 
     @Modifying
-    @Query("UPDATE DocumentDelivery d SET d.isDeleted = true WHERE d.caseId = :caseId")
+    @Query("DELETE FROM DocumentDelivery d WHERE d.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

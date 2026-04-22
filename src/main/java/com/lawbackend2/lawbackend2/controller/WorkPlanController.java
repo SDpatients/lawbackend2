@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.WorkPlanCreateRequest;
@@ -36,6 +37,7 @@ public class WorkPlanController {
 
     @Operation(summary = "创建工作计划")
     @PostMapping
+    @AuditLog(module = "work-plan", moduleName = "工作计划管理", operationType = "CREATE", operationName = "创建工作计划")
     public Result<Map<String, Object>> createWorkPlan(@Valid @RequestBody WorkPlanCreateRequest request) {
         Long userId = getCurrentUserId();
         Long planId = workPlanService.createWorkPlan(request, userId);
@@ -71,6 +73,7 @@ public class WorkPlanController {
 
     @Operation(summary = "更新工作计划")
     @PutMapping("/{planId}")
+    @AuditLog(module = "work-plan", moduleName = "工作计划管理", operationType = "UPDATE", operationName = "更新工作计划")
     public Result<Void> updateWorkPlan(
             @Parameter(description = "计划ID") @PathVariable Long planId,
             @Valid @RequestBody WorkPlanUpdateRequest request) {
@@ -93,6 +96,7 @@ public class WorkPlanController {
 
     @Operation(summary = "删除工作计划")
     @DeleteMapping("/{planId}")
+    @AuditLog(module = "work-plan", moduleName = "工作计划管理", operationType = "DELETE", operationName = "删除工作计划")
     public Result<Void> deleteWorkPlan(@Parameter(description = "计划ID") @PathVariable Long planId) {
         workPlanService.deleteWorkPlan(planId);
         return Result.success();

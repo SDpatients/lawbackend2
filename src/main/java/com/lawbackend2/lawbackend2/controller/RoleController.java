@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.annotation.RateLimit;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.AssignRolePermissionsRequest;
@@ -32,6 +33,7 @@ public class RoleController {
     @PreAuthorize("hasAuthority('system:role:add')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "创建角色", description = "创建新角色，需要管理员权限")
+    @AuditLog(module = "role", moduleName = "角色管理", operationType = "CREATE", operationName = "创建角色")
     public Result<RoleResponse> createRole(@Valid @RequestBody CreateRoleRequest request) {
         log.info("创建角色请求 - 角色代码: {}", request.getRoleCode());
         RoleResponse response = roleService.createRole(request);
@@ -54,7 +56,7 @@ public class RoleController {
         return Result.success(response);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     @PreAuthorize("hasAuthority('system:role:query')")
     @Operation(summary = "获取单个角色", description = "根据角色ID查询角色详情")
     public Result<RoleResponse> getRoleById(
@@ -64,9 +66,10 @@ public class RoleController {
         return Result.success(response);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @PreAuthorize("hasAuthority('system:role:edit')")
     @Operation(summary = "更新角色", description = "全量更新角色信息，需要管理员权限")
+    @AuditLog(module = "role", moduleName = "角色管理", operationType = "UPDATE", operationName = "更新角色")
     public Result<RoleResponse> updateRole(
             @Parameter(description = "角色ID") @PathVariable Long id,
             @Valid @RequestBody UpdateRoleRequest request) {
@@ -75,10 +78,11 @@ public class RoleController {
         return Result.success(response);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     @PreAuthorize("hasAuthority('system:role:delete')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "删除角色", description = "逻辑删除角色，需要管理员权限")
+    @AuditLog(module = "role", moduleName = "角色管理", operationType = "DELETE", operationName = "删除角色")
     public Result<Void> deleteRole(
             @Parameter(description = "角色ID") @PathVariable Long id) {
         log.info("删除角色 - 角色ID: {}", id);
@@ -86,10 +90,11 @@ public class RoleController {
         return Result.success();
     }
 
-    @PostMapping("/{roleId}/permissions")
+    @PostMapping("/{roleId:\\d+}/permissions")
     @PreAuthorize("hasAuthority('system:role:assign')")
     @RateLimit(limit = 20, timeout = 60)
     @Operation(summary = "为角色分配权限", description = "为角色分配权限，需要管理员权限")
+    @AuditLog(module = "role", moduleName = "角色管理", operationType = "ASSIGN", operationName = "为角色分配权限")
     public Result<Void> assignPermissionsToRole(
             @Parameter(description = "角色ID") @PathVariable Long roleId,
             @Valid @RequestBody AssignRolePermissionsRequest request) {
@@ -98,7 +103,7 @@ public class RoleController {
         return Result.success();
     }
 
-    @GetMapping("/{roleId}/permissions")
+    @GetMapping("/{roleId:\\d+}/permissions")
     @PreAuthorize("hasAuthority('system:role:query')")
     @Operation(summary = "查询角色权限", description = "查询角色已分配的权限列表")
     public Result<List<Long>> getRolePermissions(
@@ -108,7 +113,7 @@ public class RoleController {
         return Result.success(permissionIds);
     }
 
-    @DeleteMapping("/{roleId}/permissions")
+    @DeleteMapping("/{roleId:\\d+}/permissions")
     @PreAuthorize("hasAuthority('system:role:assign')")
     @RateLimit(limit = 20, timeout = 60)
     @Operation(summary = "移除角色权限", description = "移除角色的指定权限，需要管理员权限")
@@ -120,7 +125,7 @@ public class RoleController {
         return Result.success();
     }
 
-    @PutMapping("/{roleId}/permissions")
+    @PutMapping("/{roleId:\\d+}/permissions")
     @PreAuthorize("hasAuthority('system:role:assign')")
     @RateLimit(limit = 20, timeout = 60)
     @Operation(summary = "更新角色权限", description = "更新角色的权限列表，需要管理员权限")

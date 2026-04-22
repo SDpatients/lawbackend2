@@ -13,17 +13,17 @@ import java.util.List;
 @Repository
 public interface LibFolderPermissionRepository extends JpaRepository<LibFolderPermission, Long>, JpaSpecificationExecutor<LibFolderPermission> {
 
-    List<LibFolderPermission> findByFolderIdAndIsDeletedFalse(Long folderId);
+    List<LibFolderPermission> findByFolderId(Long folderId);
 
     List<LibFolderPermission> findByPermissionId(Long permissionId);
 
-    @Query("SELECT fp FROM LibFolderPermission fp WHERE fp.folderId = :folderId AND fp.permissionId = :permissionId AND fp.targetType = :targetType AND fp.targetId = :targetId AND fp.isDeleted = false")
+    @Query("SELECT fp FROM LibFolderPermission fp WHERE fp.folderId = :folderId AND fp.permissionId = :permissionId AND fp.targetType = :targetType AND fp.targetId = :targetId")
     LibFolderPermission findByFolderPermissionTarget(@Param("folderId") Long folderId, @Param("permissionId") Long permissionId, @Param("targetType") String targetType, @Param("targetId") Long targetId);
 
-    @Query("SELECT fp FROM LibFolderPermission fp WHERE fp.targetType = :targetType AND fp.targetId = :targetId AND fp.isDeleted = false")
+    @Query("SELECT fp FROM LibFolderPermission fp WHERE fp.targetType = :targetType AND fp.targetId = :targetId")
     List<LibFolderPermission> findByTarget(@Param("targetType") String targetType, @Param("targetId") Long targetId);
 
     @Modifying
-    @Query("UPDATE LibFolderPermission fp SET fp.isDeleted = true WHERE fp.folderId = :folderId")
-    void softDeleteByFolderId(@Param("folderId") Long folderId);
+    @Query("DELETE FROM LibFolderPermission fp WHERE fp.folderId = :folderId")
+    void deleteByFolderId(@Param("folderId") Long folderId);
 }

@@ -21,22 +21,24 @@ public interface CaseTaskSubmissionRepository extends JpaRepository<CaseTaskSubm
 
     Optional<CaseTaskSubmission> findFirstByCaseTaskIdOrderBySubmissionNumberDesc(Long caseTaskId);
 
-    @Query("SELECT s FROM CaseTaskSubmission s WHERE s.caseTaskId = :caseTaskId AND s.isDeleted = false ORDER BY s.submissionNumber DESC")
+    List<CaseTaskSubmission> findByCaseTaskIdOrderBySubmissionNumberDesc(Long caseTaskId);
+
+    @Query("SELECT s FROM CaseTaskSubmission s WHERE s.caseTaskId = :caseTaskId ORDER BY s.submissionNumber DESC")
     List<CaseTaskSubmission> findLatestByCaseTaskId(@Param("caseTaskId") Long caseTaskId);
 
-    @Query("SELECT COUNT(s) FROM CaseTaskSubmission s WHERE s.caseTaskId = :caseTaskId AND s.status = :status AND s.isDeleted = false")
+    @Query("SELECT COUNT(s) FROM CaseTaskSubmission s WHERE s.caseTaskId = :caseTaskId AND s.status = :status")
     Long countByCaseTaskIdAndStatus(@Param("caseTaskId") Long caseTaskId, @Param("status") String status);
 
-    @Query("SELECT MAX(s.submissionNumber) FROM CaseTaskSubmission s WHERE s.caseTaskId = :caseTaskId AND s.isDeleted = false")
+    @Query("SELECT MAX(s.submissionNumber) FROM CaseTaskSubmission s WHERE s.caseTaskId = :caseTaskId")
     Integer getMaxSubmissionNumberByCaseTaskId(@Param("caseTaskId") Long caseTaskId);
 
-    @Query("SELECT s FROM CaseTaskSubmission s WHERE s.caseTaskId IN (SELECT ct.id FROM CaseTask ct WHERE ct.caseId = :caseId) AND s.isDeleted = false")
+    @Query("SELECT s FROM CaseTaskSubmission s WHERE s.caseTaskId IN (SELECT ct.id FROM CaseTask ct WHERE ct.caseId = :caseId)")
     List<CaseTaskSubmission> findByCaseId(@Param("caseId") Long caseId);
 
     @Modifying
-    @Query("UPDATE CaseTaskSubmission s SET s.isDeleted = true WHERE s.caseTaskId IN (SELECT ct.id FROM CaseTask ct WHERE ct.caseId = :caseId)")
+    @Query("DELETE FROM CaseTaskSubmission s WHERE s.caseTaskId IN (SELECT ct.id FROM CaseTask ct WHERE ct.caseId = :caseId)")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT s FROM CaseTaskSubmission s WHERE s.caseTaskId IN :caseTaskIds AND s.isDeleted = false ORDER BY s.caseTaskId, s.submissionNumber DESC")
+    @Query("SELECT s FROM CaseTaskSubmission s WHERE s.caseTaskId IN :caseTaskIds ORDER BY s.caseTaskId, s.submissionNumber DESC")
     List<CaseTaskSubmission> findLatestByCaseTaskIds(@Param("caseTaskIds") List<Long> caseTaskIds);
 }

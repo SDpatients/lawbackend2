@@ -60,6 +60,6 @@ public interface ArchiveRecordRepository extends JpaRepository<ArchiveRecord, Lo
                                                @Param("status") String status);
 
     @Modifying
-    @Query("UPDATE ArchiveRecord ar SET ar.isDeleted = true WHERE ar.caseId = :caseId")
+    @Query("DELETE FROM ArchiveRecord ar WHERE ar.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

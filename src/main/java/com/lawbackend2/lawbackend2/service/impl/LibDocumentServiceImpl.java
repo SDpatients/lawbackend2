@@ -12,7 +12,10 @@ import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.LibDocumentFavoriteRepository;
 import com.lawbackend2.lawbackend2.repository.LibDocumentFolderRepository;
+import com.lawbackend2.lawbackend2.repository.LibDocumentPermissionRelRepository;
 import com.lawbackend2.lawbackend2.repository.LibDocumentRepository;
+import com.lawbackend2.lawbackend2.repository.LibDocumentShareRepository;
+import com.lawbackend2.lawbackend2.repository.LibDocumentVersionRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.LibDocumentOperationLogService;
 import com.lawbackend2.lawbackend2.service.LibDocumentService;
@@ -46,6 +49,9 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     private final LibDocumentRepository documentRepository;
     private final LibDocumentFolderRepository folderRepository;
     private final LibDocumentFavoriteRepository favoriteRepository;
+    private final LibDocumentVersionRepository versionRepository;
+    private final LibDocumentShareRepository shareRepository;
+    private final LibDocumentPermissionRelRepository permissionRelRepository;
     private final LibDocumentOperationLogService operationLogService;
     private final UserRepository userRepository;
 
@@ -155,10 +161,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         validateDocumentAccess(document, userId);
 
         // 异步增加浏览次数，不使用事务避免与 readOnly 冲突
@@ -171,10 +173,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     public LibDocumentResponse getDocumentByCode(String documentCode, Long userId) {
         LibDocument document = documentRepository.findByDocumentCode(documentCode)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
-
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
 
         validateDocumentAccess(document, userId);
 
@@ -190,10 +188,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     public LibDocumentResponse updateDocument(Long id, LibDocumentUpdateRequest request, Long userId) {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
-
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
 
         if (document.getIsLocked()) {
             throw new BusinessException("文档已被锁定，禁止编辑");
@@ -232,10 +226,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         if (document.getIsLocked()) {
             throw new BusinessException("文档已被锁定，禁止删除");
         }
@@ -244,9 +234,23 @@ public class LibDocumentServiceImpl implements LibDocumentService {
             throw new BusinessException("无权限删除该文档");
         }
 
-        document.setIsDeleted(true);
-        document.setUpdateUserId(userId);
-        documentRepository.save(document);
+        // 删除物理文件
+        String filePath = document.getFilePath();
+        if (filePath != null) {
+            File file = new File(filePath);
+            if (file.exists()) {
+                file.delete();
+            }
+        }
+
+        // 级联删除关联数据
+        versionRepository.deleteByDocumentId(id);
+        shareRepository.deleteByDocumentId(id);
+        favoriteRepository.deleteByDocumentId(id);
+        permissionRelRepository.deleteByDocumentId(id);
+
+        // 硬删除文档
+        documentRepository.deleteById(id);
 
         log.info("删除文档成功 - 文档 ID: {}, 用户 ID: {}", id, userId);
         operationLogService.logOperation(id, document.getFolderId(), "DELETE", "删除文档", document.getFilePath(), null, userId, null, null);
@@ -262,9 +266,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
             if (request.getFolderId() != null) {
                 predicates.add(cb.equal(root.get("folderId"), request.getFolderId()));
             }
-            
-            // 添加未删除条件
-            predicates.add(cb.equal(root.get("isDeleted"), false));
             
             // 添加权限过滤条件：公开文档或自己创建的文档
             predicates.add(cb.or(
@@ -293,7 +294,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
             var predicates = new java.util.ArrayList<javax.persistence.criteria.Predicate>();
             
             predicates.add(cb.equal(root.get("folderId"), folderId));
-            predicates.add(cb.equal(root.get("isDeleted"), false));
             predicates.add(cb.or(
                     cb.equal(root.get("isPublic"), true),
                     cb.equal(root.get("createUserId"), userId)
@@ -334,10 +334,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     public void downloadDocument(Long id, HttpServletResponse response, Long userId) {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
-
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
 
         validateDocumentAccess(document, userId);
 
@@ -393,10 +389,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         document.setIsLocked(true);
         document.setLockedBy(userId);
         document.setLockedTime(LocalDateTime.now());
@@ -412,10 +404,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     public void unlockDocument(Long id, Long userId) {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
-
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
 
         if (document.getIsLocked()) {
             Long lockedBy = document.getLockedBy();
@@ -440,10 +428,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         LibDocument document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         if (document.getIsLocked()) {
             throw new BusinessException("文档已被锁定，禁止移动");
         }
@@ -466,10 +450,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     public void copyDocument(Long documentId, Long targetFolderId, Long userId) {
         LibDocument document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
-
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
 
         if (targetFolderId != null) {
             folderRepository.findById(targetFolderId)
@@ -504,10 +484,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         LibDocument document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         if (document.getIsPublic()) {
             return true;
         }
@@ -516,7 +492,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
             return true;
         }
 
-        if (favoriteRepository.existsByDocumentIdAndUserIdAndIsDeletedFalse(documentId, userId)) {
+        if (favoriteRepository.existsByDocumentIdAndUserId(documentId, userId)) {
             return true;
         }
 
@@ -559,10 +535,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
         File file = new File(document.getFilePath());
         if (!file.exists()) {
             throw new BusinessException("文件不存在");
@@ -599,10 +571,6 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     public LibOfficePreviewResponse getOfficePreviewConfig(Long id, Long userId, String serverUrl) {
         LibDocument document = documentRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
-
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
 
         String fileExtension = document.getFileExtension();
         if (fileExtension == null) {

@@ -31,4 +31,12 @@ public class PageResult<T> {
     public static <T> PageResult<T> of(Long total, java.util.List<T> list, Integer pageNum, Integer pageSize) {
         return new PageResult<>(list, total, pageNum, pageSize);
     }
+
+    public void setPage(Integer page) {
+        this.pageNum = page;
+    }
+
+    public void setSize(Integer size) {
+        this.pageSize = size;
+    }
 }

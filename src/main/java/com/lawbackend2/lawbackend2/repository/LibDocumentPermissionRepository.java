@@ -16,6 +16,6 @@ public interface LibDocumentPermissionRepository extends JpaRepository<LibDocume
 
     List<LibDocumentPermission> findByPermissionType(String permissionType);
 
-    @Query("SELECT p FROM LibDocumentPermission p WHERE p.isDeleted = false ORDER BY p.sortOrder ASC")
+    @Query("SELECT p FROM LibDocumentPermission p ORDER BY p.sortOrder ASC")
     List<LibDocumentPermission> findAllActive();
 }

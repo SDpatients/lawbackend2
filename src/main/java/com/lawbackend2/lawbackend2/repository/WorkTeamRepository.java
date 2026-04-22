@@ -14,8 +14,8 @@ import java.util.List;
 @Repository
 public interface WorkTeamRepository extends JpaRepository<WorkTeam, Long> {
 
-    @Query("SELECT wt FROM WorkTeam wt WHERE wt.isDeleted = false " +
-           "AND (:caseId IS NULL OR wt.caseId = :caseId) " +
+    @Query("SELECT wt FROM WorkTeam wt WHERE " +
+           "(:caseId IS NULL OR wt.caseId = :caseId) " +
            "AND (:status IS NULL OR wt.status = :status) " +
            "AND (:teamName IS NULL OR wt.teamName LIKE %:teamName%) " +
            "AND (:teamLeaderId IS NULL OR wt.teamLeaderId = :teamLeaderId)")
@@ -25,14 +25,14 @@ public interface WorkTeamRepository extends JpaRepository<WorkTeam, Long> {
                                      @Param("teamLeaderId") Long teamLeaderId,
                                      Pageable pageable);
 
-    @Query("SELECT wt FROM WorkTeam wt WHERE wt.isDeleted = false AND wt.id = :teamId")
+    @Query("SELECT wt FROM WorkTeam wt WHERE wt.id = :teamId")
     WorkTeam findWorkTeamById(@Param("teamId") Long teamId);
 
-    @Query("SELECT wt FROM WorkTeam wt WHERE wt.isDeleted = false AND wt.id IN :teamIds")
+    @Query("SELECT wt FROM WorkTeam wt WHERE wt.id IN :teamIds")
     List<WorkTeam> findByIdIn(@Param("teamIds") List<Long> teamIds);
 
-    @Query("SELECT wt FROM WorkTeam wt WHERE wt.isDeleted = false " +
-           "AND (:caseId IS NULL OR wt.caseId = :caseId) " +
+    @Query("SELECT wt FROM WorkTeam wt WHERE " +
+           "(:caseId IS NULL OR wt.caseId = :caseId) " +
            "AND (:status IS NULL OR wt.status = :status) " +
            "AND (:teamName IS NULL OR wt.teamName LIKE %:teamName%) " +
            "AND (:teamLeaderId IS NULL OR wt.teamLeaderId = :teamLeaderId) " +
@@ -45,6 +45,6 @@ public interface WorkTeamRepository extends JpaRepository<WorkTeam, Long> {
                                                Pageable pageable);
 
     @Modifying
-    @Query("UPDATE WorkTeam wt SET wt.isDeleted = true WHERE wt.caseId = :caseId")
+    @Query("DELETE FROM WorkTeam wt WHERE wt.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

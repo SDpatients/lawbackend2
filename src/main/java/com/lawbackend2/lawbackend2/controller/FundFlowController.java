@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.FundFlowCreateRequest;
@@ -33,6 +34,7 @@ public class FundFlowController {
 
     @Operation(summary = "创建资金流水")
     @PostMapping
+    @AuditLog(module = "fund-flow", moduleName = "资金流水管理", operationType = "CREATE", operationName = "创建资金流水")
     public Result<Map<String, Object>> createFundFlow(@Valid @RequestBody FundFlowCreateRequest request) {
         Long flowId = fundFlowService.createFundFlow(request);
 
@@ -65,6 +67,7 @@ public class FundFlowController {
 
     @Operation(summary = "更新资金流水信息")
     @PutMapping("/{flowId}")
+    @AuditLog(module = "fund-flow", moduleName = "资金流水管理", operationType = "UPDATE", operationName = "更新资金流水信息")
     public Result<Void> updateFundFlow(
             @Parameter(description = "流水ID") @PathVariable Long flowId,
             @Valid @RequestBody FundFlowUpdateRequest request) {
@@ -85,6 +88,7 @@ public class FundFlowController {
 
     @Operation(summary = "删除资金流水")
     @DeleteMapping("/{flowId}")
+    @AuditLog(module = "fund-flow", moduleName = "资金流水管理", operationType = "DELETE", operationName = "删除资金流水")
     public Result<Void> deleteFundFlow(@Parameter(description = "流水ID") @PathVariable Long flowId) {
         fundFlowService.deleteFundFlow(flowId);
         return Result.success();

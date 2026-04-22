@@ -15,71 +15,65 @@ import java.util.Optional;
 
 @Repository
 public interface ClaimReviewRepository extends JpaRepository<ClaimReview, Long>, JpaSpecificationExecutor<ClaimReview> {
-    Page<ClaimReview> findByClaimRegistrationIdAndIsDeletedFalse(Long claimRegistrationId, Pageable pageable);
+    Page<ClaimReview> findByClaimRegistrationId(Long claimRegistrationId, Pageable pageable);
 
-    Page<ClaimReview> findByCaseIdAndIsDeletedFalse(Long caseId, Pageable pageable);
+    Page<ClaimReview> findByCaseId(Long caseId, Pageable pageable);
 
-    Page<ClaimReview> findByReviewStatusAndIsDeletedFalse(String reviewStatus, Pageable pageable);
+    Page<ClaimReview> findByReviewStatus(String reviewStatus, Pageable pageable);
 
-    Page<ClaimReview> findByCaseIdAndReviewStatusAndIsDeletedFalse(Long caseId, String reviewStatus, Pageable pageable);
+    Page<ClaimReview> findByCaseIdAndReviewStatus(Long caseId, String reviewStatus, Pageable pageable);
 
-    Page<ClaimReview> findByReviewConclusionAndIsDeletedFalse(String reviewConclusion, Pageable pageable);
+    Page<ClaimReview> findByReviewConclusion(String reviewConclusion, Pageable pageable);
 
-    Page<ClaimReview> findByClaimRegistrationIdAndReviewRoundAndIsDeletedFalse(Long claimRegistrationId, Integer reviewRound, Pageable pageable);
+    Page<ClaimReview> findByClaimRegistrationIdAndReviewRound(Long claimRegistrationId, Integer reviewRound, Pageable pageable);
 
-    Optional<ClaimReview> findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(Long claimRegistrationId);
+    Optional<ClaimReview> findFirstByClaimRegistrationIdOrderByReviewRoundDesc(Long claimRegistrationId);
 
-    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId AND r.isDeleted = false")
+    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId")
     Long countByClaimRegistrationId(@Param("claimRegistrationId") Long claimRegistrationId);
 
-    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId AND r.isDeleted = false")
+    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId")
     Long countByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.reviewStatus = :reviewStatus AND r.isDeleted = false")
+    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.reviewStatus = :reviewStatus")
     Long countByReviewStatus(@Param("reviewStatus") String reviewStatus);
 
-    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus = :reviewStatus AND r.isDeleted = false")
+    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus = :reviewStatus")
     Long countByCaseIdAndReviewStatus(@Param("caseId") Long caseId, @Param("reviewStatus") String reviewStatus);
 
-    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.reviewConclusion = :reviewConclusion AND r.isDeleted = false")
+    @Query("SELECT COUNT(r) FROM ClaimReview r WHERE r.reviewConclusion = :reviewConclusion")
     Long countByReviewConclusion(@Param("reviewConclusion") String reviewConclusion);
 
-    @Query("SELECT r.reviewConclusion, COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId AND r.isDeleted = false GROUP BY r.reviewConclusion")
+    @Query("SELECT r.reviewConclusion, COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId GROUP BY r.reviewConclusion")
     List<Object[]> countByReviewConclusionGroupByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT r.reviewStatus, COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId AND r.isDeleted = false GROUP BY r.reviewStatus")
+    @Query("SELECT r.reviewStatus, COUNT(r) FROM ClaimReview r WHERE r.caseId = :caseId GROUP BY r.reviewStatus")
     List<Object[]> countByReviewStatusGroupByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT r FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus = 'PENDING' AND r.isDeleted = false")
+    @Query("SELECT r FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus = 'PENDING'")
     List<ClaimReview> findPendingReviewsByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT r FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId AND r.isDeleted = false ORDER BY r.reviewRound DESC")
+    @Query("SELECT r FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId ORDER BY r.reviewRound DESC")
     List<ClaimReview> findAllByClaimRegistrationIdOrderByReviewRoundDesc(@Param("claimRegistrationId") Long claimRegistrationId);
 
-    @Query("SELECT r FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId AND r.isDeleted = false")
-    List<ClaimReview> findAllByClaimRegistrationIdAndIsDeletedFalse(@Param("claimRegistrationId") Long claimRegistrationId);
+    @Query("SELECT r FROM ClaimReview r WHERE r.claimRegistrationId = :claimRegistrationId")
+    List<ClaimReview> findAllByClaimRegistrationId(@Param("claimRegistrationId") Long claimRegistrationId);
 
-    @Query("SELECT r FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus = :reviewStatus AND r.isDeleted = false")
-    List<ClaimReview> findByCaseIdAndReviewStatusAndIsDeletedFalse(@Param("caseId") Long caseId, @Param("reviewStatus") String reviewStatus);
-
-    @Query("SELECT r FROM ClaimReview r WHERE r.reviewStatus = :reviewStatus AND r.isDeleted = false")
-    List<ClaimReview> findByReviewStatusAndIsDeletedFalse(@Param("reviewStatus") String reviewStatus);
-
-    @Query("SELECT r FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus != :reviewStatus AND r.isDeleted = false")
-    List<ClaimReview> findByCaseIdAndReviewStatusNot(@Param("caseId") Long caseId, @Param("reviewStatus") String reviewStatus);
-
-    @Query("SELECT r FROM ClaimReview r WHERE r.reviewStatus != :reviewStatus AND r.isDeleted = false")
-    List<ClaimReview> findByReviewStatusNot(@Param("reviewStatus") String reviewStatus);
-
-    @Query("SELECT r FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus = :reviewStatus AND r.isDeleted = false")
+    @Query("SELECT r FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus = :reviewStatus")
     List<ClaimReview> findByCaseIdAndReviewStatus(@Param("caseId") Long caseId, @Param("reviewStatus") String reviewStatus);
 
-    @Query("SELECT r FROM ClaimReview r WHERE r.reviewStatus = :reviewStatus AND r.isDeleted = false")
+    @Query("SELECT r FROM ClaimReview r WHERE r.reviewStatus = :reviewStatus")
     List<ClaimReview> findByReviewStatus(@Param("reviewStatus") String reviewStatus);
 
+    @Query("SELECT r FROM ClaimReview r WHERE r.caseId = :caseId AND r.reviewStatus != :reviewStatus")
+    List<ClaimReview> findByCaseIdAndReviewStatusNot(@Param("caseId") Long caseId, @Param("reviewStatus") String reviewStatus);
+
+    @Query("SELECT r FROM ClaimReview r WHERE r.reviewStatus != :reviewStatus")
+    List<ClaimReview> findByReviewStatusNot(@Param("reviewStatus") String reviewStatus);
+
     @Modifying
-    @Query("UPDATE ClaimReview r SET r.isDeleted = true WHERE r.caseId = :caseId")
+    @Query("DELETE FROM ClaimReview r WHERE r.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
-    List<ClaimReview> findAllByCreditorNameAndIsDeletedFalse(String creditorName);
+    List<ClaimReview> findAllByCreditorName(String creditorName);
 }

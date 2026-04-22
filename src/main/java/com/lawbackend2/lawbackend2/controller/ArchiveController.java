@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.annotation.DataPermission;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
@@ -57,6 +58,7 @@ public class ArchiveController {
     @Operation(summary = "上传归档文件", description = "上传归档文件到指定案件的指定分类")
     @PostMapping("/{caseId}/upload")
     @DataPermission(moduleType = "archive", permissionType = "upload")
+    @AuditLog(module = "archive", moduleName = "归档管理", operationType = "UPLOAD", operationName = "上传归档文件")
     public Result<ArchiveRecordResponse> uploadArchiveFile(
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Parameter(description = "文件") @RequestParam("file") MultipartFile file,
@@ -109,6 +111,7 @@ public class ArchiveController {
     @Operation(summary = "更新归档记录", description = "更新归档记录信息")
     @PutMapping("/record/{recordId}")
     @DataPermission(moduleType = "archive", permissionType = "edit")
+    @AuditLog(module = "archive", moduleName = "归档管理", operationType = "UPDATE", operationName = "更新归档记录")
     public Result<ArchiveRecordResponse> updateArchiveRecord(
             @Parameter(description = "记录ID") @PathVariable Long recordId,
             @RequestBody ArchiveUpdateRequest request) {
@@ -121,6 +124,7 @@ public class ArchiveController {
     @Operation(summary = "删除归档文件", description = "删除归档文件(逻辑删除)")
     @DeleteMapping("/record/{recordId}")
     @DataPermission(moduleType = "archive", permissionType = "delete")
+    @AuditLog(module = "archive", moduleName = "归档管理", operationType = "DELETE", operationName = "删除归档文件")
     public Result<String> deleteArchiveRecord(
             @Parameter(description = "记录ID") @PathVariable Long recordId) {
 

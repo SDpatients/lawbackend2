@@ -38,4 +38,7 @@ public interface FileRecordRepository extends JpaRepository<FileRecord, Long> {
            "AND fr.status = 'ACTIVE' " +
            "ORDER BY fr.sortOrder, fr.createTime")
     List<FileRecord> findByBizTypeAndBizId(@Param("bizType") String bizType, @Param("bizId") String bizId);
+
+    @Query("SELECT fr FROM FileRecord fr WHERE fr.isDeleted = false")
+    List<FileRecord> findAllActive();
 }

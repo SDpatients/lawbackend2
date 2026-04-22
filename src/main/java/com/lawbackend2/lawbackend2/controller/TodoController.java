@@ -1,7 +1,14 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.common.PageResult;
+import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.CaseSimpleInfo;
+import com.lawbackend2.lawbackend2.dto.MyTodoStatisticsResponse;
+import com.lawbackend2.lawbackend2.dto.request.TodoCreateRequest;
+import com.lawbackend2.lawbackend2.dto.request.TodoUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.response.ApiResponse;
 import com.lawbackend2.lawbackend2.entity.Todo;
+import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.TodoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,10 +33,42 @@ import java.util.List;
 public class TodoController {
 
     private final TodoService todoService;
+    private final BankruptCaseService bankruptCaseService;
 
     @Autowired
-    public TodoController(TodoService todoService) {
+    public TodoController(TodoService todoService, BankruptCaseService bankruptCaseService) {
         this.todoService = todoService;
+        this.bankruptCaseService = bankruptCaseService;
+    }
+
+    @GetMapping("/case/simple-search")
+    @Operation(summary = "根据案号模糊查询案件简单信息", description = "根据案号模糊查询案件的简单信息（ID、案号、案件名称）")
+    public Result<PageResult<CaseSimpleInfo>> searchCaseSimpleInfo(
+            @Parameter(description = "案号（支持模糊查询）") @RequestParam String caseNumber,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
+        log.info("根据案号模糊查询案件简单信息，案号：{}，页码：{}，大小：{}", caseNumber, page, size);
+        List<CaseSimpleInfo> list = bankruptCaseService.getCaseSimpleInfoByCaseNumber(page, size, caseNumber);
+        Long total = bankruptCaseService.countByCaseNumberLike(caseNumber);
+        return Result.success(PageResult.of(total, list));
+    }
+
+    @PostMapping("/with-case")
+    @Operation(summary = "创建待办事项（支持案件关联）", description = "创建新的待办事项，支持通过案号或案件ID自动关联案件")
+    public ResponseEntity<ApiResponse<Todo>> createTodoWithCaseAssociation(@RequestBody TodoCreateRequest request) {
+        log.info("创建待办事项(支持案件关联)请求, 用户ID: {}, 标题: {}", request.getUserId(), request.getTitle());
+        Todo createdTodo = todoService.createTodoWithCaseAssociation(request);
+        return ResponseEntity.ok(ApiResponse.success(createdTodo));
+    }
+
+    @PutMapping("/{todoId}/with-case")
+    @Operation(summary = "更新待办事项（支持案件关联）", description = "更新待办事项信息，支持通过案号或案件ID自动关联案件")
+    public ResponseEntity<ApiResponse<Todo>> updateTodoWithCaseAssociation(
+            @Parameter(description = "待办事项ID") @PathVariable Long todoId,
+            @RequestBody TodoUpdateRequest request) {
+        log.info("更新待办事项(支持案件关联)请求, todoId: {}", todoId);
+        Todo updatedTodo = todoService.updateTodoWithCaseAssociation(todoId, request);
+        return ResponseEntity.ok(ApiResponse.success(updatedTodo));
     }
 
     @PostMapping
@@ -173,5 +212,14 @@ public class TodoController {
             @Parameter(description = "待办事项ID列表") @RequestBody List<Long> todoIds) {
         todoService.batchDeleteTodos(todoIds);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @GetMapping("/my-stats")
+    @Operation(summary = "获取当前用户的待办统计数据", description = "返回当前登录用户的待办事项统计数据：进行中、已完成、已逾期数量")
+    public ResponseEntity<ApiResponse<MyTodoStatisticsResponse>> getMyTodoStatistics(
+            @Parameter(description = "用户ID") @RequestParam Long userId) {
+        log.info("获取当前用户的待办统计数据, userId: {}", userId);
+        MyTodoStatisticsResponse response = todoService.getMyTodoStatistics(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

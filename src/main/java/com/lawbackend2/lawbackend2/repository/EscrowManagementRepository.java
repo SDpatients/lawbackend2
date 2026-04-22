@@ -15,10 +15,10 @@ import java.util.Optional;
 @Repository
 public interface EscrowManagementRepository extends JpaRepository<EscrowManagement, Long> {
 
-    Optional<EscrowManagement> findByEscrowNoAndIsDeleted(String escrowNo, Boolean isDeleted);
+    Optional<EscrowManagement> findByEscrowNo(String escrowNo);
 
-    @Query("SELECT em FROM EscrowManagement em WHERE em.isDeleted = false " +
-           "AND (:caseId IS NULL OR em.caseId = :caseId) " +
+    @Query("SELECT em FROM EscrowManagement em WHERE " +
+           "(:caseId IS NULL OR em.caseId = :caseId) " +
            "AND (:escrowType IS NULL OR em.escrowType = :escrowType) " +
            "AND (:releaseStatus IS NULL OR em.releaseStatus = :releaseStatus)")
     Page<EscrowManagement> findByConditions(@Param("caseId") Long caseId,
@@ -26,9 +26,9 @@ public interface EscrowManagementRepository extends JpaRepository<EscrowManageme
                                             @Param("releaseStatus") String releaseStatus,
                                             Pageable pageable);
 
-    List<EscrowManagement> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<EscrowManagement> findByCaseId(Long caseId);
 
     @Modifying
-    @Query("UPDATE EscrowManagement em SET em.isDeleted = true WHERE em.caseId = :caseId")
+    @Query("DELETE FROM EscrowManagement em WHERE em.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

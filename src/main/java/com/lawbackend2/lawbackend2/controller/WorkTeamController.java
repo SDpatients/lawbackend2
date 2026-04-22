@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.AssignWorkTeamPermissionsRequest;
@@ -42,6 +43,7 @@ public class WorkTeamController {
 
     @Operation(summary = "创建工作团队")
     @PostMapping
+    @AuditLog(module = "work-team", moduleName = "工作团队管理", operationType = "CREATE", operationName = "创建工作团队")
     public Result<Map<String, Object>> createWorkTeam(@Valid @RequestBody WorkTeamCreateRequest request) {
         Long teamId = workTeamService.createWorkTeam(request);
 
@@ -95,6 +97,7 @@ public class WorkTeamController {
 
     @Operation(summary = "更新工作团队信息")
     @PutMapping("/{teamId}")
+    @AuditLog(module = "work-team", moduleName = "工作团队管理", operationType = "UPDATE", operationName = "更新工作团队信息")
     public Result<Void> updateWorkTeam(
             @Parameter(description = "团队ID") @PathVariable Long teamId,
             @Valid @RequestBody WorkTeamUpdateRequest request) {
@@ -105,6 +108,7 @@ public class WorkTeamController {
 
     @Operation(summary = "删除工作团队")
     @DeleteMapping("/{teamId}")
+    @AuditLog(module = "work-team", moduleName = "工作团队管理", operationType = "DELETE", operationName = "删除工作团队")
     public Result<Void> deleteWorkTeam(@Parameter(description = "团队ID") @PathVariable Long teamId) {
         workTeamService.deleteWorkTeam(teamId);
         return Result.success();

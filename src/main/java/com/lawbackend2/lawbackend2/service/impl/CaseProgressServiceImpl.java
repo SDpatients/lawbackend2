@@ -128,7 +128,7 @@ public class CaseProgressServiceImpl implements CaseProgressService {
             } else if (progressStatus != null) {
                 progressPage = caseProgressRepository.findByProgressStatus(progressStatus, pageable);
             } else {
-                progressPage = caseProgressRepository.findAll(pageable);
+                progressPage = caseProgressRepository.findAllActive(pageable);
             }
 
             log.info("查询案件进度列表成功，总记录数：{}", progressPage.getTotalElements());

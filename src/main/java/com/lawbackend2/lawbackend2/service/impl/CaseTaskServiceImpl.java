@@ -164,8 +164,7 @@ public class CaseTaskServiceImpl implements CaseTaskService {
         log.info("删除任务, taskId: {}", taskId);
 
         CaseTask task = getTaskById(taskId);
-        task.setIsDeleted(true);
-        caseTaskRepository.save(task);
+        caseTaskRepository.delete(task);
 
         log.info("任务删除成功, taskId: {}", taskId);
     }

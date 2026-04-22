@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.FundApprovalCreateRequest;
@@ -34,6 +35,7 @@ public class FundApprovalController {
 
     @Operation(summary = "创建资金审批")
     @PostMapping
+    @AuditLog(module = "fund-approval", moduleName = "资金审批管理", operationType = "CREATE", operationName = "创建资金审批")
     public Result<Map<String, Object>> createFundApproval(@Valid @RequestBody FundApprovalCreateRequest request) {
         Long approvalId = fundApprovalService.createFundApproval(request);
 
@@ -75,6 +77,7 @@ public class FundApprovalController {
 
     @Operation(summary = "资金审批")
     @PostMapping("/{approvalId}/approve")
+    @AuditLog(module = "fund-approval", moduleName = "资金审批管理", operationType = "APPROVE", operationName = "资金审批")
     public Result<Void> approveFundApproval(
             @Parameter(description = "审批ID") @PathVariable Long approvalId,
             @Valid @RequestBody FundApprovalRequest request) {

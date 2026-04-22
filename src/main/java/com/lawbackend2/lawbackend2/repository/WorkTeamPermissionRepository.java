@@ -12,17 +12,17 @@ import java.util.List;
 @Repository
 public interface WorkTeamPermissionRepository extends JpaRepository<WorkTeamPermission, Long> {
 
-    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE wtp.isDeleted = false " +
-           "AND wtp.teamMemberId = :teamMemberId " +
+    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE " +
+           "wtp.teamMemberId = :teamMemberId " +
            "AND wtp.isAllowed = 1")
     List<WorkTeamPermission> findByTeamMemberId(@Param("teamMemberId") Long teamMemberId);
 
-    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE wtp.isDeleted = false " +
-           "AND wtp.teamMemberId = :teamMemberId")
+    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE " +
+           "wtp.teamMemberId = :teamMemberId")
     List<WorkTeamPermission> findAllByTeamMemberId(@Param("teamMemberId") Long teamMemberId);
 
-    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE wtp.isDeleted = false " +
-           "AND wtp.teamMemberId = :teamMemberId " +
+    @Query("SELECT wtp FROM WorkTeamPermission wtp WHERE " +
+           "wtp.teamMemberId = :teamMemberId " +
            "AND wtp.moduleType = :moduleType " +
            "AND wtp.permissionType = :permissionType")
     WorkTeamPermission findByMemberAndModuleAndPermission(@Param("teamMemberId") Long teamMemberId,
@@ -30,6 +30,10 @@ public interface WorkTeamPermissionRepository extends JpaRepository<WorkTeamPerm
                                                           @Param("permissionType") String permissionType);
 
     @Modifying
-    @Query("UPDATE WorkTeamPermission wtp SET wtp.isDeleted = true WHERE wtp.teamMemberId IN (SELECT wtm.id FROM WorkTeamMember wtm WHERE wtm.caseId = :caseId)")
+    @Query("DELETE FROM WorkTeamPermission wtp WHERE wtp.teamMemberId IN (SELECT wtm.id FROM WorkTeamMember wtm WHERE wtm.caseId = :caseId)")
     void deleteByCaseId(@Param("caseId") Long caseId);
+
+    @Modifying
+    @Query("DELETE FROM WorkTeamPermission wtp WHERE wtp.teamMemberId = :teamMemberId")
+    void deleteByTeamMemberId(@Param("teamMemberId") Long teamMemberId);
 }

@@ -46,7 +46,7 @@ public class FileServiceImpl implements FileService {
     private final ClaimReviewRepository claimReviewRepository;
     private final ClaimConfirmationRepository claimConfirmationRepository;
 
-    @Value("${file.upload.path:C:\\law-upload}")
+    @Value("${file.upload.path:D:\\law-upload}")
     private String uploadPath;
 
     public FileServiceImpl(FileRecordRepository fileRecordRepository, 
@@ -287,7 +287,7 @@ public class FileServiceImpl implements FileService {
             Page<FileRecord> page = fileRecordRepository.findByConditions(bizType, bizId, null, pageable);
             allFiles = page.getContent();
         } else {
-            allFiles = fileRecordRepository.findAll();
+            allFiles = fileRecordRepository.findAllActive();
         }
 
         long totalFiles = allFiles.size();
@@ -564,13 +564,13 @@ public class FileServiceImpl implements FileService {
         oldFormatBizIds.add(String.valueOf(claimRegistrationId));
         newFormatBizIds.add("claim-registration_" + claimRegistrationId);
         
-        List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationId(claimRegistrationId);
         for (ClaimReview review : reviews) {
             oldFormatBizIds.add(String.valueOf(review.getId()));
             newFormatBizIds.add("claim-review_" + review.getId());
         }
         
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId);
         for (ClaimConfirmation confirmation : confirmations) {
             oldFormatBizIds.add(String.valueOf(confirmation.getId()));
             newFormatBizIds.add("claim-confirmation_" + confirmation.getId());

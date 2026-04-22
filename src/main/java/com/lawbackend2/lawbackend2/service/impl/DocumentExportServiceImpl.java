@@ -68,8 +68,43 @@ public class DocumentExportServiceImpl implements DocumentExportService {
     @Override
     @Transactional
     public DocumentExportTemplate createTemplate(DocumentTemplateCreateRequest request, Long userId) {
-        if (templateRepository.existsByTemplateCode(request.getTemplateCode())) {
-            throw new BusinessException(400, "模板编码 '" + request.getTemplateCode() + "' 已存在，请使用其他编码");
+        java.util.Optional<DocumentExportTemplate> existingTemplate = templateRepository.findByTemplateCodeIncludeDeleted(request.getTemplateCode());
+        
+        if (existingTemplate.isPresent()) {
+            DocumentExportTemplate existing = existingTemplate.get();
+            if (!existing.getIsDeleted()) {
+                throw new BusinessException(400, "模板编码 '" + request.getTemplateCode() + "' 已存在，请使用其他编码");
+            }
+            
+            log.info("发现已删除的同编码模板，将恢复该记录, templateCode: {}, templateId: {}", 
+                     request.getTemplateCode(), existing.getId());
+            
+            existing.setIsDeleted(false);
+            existing.setTemplateName(request.getTemplateName());
+            existing.setTemplateType(request.getTemplateType());
+            existing.setDescription(request.getDescription());
+            if (request.getConfigJson() != null && StringUtils.hasText(request.getConfigJson())) {
+                existing.setConfigJson(request.getConfigJson());
+            } else {
+                existing.setConfigJson(null);
+            }
+            if (request.getIsDefault() != null) {
+                existing.setIsDefault(request.getIsDefault());
+            }
+            existing.setStatus("ACTIVE");
+            existing.setUpdateUserId(userId);
+            
+            DocumentExportTemplate savedTemplate = templateRepository.save(existing);
+            
+            if (request.getFields() != null && !request.getFields().isEmpty()) {
+                fieldRepository.deleteByTemplateIdNative(savedTemplate.getId());
+                saveTemplateFields(savedTemplate.getId(), request.getFields(), userId);
+            } else if (request.getMappings() != null && !request.getMappings().isEmpty()) {
+                fieldRepository.deleteByTemplateIdNative(savedTemplate.getId());
+                saveTemplateMappings(savedTemplate.getId(), request.getMappings(), userId);
+            }
+            
+            return savedTemplate;
         }
 
         DocumentExportTemplate template = new DocumentExportTemplate();

@@ -37,7 +37,7 @@ public class CaseTaskFileServiceImpl implements CaseTaskFileService {
     private final FileRecordRepository fileRecordRepository;
     private final UserRepository userRepository;
 
-    @Value("${file.upload.path:C:\\law-upload}")
+    @Value("${file.upload.path:D:\\law-upload}")
     private String uploadPath;
 
     public CaseTaskFileServiceImpl(CaseTaskRepository caseTaskRepository,

@@ -15,17 +15,23 @@ import java.util.Optional;
 
 @Repository
 public interface CaseProgressRepository extends JpaRepository<CaseProgress, Long>, JpaSpecificationExecutor<CaseProgress> {
-    Page<CaseProgress> findByCaseId(Long caseId, Pageable pageable);
+    @Query("SELECT cp FROM CaseProgress cp WHERE cp.caseId = :caseId")
+    Page<CaseProgress> findByCaseId(@Param("caseId") Long caseId, Pageable pageable);
 
-    Page<CaseProgress> findByCaseIdOrderByStartDateDesc(Long caseId, Pageable pageable);
+    @Query("SELECT cp FROM CaseProgress cp WHERE cp.caseId = :caseId ORDER BY cp.startDate DESC")
+    Page<CaseProgress> findByCaseIdOrderByStartDateDesc(@Param("caseId") Long caseId, Pageable pageable);
 
-    Page<CaseProgress> findByProgressStage(String progressStage, Pageable pageable);
+    @Query("SELECT cp FROM CaseProgress cp WHERE cp.progressStage = :progressStage")
+    Page<CaseProgress> findByProgressStage(@Param("progressStage") String progressStage, Pageable pageable);
 
-    Page<CaseProgress> findByCaseIdAndProgressStage(Long caseId, String progressStage, Pageable pageable);
+    @Query("SELECT cp FROM CaseProgress cp WHERE cp.caseId = :caseId AND cp.progressStage = :progressStage")
+    Page<CaseProgress> findByCaseIdAndProgressStage(@Param("caseId") Long caseId, @Param("progressStage") String progressStage, Pageable pageable);
 
-    Page<CaseProgress> findByCaseIdAndIsCompleted(Long caseId, Boolean isCompleted, Pageable pageable);
+    @Query("SELECT cp FROM CaseProgress cp WHERE cp.caseId = :caseId AND cp.isCompleted = :isCompleted")
+    Page<CaseProgress> findByCaseIdAndIsCompleted(@Param("caseId") Long caseId, @Param("isCompleted") Boolean isCompleted, Pageable pageable);
 
-    Page<CaseProgress> findByProgressStatus(String progressStatus, Pageable pageable);
+    @Query("SELECT cp FROM CaseProgress cp WHERE cp.progressStatus = :progressStatus")
+    Page<CaseProgress> findByProgressStatus(@Param("progressStatus") String progressStatus, Pageable pageable);
 
     @Query("SELECT cp FROM CaseProgress cp WHERE cp.caseId = :caseId ORDER BY cp.startDate ASC")
     List<CaseProgress> findByCaseIdOrderByStartDate(@Param("caseId") Long caseId);
@@ -55,6 +61,9 @@ public interface CaseProgressRepository extends JpaRepository<CaseProgress, Long
     List<CaseProgress> findLatestByCaseId(@Param("caseId") Long caseId, Pageable pageable);
 
     @Modifying
-    @Query("UPDATE CaseProgress cp SET cp.isDeleted = true WHERE cp.caseId = :caseId")
+    @Query("DELETE FROM CaseProgress cp WHERE cp.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
+
+    @Query("SELECT cp FROM CaseProgress cp")
+    Page<CaseProgress> findAllActive(Pageable pageable);
 }

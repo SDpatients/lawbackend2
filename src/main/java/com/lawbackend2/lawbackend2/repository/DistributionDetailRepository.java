@@ -14,8 +14,8 @@ import java.util.List;
 @Repository
 public interface DistributionDetailRepository extends JpaRepository<DistributionDetail, Long> {
 
-    @Query("SELECT dd FROM DistributionDetail dd WHERE dd.isDeleted = false " +
-           "AND (:distributionExecutionId IS NULL OR dd.distributionExecutionId = :distributionExecutionId) " +
+    @Query("SELECT dd FROM DistributionDetail dd WHERE " +
+           "(:distributionExecutionId IS NULL OR dd.distributionExecutionId = :distributionExecutionId) " +
            "AND (:caseId IS NULL OR dd.caseId = :caseId) " +
            "AND (:creditorType IS NULL OR dd.creditorType = :creditorType) " +
            "AND (:paymentStatus IS NULL OR dd.paymentStatus = :paymentStatus)")
@@ -25,11 +25,15 @@ public interface DistributionDetailRepository extends JpaRepository<Distribution
                                             @Param("paymentStatus") String paymentStatus,
                                             Pageable pageable);
 
-    List<DistributionDetail> findByDistributionExecutionIdAndIsDeleted(Long distributionExecutionId, Boolean isDeleted);
+    List<DistributionDetail> findByDistributionExecutionId(Long distributionExecutionId);
 
-    List<DistributionDetail> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<DistributionDetail> findByCaseId(Long caseId);
 
     @Modifying
-    @Query("UPDATE DistributionDetail dd SET dd.isDeleted = true WHERE dd.caseId = :caseId")
+    @Query("DELETE FROM DistributionDetail dd WHERE dd.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
+
+    @Modifying
+    @Query("DELETE FROM DistributionDetail dd WHERE dd.distributionExecutionId = :distributionExecutionId")
+    void deleteByDistributionExecutionId(@Param("distributionExecutionId") Long distributionExecutionId);
 }

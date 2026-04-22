@@ -13,6 +13,7 @@ public class WorkPlanResponse {
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long createUserId;
+    private String createUserName;
     private Long updateUserId;
     private String planNumber;
     private String planType;

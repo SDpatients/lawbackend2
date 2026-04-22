@@ -15,19 +15,19 @@ import java.util.List;
 @Repository
 public interface CaseAnnouncementRepository extends JpaRepository<CaseAnnouncement, Long> {
 
-    @Query("SELECT c FROM CaseAnnouncement c WHERE c.isDeleted = false AND c.caseId = :caseId")
+    @Query("SELECT c FROM CaseAnnouncement c WHERE c.caseId = :caseId")
     Page<CaseAnnouncement> findByCaseId(@Param("caseId") Long caseId, Pageable pageable);
 
-    @Query("SELECT c FROM CaseAnnouncement c WHERE c.isDeleted = false AND c.caseId = :caseId AND c.status = :status")
+    @Query("SELECT c FROM CaseAnnouncement c WHERE c.caseId = :caseId AND c.status = :status")
     Page<CaseAnnouncement> findByCaseIdAndStatus(@Param("caseId") Long caseId, @Param("status") String status, Pageable pageable);
 
-    @Query("SELECT c FROM CaseAnnouncement c WHERE c.isDeleted = false AND c.status = :status")
+    @Query("SELECT c FROM CaseAnnouncement c WHERE c.status = :status")
     Page<CaseAnnouncement> findByStatus(@Param("status") String status, Pageable pageable);
 
-    @Query("SELECT c FROM CaseAnnouncement c WHERE c.isDeleted = false AND c.isTop = true AND c.topExpireTime < :expireTime")
+    @Query("SELECT c FROM CaseAnnouncement c WHERE c.isTop = true AND c.topExpireTime < :expireTime")
     List<CaseAnnouncement> findByIsTopTrueAndTopExpireTimeBefore(@Param("expireTime") LocalDateTime expireTime);
 
     @Modifying
-    @Query("UPDATE CaseAnnouncement c SET c.isDeleted = true WHERE c.caseId = :caseId")
+    @Query("DELETE FROM CaseAnnouncement c WHERE c.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

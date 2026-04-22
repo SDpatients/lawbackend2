@@ -1,5 +1,7 @@
 package com.lawbackend2.lawbackend2.service;
 
+import com.lawbackend2.lawbackend2.common.PageResult;
+import com.lawbackend2.lawbackend2.dto.request.CaseSearchRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 
 import java.time.LocalDate;
@@ -31,4 +33,32 @@ public interface CaseSearchService {
     List<BankruptCase> searchByCaseReason(Integer page, Integer size, String caseReason);
 
     List<BankruptCase> searchByDesignatedJudge(Integer page, Integer size, String designatedJudge);
+
+    PageResult<BankruptCase> advancedSearch(CaseSearchRequest request);
+
+    Long countByKeyword(String keyword);
+
+    Long countByKeywordAndStatus(String keyword, String caseStatus);
+
+    Long countByKeywordAndProgress(String keyword, String caseProgress);
+
+    Long countByKeywordAndStatusAndProgress(String keyword, String caseStatus, String caseProgress);
+
+    Long countByCaseNumber(String caseNumber);
+
+    Long countByCaseName(String caseName);
+
+    Long countByAcceptanceCourt(String acceptanceCourt);
+
+    Long countByDesignatedInstitution(String designatedInstitution);
+
+    Long countByMainResponsiblePerson(String mainResponsiblePerson);
+
+    Long countByAcceptanceDateRange(LocalDate startDate, LocalDate endDate);
+
+    Long countByCaseSource(String caseSource);
+
+    Long countByCaseReason(String caseReason);
+
+    Long countByDesignatedJudge(String designatedJudge);
 }

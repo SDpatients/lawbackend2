@@ -74,7 +74,7 @@ public class ClaimConfirmationCreateRequest {
 
     private String finalConfirmationBasis;
 
-    private List<String> confirmationAttachments;
+    private List<ReviewAttachmentDto> confirmationAttachments;
 
     private String confirmationStatus = "PENDING";
 

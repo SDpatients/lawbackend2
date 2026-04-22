@@ -88,7 +88,7 @@ public class CreditorClaimServiceImpl implements CreditorClaimService {
         } else if (registrationStatus != null) {
             page = creditorClaimRepository.findByRegistrationStatus(registrationStatus, pageable);
         } else {
-            page = creditorClaimRepository.findAll(pageable);
+            page = creditorClaimRepository.findAllActive(pageable);
         }
 
         return page.getContent();
@@ -103,7 +103,7 @@ public class CreditorClaimServiceImpl implements CreditorClaimService {
         } else if (registrationStatus != null) {
             return creditorClaimRepository.findByRegistrationStatus(registrationStatus, Pageable.unpaged()).getTotalElements();
         } else {
-            return creditorClaimRepository.count();
+            return creditorClaimRepository.countTotalClaims();
         }
     }
 

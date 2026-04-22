@@ -16,31 +16,24 @@ import java.util.List;
 @Repository
 public interface ExpenseReimbursementRepository extends JpaRepository<ExpenseReimbursement, Long>, JpaSpecificationExecutor<ExpenseReimbursement> {
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.reimbursementNumber = :reimbursementNumber")
-    ExpenseReimbursement findByReimbursementNumber(@Param("reimbursementNumber") String reimbursementNumber);
+    ExpenseReimbursement findByReimbursementNumber(String reimbursementNumber);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.caseId = :caseId")
-    Page<ExpenseReimbursement> findByCaseId(@Param("caseId") Long caseId, Pageable pageable);
+    Page<ExpenseReimbursement> findByCaseId(Long caseId, Pageable pageable);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.applicantId = :applicantId")
-    Page<ExpenseReimbursement> findByApplicantId(@Param("applicantId") Long applicantId, Pageable pageable);
+    Page<ExpenseReimbursement> findByApplicantId(Long applicantId, Pageable pageable);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.approvalStatus = :approvalStatus")
-    Page<ExpenseReimbursement> findByApprovalStatus(@Param("approvalStatus") String approvalStatus, Pageable pageable);
+    Page<ExpenseReimbursement> findByApprovalStatus(String approvalStatus, Pageable pageable);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.reimbursementDate = :reimbursementDate")
-    Page<ExpenseReimbursement> findByReimbursementDate(@Param("reimbursementDate") LocalDate reimbursementDate, Pageable pageable);
+    Page<ExpenseReimbursement> findByReimbursementDate(LocalDate reimbursementDate, Pageable pageable);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.caseId = :caseId AND e.approvalStatus = :approvalStatus")
-    Page<ExpenseReimbursement> findByCaseIdAndApprovalStatus(@Param("caseId") Long caseId, @Param("approvalStatus") String approvalStatus, Pageable pageable);
+    Page<ExpenseReimbursement> findByCaseIdAndApprovalStatus(Long caseId, String approvalStatus, Pageable pageable);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.applicantId = :applicantId AND e.approvalStatus = :approvalStatus")
-    Page<ExpenseReimbursement> findByApplicantIdAndApprovalStatus(@Param("applicantId") Long applicantId, @Param("approvalStatus") String approvalStatus, Pageable pageable);
+    Page<ExpenseReimbursement> findByApplicantIdAndApprovalStatus(Long applicantId, String approvalStatus, Pageable pageable);
 
-    @Query("SELECT COUNT(e) FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.reimbursementNumber LIKE :prefix%")
+    @Query("SELECT COUNT(e) FROM ExpenseReimbursement e WHERE e.reimbursementNumber LIKE :prefix%")
     Long countByReimbursementNumberPrefix(@Param("prefix") String prefix);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND (:caseId IS NULL OR e.caseId = :caseId) " +
+    @Query("SELECT e FROM ExpenseReimbursement e WHERE (:caseId IS NULL OR e.caseId = :caseId) " +
             "AND (:applicantId IS NULL OR e.applicantId = :applicantId) " +
             "AND (:approvalStatus IS NULL OR e.approvalStatus = :approvalStatus) " +
             "AND (:reimbursementDate IS NULL OR e.reimbursementDate = :reimbursementDate) " +
@@ -51,10 +44,9 @@ public interface ExpenseReimbursementRepository extends JpaRepository<ExpenseRei
                                                 @Param("reimbursementDate") LocalDate reimbursementDate,
                                                 Pageable pageable);
 
-    @Query("SELECT e FROM ExpenseReimbursement e WHERE e.isDeleted = false AND e.fundAccountId = :fundAccountId")
-    List<ExpenseReimbursement> findByFundAccountId(@Param("fundAccountId") Long fundAccountId);
+    List<ExpenseReimbursement> findByFundAccountId(Long fundAccountId);
 
     @Modifying
-    @Query("UPDATE ExpenseReimbursement e SET e.isDeleted = true WHERE e.caseId = :caseId")
+    @Query("DELETE FROM ExpenseReimbursement e WHERE e.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

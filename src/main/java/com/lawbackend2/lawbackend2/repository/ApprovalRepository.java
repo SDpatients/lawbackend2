@@ -12,34 +12,27 @@ import java.util.Optional;
 
 @Repository
 public interface ApprovalRepository extends JpaRepository<Approval, Long> {
-    @Query("SELECT a FROM Approval a WHERE a.isDeleted = false AND a.caseId = :caseId")
-    List<Approval> findByCaseId(@Param("caseId") Long caseId);
+    List<Approval> findByCaseId(Long caseId);
 
-    @Query("SELECT a FROM Approval a WHERE a.isDeleted = false AND a.lawyerId = :lawyerId")
-    List<Approval> findByLawyerId(@Param("lawyerId") Long lawyerId);
+    List<Approval> findByLawyerId(Long lawyerId);
 
-    @Query("SELECT a FROM Approval a WHERE a.isDeleted = false AND a.approvalStatus = :approvalStatus")
-    List<Approval> findByApprovalStatus(@Param("approvalStatus") String approvalStatus);
+    List<Approval> findByApprovalStatus(String approvalStatus);
 
-    @Query("SELECT a FROM Approval a WHERE a.isDeleted = false AND a.approverId = :approverId")
-    List<Approval> findByApproverId(@Param("approverId") Long approverId);
+    List<Approval> findByApproverId(Long approverId);
 
-    @Query("SELECT CASE WHEN COUNT(a) > 0 THEN true ELSE false END FROM Approval a WHERE a.isDeleted = false AND a.caseId = :caseId AND a.approvalType = :approvalType")
-    boolean existsByCaseIdAndApprovalType(@Param("caseId") Long caseId, @Param("approvalType") String approvalType);
+    boolean existsByCaseIdAndApprovalType(Long caseId, String approvalType);
 
-    @Query("SELECT a FROM Approval a WHERE a.isDeleted = false AND a.caseId = :caseId AND a.approvalType = :approvalType")
-    Optional<Approval> findByCaseIdAndApprovalType(@Param("caseId") Long caseId, @Param("approvalType") String approvalType);
+    Optional<Approval> findByCaseIdAndApprovalType(Long caseId, String approvalType);
 
     @Modifying
-    @Query("UPDATE Approval a SET a.isDeleted = true WHERE a.caseId = :caseId")
+    @Query("DELETE FROM Approval a WHERE a.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT COUNT(a) FROM Approval a WHERE a.isDeleted = false AND a.approvalResult IS NULL AND a.approvalType = :approvalType")
-    long countByApprovalResultIsNullAndApprovalType(@Param("approvalType") String approvalType);
+    long countByApprovalResultIsNullAndApprovalType(String approvalType);
 
-    @Query("SELECT a FROM Approval a WHERE a.isDeleted = false AND a.approvalResult IS NULL AND a.approvalType = :approvalType")
-    List<Approval> findByApprovalResultIsNullAndApprovalType(@Param("approvalType") String approvalType);
+    List<Approval> findByApprovalResultIsNullAndApprovalType(String approvalType);
 
-    @Query("SELECT a FROM Approval a WHERE a.isDeleted = false AND a.approvalResult IS NULL")
     List<Approval> findByApprovalResultIsNull();
+
+    List<Approval> findAll();
 }

@@ -13,17 +13,17 @@ import java.util.List;
 @Repository
 public interface LibDocumentPermissionRelRepository extends JpaRepository<LibDocumentPermissionRel, Long>, JpaSpecificationExecutor<LibDocumentPermissionRel> {
 
-    List<LibDocumentPermissionRel> findByDocumentIdAndIsDeletedFalse(Long documentId);
+    List<LibDocumentPermissionRel> findByDocumentId(Long documentId);
 
     List<LibDocumentPermissionRel> findByPermissionId(Long permissionId);
 
-    @Query("SELECT dpr FROM LibDocumentPermissionRel dpr WHERE dpr.documentId = :documentId AND dpr.targetType = :targetType AND dpr.targetId = :targetId AND dpr.isDeleted = false")
+    @Query("SELECT dpr FROM LibDocumentPermissionRel dpr WHERE dpr.documentId = :documentId AND dpr.targetType = :targetType AND dpr.targetId = :targetId")
     List<LibDocumentPermissionRel> findByDocumentIdAndTarget(@Param("documentId") Long documentId, @Param("targetType") String targetType, @Param("targetId") Long targetId);
 
-    @Query("SELECT dpr FROM LibDocumentPermissionRel dpr WHERE dpr.targetType = :targetType AND dpr.targetId = :targetId AND dpr.isDeleted = false")
+    @Query("SELECT dpr FROM LibDocumentPermissionRel dpr WHERE dpr.targetType = :targetType AND dpr.targetId = :targetId")
     List<LibDocumentPermissionRel> findByTarget(@Param("targetType") String targetType, @Param("targetId") Long targetId);
 
     @Modifying
-    @Query("UPDATE LibDocumentPermissionRel dpr SET dpr.isDeleted = true WHERE dpr.documentId = :documentId")
-    void softDeleteByDocumentId(@Param("documentId") Long documentId);
+    @Query("DELETE FROM LibDocumentPermissionRel dpr WHERE dpr.documentId = :documentId")
+    void deleteByDocumentId(@Param("documentId") Long documentId);
 }

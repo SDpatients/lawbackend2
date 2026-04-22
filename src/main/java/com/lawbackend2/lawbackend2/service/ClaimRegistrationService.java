@@ -2,6 +2,7 @@ package com.lawbackend2.lawbackend2.service;
 
 import com.lawbackend2.lawbackend2.dto.ClaimDetailResponse;
 import com.lawbackend2.lawbackend2.dto.ClaimRegistrationCreateRequest;
+import com.lawbackend2.lawbackend2.dto.ClaimRegistrationStatsResponse;
 import com.lawbackend2.lawbackend2.dto.ClaimRegistrationUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.ExcelImportResponse;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
@@ -38,4 +39,6 @@ public interface ClaimRegistrationService {
     ExcelImportResponse importFromDeclaredClaimsRegister(MultipartFile file, Long caseId, Long userId);
 
     void exportToExcel(HttpServletResponse response, Long caseId, String registrationStatus);
+
+    ClaimRegistrationStatsResponse getClaimRegistrationStats(Long caseId);
 }

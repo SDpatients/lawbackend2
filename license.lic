@@ -1,0 +1,12 @@
+{
+  "licenseId" : "LAW-2026-001",
+  "customerName" : "娴嬭瘯",
+  "machineCode" : "59C6BD94E44DEA98C72470F670246984",
+  "modules" : [ "case", "fund", "document", "creditor", "approval", "report", "ai", "chat" ],
+  "maxUsers" : 40,
+  "expireDate" : [ 9999, 12, 31, 23, 59, 59 ],
+  "createTime" : [ 2026, 3, 25, 13, 20, 38, 676203000 ],
+  "signature" : "eL/d2jtJxdSB8llu3kFySr+LBLlA3GuiR3cJ50q6vRJTxxBE4mhXkp5Pj2Erjf1iY0yciINWrtCSrRK/wdnw/yss9j17/oJUWkUPmJfEyTXuXIugY9YCwE85iag7Z8LOSTMnjHkdYadbFGS8MKbDGLmbuIrmjSGekUxPXlCCp1HbUbikq0mBqIFoWUCL7Ci85UUY50zMrxuIXGI9vmrQh8P1RHRG+ioXJ6g6HiHhNQMV7b/NxAGXs7Ni7JlI+QY7OrgskP7qtpsv4qnOTeIpECbziE5hgpUzcqV6nrAr5OiJQfGWxUtGnsEeq5g0sb2XrOGEpCagvRmLRsKVBnpuuw==",
+  "expired" : false,
+  "remainingDays" : 2912359
+}

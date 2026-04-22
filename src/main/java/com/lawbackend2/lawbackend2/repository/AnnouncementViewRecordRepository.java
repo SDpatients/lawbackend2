@@ -50,10 +50,7 @@ public interface AnnouncementViewRecordRepository extends JpaRepository<Announce
     @Query("SELECT AVG(r.viewDuration) FROM AnnouncementViewRecord r WHERE r.announcementId = :announcementId")
     Double getAverageViewDuration(@Param("announcementId") Long announcementId);
 
-    @Query("SELECT r FROM AnnouncementViewRecord r WHERE r.announcementId = :announcementId ORDER BY r.viewTime DESC")
-    List<AnnouncementViewRecord> findLatestByAnnouncementId(@Param("announcementId") Long announcementId, Pageable pageable);
-
     @Modifying
-    @Query("UPDATE AnnouncementViewRecord r SET r.isDeleted = true WHERE r.caseId = :caseId")
+    @Query("DELETE FROM AnnouncementViewRecord r WHERE r.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

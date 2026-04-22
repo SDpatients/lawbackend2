@@ -15,8 +15,8 @@ import java.util.List;
 @Repository
 public interface WorkPlanRepository extends JpaRepository<WorkPlan, Long>, JpaSpecificationExecutor<WorkPlan> {
 
-    @Query("SELECT wp FROM WorkPlan wp WHERE wp.isDeleted = false " +
-           "AND (:caseId IS NULL OR wp.caseId = :caseId) " +
+    @Query("SELECT wp FROM WorkPlan wp WHERE " +
+           "(:caseId IS NULL OR wp.caseId = :caseId) " +
            "AND (:planType IS NULL OR wp.planType = :planType) " +
            "AND (:executionStatus IS NULL OR wp.executionStatus = :executionStatus) " +
            "AND (:status IS NULL OR wp.status = :status)")
@@ -26,13 +26,13 @@ public interface WorkPlanRepository extends JpaRepository<WorkPlan, Long>, JpaSp
                                      @Param("status") String status,
                                      Pageable pageable);
 
-    List<WorkPlan> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<WorkPlan> findByCaseId(Long caseId);
 
-    @Query("SELECT wp FROM WorkPlan wp WHERE wp.isDeleted = false AND wp.caseId = :caseId")
-    Page<WorkPlan> findByCaseIdAndIsDeletedWithPage(@Param("caseId") Long caseId, Pageable pageable);
+    @Query("SELECT wp FROM WorkPlan wp WHERE wp.caseId = :caseId")
+    Page<WorkPlan> findByCaseIdWithPage(@Param("caseId") Long caseId, Pageable pageable);
 
     @Modifying
-    @Query("UPDATE WorkPlan wp SET wp.isDeleted = true WHERE wp.caseId = :caseId")
+    @Query("DELETE FROM WorkPlan wp WHERE wp.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
     
     int countByPlanNumberStartingWith(String prefix);

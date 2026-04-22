@@ -16,8 +16,8 @@ import java.util.List;
 @Repository
 public interface BankAccountTransactionRepository extends JpaRepository<BankAccountTransaction, Long>, JpaSpecificationExecutor<BankAccountTransaction> {
 
-    @Query("SELECT bat FROM BankAccountTransaction bat WHERE bat.isDeleted = false " +
-           "AND (:accountId IS NULL OR bat.accountId = :accountId) " +
+    @Query("SELECT bat FROM BankAccountTransaction bat WHERE " +
+           "(:accountId IS NULL OR bat.accountId = :accountId) " +
            "AND (:transactionType IS NULL OR bat.transactionType = :transactionType) " +
            "AND (:businessType IS NULL OR bat.businessType = :businessType) " +
            "AND (:startDate IS NULL OR bat.transactionDate >= :startDate) " +
@@ -32,7 +32,7 @@ public interface BankAccountTransactionRepository extends JpaRepository<BankAcco
                                                     Pageable pageable);
 
     @Query("SELECT new com.lawbackend2.lawbackend2.dto.response.BankAccountTransactionResponse(" +
-           "bat.id, bat.status, bat.isDeleted, bat.createTime, bat.updateTime, " +
+           "bat.id, bat.status, bat.createTime, bat.updateTime, " +
            "bat.createUserId, bat.updateUserId, bat.accountId, ba.accountName, ba.accountNumber, ba.bankName, " +
            "bat.transactionType, bat.amount, bat.transactionDate, bat.summary, bat.businessType, " +
            "bat.counterpartyAccount, bat.counterpartyName, bat.balanceAfter, bat.attachmentId, " +
@@ -40,8 +40,7 @@ public interface BankAccountTransactionRepository extends JpaRepository<BankAcco
            "FROM BankAccountTransaction bat " +
            "LEFT JOIN BankAccount ba ON bat.accountId = ba.id " +
            "LEFT JOIN BankruptCase bc ON bat.caseId = bc.id " +
-           "WHERE bat.isDeleted = false " +
-           "AND (:accountId IS NULL OR bat.accountId = :accountId) " +
+           "WHERE (:accountId IS NULL OR bat.accountId = :accountId) " +
            "AND (:transactionType IS NULL OR bat.transactionType = :transactionType) " +
            "AND (:businessType IS NULL OR bat.businessType = :businessType) " +
            "AND (:startDate IS NULL OR bat.transactionDate >= :startDate) " +
@@ -59,7 +58,7 @@ public interface BankAccountTransactionRepository extends JpaRepository<BankAcco
                                                                         Pageable pageable);
 
     @Query("SELECT new com.lawbackend2.lawbackend2.dto.response.BankAccountTransactionResponse(" +
-           "bat.id, bat.status, bat.isDeleted, bat.createTime, bat.updateTime, " +
+           "bat.id, bat.status, bat.createTime, bat.updateTime, " +
            "bat.createUserId, bat.updateUserId, bat.accountId, ba.accountName, ba.accountNumber, ba.bankName, " +
            "bat.transactionType, bat.amount, bat.transactionDate, bat.summary, bat.businessType, " +
            "bat.counterpartyAccount, bat.counterpartyName, bat.balanceAfter, bat.attachmentId, " +
@@ -67,8 +66,7 @@ public interface BankAccountTransactionRepository extends JpaRepository<BankAcco
            "FROM BankAccountTransaction bat " +
            "LEFT JOIN BankAccount ba ON bat.accountId = ba.id " +
            "LEFT JOIN BankruptCase bc ON bat.caseId = bc.id " +
-           "WHERE bat.isDeleted = false " +
-           "AND ba.createUserId = :createUserId " +
+           "WHERE ba.createUserId = :createUserId " +
            "AND (:transactionType IS NULL OR bat.transactionType = :transactionType) " +
            "AND (:businessType IS NULL OR bat.businessType = :businessType) " +
            "AND (:startDate IS NULL OR bat.transactionDate >= :startDate) " +
@@ -91,15 +89,13 @@ public interface BankAccountTransactionRepository extends JpaRepository<BankAcco
 
     @Query("SELECT bat.transactionType, SUM(bat.amount), COUNT(bat) " +
            "FROM BankAccountTransaction bat " +
-           "WHERE bat.isDeleted = false " +
-           "AND YEAR(bat.transactionDate) = :year " +
+           "WHERE YEAR(bat.transactionDate) = :year " +
            "GROUP BY bat.transactionType")
     List<Object[]> sumAmountByTransactionTypeInYear(@Param("year") Integer year);
 
     @Query("SELECT MONTH(bat.transactionDate), bat.transactionType, SUM(bat.amount), COUNT(bat) " +
            "FROM BankAccountTransaction bat " +
-           "WHERE bat.isDeleted = false " +
-           "AND YEAR(bat.transactionDate) = :year " +
+           "WHERE YEAR(bat.transactionDate) = :year " +
            "GROUP BY MONTH(bat.transactionDate), bat.transactionType " +
            "ORDER BY MONTH(bat.transactionDate)")
     List<Object[]> sumAmountByMonthAndTransactionTypeInYear(@Param("year") Integer year);

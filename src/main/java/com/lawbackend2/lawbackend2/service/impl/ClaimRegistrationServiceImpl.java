@@ -41,6 +41,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -135,7 +136,6 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             List<javax.persistence.criteria.Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("caseId"), caseId));
             predicates.add(cb.equal(root.get("creditorName"), creditorName));
-            predicates.add(cb.equal(root.get("isDeleted"), false));
             return cb.and(predicates.toArray(new javax.persistence.criteria.Predicate[0]));
         });
 
@@ -174,7 +174,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         ClaimDetailResponse response = new ClaimDetailResponse();
         BeanUtils.copyProperties(registration, response);
         
-        Optional<ClaimReview> reviewOpt = claimReviewRepository.findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(claimId);
+        Optional<ClaimReview> reviewOpt = claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(claimId);
         if (reviewOpt.isPresent()) {
             ClaimReview review = reviewOpt.get();
             ClaimDetailResponse.ClaimReviewInfo reviewInfo = new ClaimDetailResponse.ClaimReviewInfo();
@@ -184,7 +184,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             response.setReviewInfo(null);
         }
         
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimId);
         if (!confirmations.isEmpty()) {
             ClaimConfirmation confirmation = confirmations.get(0);
             ClaimDetailResponse.ClaimConfirmationInfo confirmationInfo = new ClaimDetailResponse.ClaimConfirmationInfo();
@@ -203,13 +203,13 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
         Page<ClaimRegistration> page;
         if (caseId != null && registrationStatus != null && !registrationStatus.trim().isEmpty()) {
-            page = claimRegistrationRepository.findByCaseIdAndRegistrationStatusAndIsDeletedFalse(caseId, registrationStatus, pageable);
+            page = claimRegistrationRepository.findByCaseIdAndRegistrationStatus(caseId, registrationStatus, pageable);
         } else if (caseId != null) {
-            page = claimRegistrationRepository.findByCaseIdAndIsDeletedFalse(caseId, pageable);
+            page = claimRegistrationRepository.findByCaseId(caseId, pageable);
         } else if (registrationStatus != null && !registrationStatus.trim().isEmpty()) {
-            page = claimRegistrationRepository.findByRegistrationStatusAndIsDeletedFalse(registrationStatus, pageable);
+            page = claimRegistrationRepository.findByRegistrationStatus(registrationStatus, pageable);
         } else {
-            page = claimRegistrationRepository.findAll(pageable);
+            page = claimRegistrationRepository.findAllActive(pageable);
         }
 
         return page.getContent();
@@ -218,13 +218,13 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     @Override
     public Long getClaimCount(Long caseId, String registrationStatus) {
         if (caseId != null && registrationStatus != null && !registrationStatus.trim().isEmpty()) {
-            return claimRegistrationRepository.findByCaseIdAndRegistrationStatusAndIsDeletedFalse(caseId, registrationStatus, Pageable.unpaged()).getTotalElements();
+            return claimRegistrationRepository.findByCaseIdAndRegistrationStatus(caseId, registrationStatus, Pageable.unpaged()).getTotalElements();
         } else if (caseId != null) {
-            return claimRegistrationRepository.findByCaseIdAndIsDeletedFalse(caseId, Pageable.unpaged()).getTotalElements();
+            return claimRegistrationRepository.findByCaseId(caseId, Pageable.unpaged()).getTotalElements();
         } else if (registrationStatus != null && !registrationStatus.trim().isEmpty()) {
-            return claimRegistrationRepository.findByRegistrationStatusAndIsDeletedFalse(registrationStatus, Pageable.unpaged()).getTotalElements();
+            return claimRegistrationRepository.findByRegistrationStatus(registrationStatus, Pageable.unpaged()).getTotalElements();
         } else {
-            return claimRegistrationRepository.count();
+            return claimRegistrationRepository.countAllActive();
         }
     }
 
@@ -347,27 +347,21 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         
         // 级联删除：债权确认 → 债权审查
         // 删除相关的确认记录
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimId);
         for (ClaimConfirmation confirmation : confirmations) {
-            confirmation.setIsDeleted(true);
-            confirmation.setUpdateUserId(userId);
-            claimConfirmationRepository.save(confirmation);
+            claimConfirmationRepository.delete(confirmation);
             logger.info("级联删除债权确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimId);
         }
         
         // 删除相关的审查记录
-        List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationIdAndIsDeletedFalse(claimId);
+        List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationId(claimId);
         for (ClaimReview review : reviews) {
-            review.setIsDeleted(true);
-            review.setUpdateUserId(userId);
-            claimReviewRepository.save(review);
+            claimReviewRepository.delete(review);
             logger.info("级联删除债权审查记录, reviewId: {}, claimRegistrationId: {}", review.getId(), claimId);
         }
         
-        // 删除债权申报
-        claimRegistration.setIsDeleted(true);
-        claimRegistration.setUpdateUserId(userId);
-        claimRegistrationRepository.save(claimRegistration);
+        // 硬删除债权申报
+        claimRegistrationRepository.delete(claimRegistration);
         logger.info("债权申报删除成功, claimId: {}", claimId);
     }
 
@@ -412,7 +406,6 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             List<javax.persistence.criteria.Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("caseId"), caseId));
             predicates.add(cb.equal(root.get("creditorName"), creditorName));
-            predicates.add(cb.equal(root.get("isDeleted"), false));
             return cb.and(predicates.toArray(new javax.persistence.criteria.Predicate[0]));
         });
         
@@ -427,25 +420,21 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
     private void handleRejectStatus(Long claimId, Long userId) {
         // 级联处理相关的审查和确认记录
-        List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationIdAndIsDeletedFalse(claimId);
+        List<ClaimReview> reviews = claimReviewRepository.findAllByClaimRegistrationId(claimId);
         for (ClaimReview review : reviews) {
-            review.setIsDeleted(true);
-            review.setUpdateUserId(userId);
-            claimReviewRepository.save(review);
+            claimReviewRepository.delete(review);
             logger.info("级联处理驳回状态 - 删除审查记录, reviewId: {}, claimId: {}", review.getId(), claimId);
         }
         
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimId);
         for (ClaimConfirmation confirmation : confirmations) {
-            confirmation.setIsDeleted(true);
-            confirmation.setUpdateUserId(userId);
-            claimConfirmationRepository.save(confirmation);
+            claimConfirmationRepository.delete(confirmation);
             logger.info("级联处理驳回状态 - 删除确认记录, confirmationId: {}, claimId: {}", confirmation.getId(), claimId);
         }
     }
 
     private void createOrUpdateReviewRecord(ClaimRegistration registration, Long userId) {
-        Optional<ClaimReview> existingReview = claimReviewRepository.findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(registration.getId());
+        Optional<ClaimReview> existingReview = claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(registration.getId());
 
         if (existingReview.isPresent()) {
             ClaimReview review = existingReview.get();
@@ -474,7 +463,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     }
 
     private void createOrUpdateConfirmationRecord(ClaimRegistration registration, Long userId) {
-        List<ClaimConfirmation> existingConfirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(registration.getId());
+        List<ClaimConfirmation> existingConfirmations = claimConfirmationRepository.findByClaimRegistrationId(registration.getId());
 
         if (!existingConfirmations.isEmpty()) {
             // 更新第一个确认记录
@@ -498,7 +487,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     }
 
     private void updateReviewRecordStatus(Long claimId, String status, Long userId) {
-        Optional<ClaimReview> reviewOpt = claimReviewRepository.findFirstByClaimRegistrationIdAndIsDeletedFalseOrderByReviewRoundDesc(claimId);
+        Optional<ClaimReview> reviewOpt = claimReviewRepository.findFirstByClaimRegistrationIdOrderByReviewRoundDesc(claimId);
         if (reviewOpt.isPresent()) {
             ClaimReview review = reviewOpt.get();
             review.setReviewStatus(status);
@@ -509,7 +498,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     }
 
     private void updateConfirmationRecordStatus(Long claimId, String status, Long userId) {
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimId);
         if (!confirmations.isEmpty()) {
             // 更新第一个确认记录
             ClaimConfirmation confirmation = confirmations.get(0);
@@ -1022,5 +1011,78 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
             logger.error("导出Excel失败", e);
             throw new BusinessException("导出Excel失败: " + e.getMessage());
         }
+    }
+
+    @Override
+    public ClaimRegistrationStatsResponse getClaimRegistrationStats(Long caseId) {
+        logger.info("获取债权申报统计数据, caseId: {}", caseId);
+
+        ClaimRegistrationStatsResponse response = new ClaimRegistrationStatsResponse();
+
+        // 总数统计
+        Long totalCount = claimRegistrationRepository.countByCaseId(caseId);
+        response.setTotalCount(totalCount != null ? totalCount : 0L);
+
+        // 金额统计（按案件ID过滤）
+        List<ClaimRegistration> claims = claimRegistrationRepository.findByCaseId(caseId, Pageable.unpaged()).getContent();
+
+        BigDecimal totalPrincipal = BigDecimal.ZERO;
+        BigDecimal totalInterest = BigDecimal.ZERO;
+        BigDecimal totalPenalty = BigDecimal.ZERO;
+        BigDecimal totalOtherLosses = BigDecimal.ZERO;
+        BigDecimal totalAmount = BigDecimal.ZERO;
+
+        Map<String, Long> statusDistribution = new HashMap<>();
+        Map<String, Long> typeDistribution = new HashMap<>();
+        Map<String, Long> natureDistribution = new HashMap<>();
+
+        for (ClaimRegistration claim : claims) {
+            if (claim.getPrincipal() != null) {
+                totalPrincipal = totalPrincipal.add(claim.getPrincipal());
+            }
+            if (claim.getInterest() != null) {
+                totalInterest = totalInterest.add(claim.getInterest());
+            }
+            if (claim.getPenalty() != null) {
+                totalPenalty = totalPenalty.add(claim.getPenalty());
+            }
+            if (claim.getOtherLosses() != null) {
+                totalOtherLosses = totalOtherLosses.add(claim.getOtherLosses());
+            }
+            if (claim.getTotalAmount() != null) {
+                totalAmount = totalAmount.add(claim.getTotalAmount());
+            }
+
+            // 状态分布
+            String status = claim.getRegistrationStatus();
+            if (status != null) {
+                statusDistribution.put(status, statusDistribution.getOrDefault(status, 0L) + 1);
+            }
+
+            // 类型分布
+            String claimType = claim.getClaimType();
+            if (claimType != null) {
+                typeDistribution.put(claimType, typeDistribution.getOrDefault(claimType, 0L) + 1);
+            }
+
+            // 性质分布
+            String claimNature = claim.getClaimNature();
+            if (claimNature != null) {
+                natureDistribution.put(claimNature, natureDistribution.getOrDefault(claimNature, 0L) + 1);
+            }
+        }
+
+        response.setTotalPrincipal(totalPrincipal);
+        response.setTotalInterest(totalInterest);
+        response.setTotalPenalty(totalPenalty);
+        response.setTotalOtherLosses(totalOtherLosses);
+        response.setTotalAmount(totalAmount);
+        response.setStatusDistribution(statusDistribution);
+        response.setTypeDistribution(typeDistribution);
+        response.setNatureDistribution(natureDistribution);
+
+        logger.info("债权申报统计数据获取成功, caseId: {}, totalCount: {}, totalAmount: {}",
+                caseId, response.getTotalCount(), response.getTotalAmount());
+        return response;
     }
 }

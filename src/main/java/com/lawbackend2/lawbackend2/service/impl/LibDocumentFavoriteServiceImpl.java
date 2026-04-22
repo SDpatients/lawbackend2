@@ -36,11 +36,7 @@ public class LibDocumentFavoriteServiceImpl implements LibDocumentFavoriteServic
         LibDocument document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
-        if (document.getIsDeleted()) {
-            throw new BusinessException("文档已被删除");
-        }
-
-        if (favoriteRepository.existsByDocumentIdAndUserIdAndIsDeletedFalse(documentId, userId)) {
+        if (favoriteRepository.existsByDocumentIdAndUserId(documentId, userId)) {
             throw new BusinessException("已收藏该文档");
         }
 
@@ -63,12 +59,11 @@ public class LibDocumentFavoriteServiceImpl implements LibDocumentFavoriteServic
     @Override
     @Transactional
     public void removeFavorite(Long documentId, Long userId) {
-        LibDocumentFavorite favorite = favoriteRepository.findByDocumentIdAndUserIdAndIsDeletedFalse(documentId, userId)
+        LibDocumentFavorite favorite = favoriteRepository.findByDocumentIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new BusinessException("未收藏该文档"));
 
-        favorite.setIsDeleted(true);
-        favorite.setUpdateUserId(userId);
-        favoriteRepository.save(favorite);
+        // 硬删除收藏
+        favoriteRepository.deleteById(favorite.getId());
 
         log.info("取消收藏成功 - 文档ID: {}, 用户ID: {}", documentId, userId);
         operationLogService.logOperation(documentId, null, "UNFAVORITE", "取消收藏", null, null, userId, null, null);
@@ -77,7 +72,7 @@ public class LibDocumentFavoriteServiceImpl implements LibDocumentFavoriteServic
     @Override
     public LibFavoriteListResponse getMyFavorites(Long userId, Integer page, Integer size) {
         Pageable pageable = PageRequest.of(page - 1, size);
-        Page<LibDocumentFavorite> favoritePage = favoriteRepository.findByUserIdAndIsDeletedFalseOrderByCreateTimeDesc(userId, pageable);
+        Page<LibDocumentFavorite> favoritePage = favoriteRepository.findByUserIdOrderByCreateTimeDesc(userId, pageable);
 
         List<LibFavoriteResponse> favorites = favoritePage.getContent().stream()
                 .map(favorite -> {
@@ -101,17 +96,16 @@ public class LibDocumentFavoriteServiceImpl implements LibDocumentFavoriteServic
 
         int start = (page - 1) * size;
         int end = Math.min(start + size, allFavorites.size());
-        List<LibDocumentFavorite> pagedFavorites = allFavorites.subList(start, end);
+        List<LibDocumentFavorite> pagedFavorites = start < allFavorites.size() ? allFavorites.subList(start, end) : new ArrayList<>();
 
         List<LibFavoriteResponse> favorites = pagedFavorites.stream()
-                .filter(f -> !f.getIsDeleted())
                 .map(favorite -> {
                     LibDocument document = documentRepository.findById(favorite.getDocumentId()).orElse(null);
                     return convertToResponse(favorite, document);
                 })
                 .collect(Collectors.toList());
 
-        int total = (int) allFavorites.stream().filter(f -> !f.getIsDeleted()).count();
+        int total = allFavorites.size();
         int totalPages = (int) Math.ceil((double) total / size);
 
         return LibFavoriteListResponse.builder()
@@ -130,13 +124,13 @@ public class LibDocumentFavoriteServiceImpl implements LibDocumentFavoriteServic
 
     @Override
     public boolean isFavorited(Long documentId, Long userId) {
-        return favoriteRepository.existsByDocumentIdAndUserIdAndIsDeletedFalse(documentId, userId);
+        return favoriteRepository.existsByDocumentIdAndUserId(documentId, userId);
     }
 
     @Override
     @Transactional
     public void moveFavorite(Long documentId, String newFolderName, Long userId) {
-        LibDocumentFavorite favorite = favoriteRepository.findByDocumentIdAndUserIdAndIsDeletedFalse(documentId, userId)
+        LibDocumentFavorite favorite = favoriteRepository.findByDocumentIdAndUserId(documentId, userId)
                 .orElseThrow(() -> new BusinessException("未收藏该文档"));
 
         favorite.setFolderName(newFolderName);

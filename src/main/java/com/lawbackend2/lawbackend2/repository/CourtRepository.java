@@ -19,6 +19,9 @@ public interface CourtRepository extends JpaRepository<Court, Long> {
 
     java.util.Optional<Court> findByShortName(String shortName);
 
+    @Query("SELECT c FROM Court c WHERE c.shortName = :shortName")
+    java.util.Optional<Court> findByShortNameIncludeDeleted(@Param("shortName") String shortName);
+
     @Query("SELECT c FROM Court c WHERE " +
            "(:courtLevel IS NULL OR c.courtLevel = :courtLevel) AND " +
            "(:shortName IS NULL OR c.shortName LIKE %:shortName%) AND " +

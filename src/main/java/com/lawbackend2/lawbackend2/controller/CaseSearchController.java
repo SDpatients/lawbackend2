@@ -1,6 +1,8 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.dto.request.CaseSearchRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.service.CaseSearchService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,9 +28,23 @@ public class CaseSearchController {
     @Autowired
     private CaseSearchService caseSearchService;
 
+    @PostMapping("/advanced")
+    @Operation(summary = "高级搜索案件", description = "支持多条件组合搜索，包括关键词、案件状态、案件进度、日期范围等多种筛选条件")
+    public Result<PageResult<BankruptCase>> advancedSearch(@RequestBody CaseSearchRequest request) {
+        log.info("高级搜索案件，请求参数：{}", request);
+        try {
+            PageResult<BankruptCase> result = caseSearchService.advancedSearch(request);
+            log.info("高级搜索案件成功，结果数量：{}", result.getTotal());
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("高级搜索案件失败：{}", e.getMessage(), e);
+            return Result.error("高级搜索案件失败：" + e.getMessage());
+        }
+    }
+
     @GetMapping("/keyword")
     @Operation(summary = "关键词搜索案件", description = "根据关键词搜索案件，支持案件编号、案件名称、受理法院、指定机构、主要负责人、案件来源、案件原因、指定法官等多字段搜索")
-    public Result<List<BankruptCase>> searchByKeyword(
+    public Result<PageResult<BankruptCase>> searchByKeyword(
             @Parameter(description = "搜索关键词") @RequestParam String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -37,8 +53,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByKeyword(page, size, keyword);
+            Long total = caseSearchService.countByKeyword(keyword);
             log.info("关键词搜索案件成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("关键词搜索案件失败：{}", e.getMessage(), e);
@@ -48,7 +65,7 @@ public class CaseSearchController {
 
     @GetMapping("/keyword-and-status")
     @Operation(summary = "关键词和状态搜索案件", description = "根据关键词和案件状态搜索案件")
-    public Result<List<BankruptCase>> searchByKeywordAndStatus(
+    public Result<PageResult<BankruptCase>> searchByKeywordAndStatus(
             @Parameter(description = "搜索关键词") @RequestParam String keyword,
             @Parameter(description = "案件状态") @RequestParam String caseStatus,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
@@ -58,8 +75,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByKeywordAndStatus(page, size, keyword, caseStatus);
+            Long total = caseSearchService.countByKeywordAndStatus(keyword, caseStatus);
             log.info("关键词和状态搜索案件成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("关键词和状态搜索案件失败：{}", e.getMessage(), e);
@@ -69,7 +87,7 @@ public class CaseSearchController {
 
     @GetMapping("/keyword-and-progress")
     @Operation(summary = "关键词和进度搜索案件", description = "根据关键词和案件进度搜索案件")
-    public Result<List<BankruptCase>> searchByKeywordAndProgress(
+    public Result<PageResult<BankruptCase>> searchByKeywordAndProgress(
             @Parameter(description = "搜索关键词") @RequestParam String keyword,
             @Parameter(description = "案件进度") @RequestParam String caseProgress,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
@@ -79,8 +97,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByKeywordAndProgress(page, size, keyword, caseProgress);
+            Long total = caseSearchService.countByKeywordAndProgress(keyword, caseProgress);
             log.info("关键词和进度搜索案件成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("关键词和进度搜索案件失败：{}", e.getMessage(), e);
@@ -90,7 +109,7 @@ public class CaseSearchController {
 
     @GetMapping("/keyword-and-status-and-progress")
     @Operation(summary = "关键词、状态和进度搜索案件", description = "根据关键词、案件状态和案件进度搜索案件")
-    public Result<List<BankruptCase>> searchByKeywordAndStatusAndProgress(
+    public Result<PageResult<BankruptCase>> searchByKeywordAndStatusAndProgress(
             @Parameter(description = "搜索关键词") @RequestParam String keyword,
             @Parameter(description = "案件状态") @RequestParam String caseStatus,
             @Parameter(description = "案件进度") @RequestParam String caseProgress,
@@ -101,8 +120,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByKeywordAndStatusAndProgress(page, size, keyword, caseStatus, caseProgress);
+            Long total = caseSearchService.countByKeywordAndStatusAndProgress(keyword, caseStatus, caseProgress);
             log.info("关键词、状态和进度搜索案件成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("关键词、状态和进度搜索案件失败：{}", e.getMessage(), e);
@@ -112,7 +132,7 @@ public class CaseSearchController {
 
     @GetMapping("/case-number")
     @Operation(summary = "按案件编号搜索", description = "根据案件编号搜索案件")
-    public Result<List<BankruptCase>> searchByCaseNumber(
+    public Result<PageResult<BankruptCase>> searchByCaseNumber(
             @Parameter(description = "案件编号") @RequestParam String caseNumber,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -121,8 +141,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByCaseNumber(page, size, caseNumber);
+            Long total = caseSearchService.countByCaseNumber(caseNumber);
             log.info("按案件编号搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按案件编号搜索失败：{}", e.getMessage(), e);
@@ -132,7 +153,7 @@ public class CaseSearchController {
 
     @GetMapping("/case-name")
     @Operation(summary = "按案件名称搜索", description = "根据案件名称搜索案件")
-    public Result<List<BankruptCase>> searchByCaseName(
+    public Result<PageResult<BankruptCase>> searchByCaseName(
             @Parameter(description = "案件名称") @RequestParam String caseName,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -141,8 +162,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByCaseName(page, size, caseName);
+            Long total = caseSearchService.countByCaseName(caseName);
             log.info("按案件名称搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按案件名称搜索失败：{}", e.getMessage(), e);
@@ -152,7 +174,7 @@ public class CaseSearchController {
 
     @GetMapping("/acceptance-court")
     @Operation(summary = "按受理法院搜索", description = "根据受理法院搜索案件")
-    public Result<List<BankruptCase>> searchByAcceptanceCourt(
+    public Result<PageResult<BankruptCase>> searchByAcceptanceCourt(
             @Parameter(description = "受理法院") @RequestParam String acceptanceCourt,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -161,8 +183,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByAcceptanceCourt(page, size, acceptanceCourt);
+            Long total = caseSearchService.countByAcceptanceCourt(acceptanceCourt);
             log.info("按受理法院搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按受理法院搜索失败：{}", e.getMessage(), e);
@@ -172,7 +195,7 @@ public class CaseSearchController {
 
     @GetMapping("/designated-institution")
     @Operation(summary = "按指定机构搜索", description = "根据指定机构搜索案件")
-    public Result<List<BankruptCase>> searchByDesignatedInstitution(
+    public Result<PageResult<BankruptCase>> searchByDesignatedInstitution(
             @Parameter(description = "指定机构") @RequestParam String designatedInstitution,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -181,8 +204,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByDesignatedInstitution(page, size, designatedInstitution);
+            Long total = caseSearchService.countByDesignatedInstitution(designatedInstitution);
             log.info("按指定机构搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按指定机构搜索失败：{}", e.getMessage(), e);
@@ -192,7 +216,7 @@ public class CaseSearchController {
 
     @GetMapping("/main-responsible-person")
     @Operation(summary = "按主要负责人搜索", description = "根据主要负责人搜索案件")
-    public Result<List<BankruptCase>> searchByMainResponsiblePerson(
+    public Result<PageResult<BankruptCase>> searchByMainResponsiblePerson(
             @Parameter(description = "主要负责人") @RequestParam String mainResponsiblePerson,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -201,8 +225,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByMainResponsiblePerson(page, size, mainResponsiblePerson);
+            Long total = caseSearchService.countByMainResponsiblePerson(mainResponsiblePerson);
             log.info("按主要负责人搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按主要负责人搜索失败：{}", e.getMessage(), e);
@@ -212,7 +237,7 @@ public class CaseSearchController {
 
     @GetMapping("/acceptance-date-range")
     @Operation(summary = "按受理日期范围搜索", description = "根据受理日期范围搜索案件")
-    public Result<List<BankruptCase>> searchByAcceptanceDateRange(
+    public Result<PageResult<BankruptCase>> searchByAcceptanceDateRange(
             @Parameter(description = "开始日期") @RequestParam String startDate,
             @Parameter(description = "结束日期") @RequestParam String endDate,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
@@ -224,8 +249,9 @@ public class CaseSearchController {
             LocalDate start = LocalDate.parse(startDate);
             LocalDate end = LocalDate.parse(endDate);
             List<BankruptCase> caseList = caseSearchService.searchByAcceptanceDateRange(page, size, start, end);
+            Long total = caseSearchService.countByAcceptanceDateRange(start, end);
             log.info("按受理日期范围搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按受理日期范围搜索失败：{}", e.getMessage(), e);
@@ -235,7 +261,7 @@ public class CaseSearchController {
 
     @GetMapping("/case-source")
     @Operation(summary = "按案件来源搜索", description = "根据案件来源搜索案件")
-    public Result<List<BankruptCase>> searchByCaseSource(
+    public Result<PageResult<BankruptCase>> searchByCaseSource(
             @Parameter(description = "案件来源") @RequestParam String caseSource,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -244,8 +270,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByCaseSource(page, size, caseSource);
+            Long total = caseSearchService.countByCaseSource(caseSource);
             log.info("按案件来源搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按案件来源搜索失败：{}", e.getMessage(), e);
@@ -255,7 +282,7 @@ public class CaseSearchController {
 
     @GetMapping("/case-reason")
     @Operation(summary = "按案件原因搜索", description = "根据案件原因搜索案件")
-    public Result<List<BankruptCase>> searchByCaseReason(
+    public Result<PageResult<BankruptCase>> searchByCaseReason(
             @Parameter(description = "案件原因") @RequestParam String caseReason,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -264,8 +291,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByCaseReason(page, size, caseReason);
+            Long total = caseSearchService.countByCaseReason(caseReason);
             log.info("按案件原因搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按案件原因搜索失败：{}", e.getMessage(), e);
@@ -275,7 +303,7 @@ public class CaseSearchController {
 
     @GetMapping("/designated-judge")
     @Operation(summary = "按指定法官搜索", description = "根据指定法官搜索案件")
-    public Result<List<BankruptCase>> searchByDesignatedJudge(
+    public Result<PageResult<BankruptCase>> searchByDesignatedJudge(
             @Parameter(description = "指定法官") @RequestParam String designatedJudge,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer size) {
@@ -284,8 +312,9 @@ public class CaseSearchController {
 
         try {
             List<BankruptCase> caseList = caseSearchService.searchByDesignatedJudge(page, size, designatedJudge);
+            Long total = caseSearchService.countByDesignatedJudge(designatedJudge);
             log.info("按指定法官搜索成功");
-            return Result.success(caseList);
+            return Result.success(PageResult.of(total, caseList));
 
         } catch (Exception e) {
             log.error("按指定法官搜索失败：{}", e.getMessage(), e);

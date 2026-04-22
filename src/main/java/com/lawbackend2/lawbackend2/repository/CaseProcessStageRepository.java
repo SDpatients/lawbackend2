@@ -12,28 +12,28 @@ import java.util.List;
 @Repository
 public interface CaseProcessStageRepository extends JpaRepository<CaseProcessStage, Long> {
 
-    @Query("SELECT c FROM CaseProcessStage c WHERE c.isDeleted = false AND c.caseId = :caseId")
+    @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId")
     List<CaseProcessStage> findByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT c FROM CaseProcessStage c WHERE c.isDeleted = false AND c.caseId = :caseId AND c.stageNum = :stageNum")
+    @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId AND c.stageNum = :stageNum")
     List<CaseProcessStage> findByCaseIdAndStageNum(@Param("caseId") Long caseId, @Param("stageNum") Integer stageNum);
 
-    @Query("SELECT c FROM CaseProcessStage c WHERE c.isDeleted = false AND c.caseId = :caseId AND c.moduleCode = :moduleCode")
+    @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId AND c.moduleCode = :moduleCode")
     List<CaseProcessStage> findByCaseIdAndModuleCode(@Param("caseId") Long caseId, @Param("moduleCode") String moduleCode);
 
-    @Query("SELECT c FROM CaseProcessStage c WHERE c.isDeleted = false AND c.caseId = :caseId")
+    @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId")
     List<CaseProcessStage> findByCaseIdAndNotDeleted(@Param("caseId") Long caseId);
 
-    @Query("SELECT c FROM CaseProcessStage c WHERE c.isDeleted = false AND c.caseId = :caseId AND c.stageNum = :stageNum")
+    @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId AND c.stageNum = :stageNum")
     List<CaseProcessStage> findByCaseIdAndStageNumAndNotDeleted(@Param("caseId") Long caseId, @Param("stageNum") Integer stageNum);
 
-    @Query("SELECT c FROM CaseProcessStage c WHERE c.isDeleted = false AND c.caseId = :caseId AND c.moduleCode = :moduleCode")
+    @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId AND c.moduleCode = :moduleCode")
     List<CaseProcessStage> findByCaseIdAndModuleCodeAndNotDeleted(@Param("caseId") Long caseId, @Param("moduleCode") String moduleCode);
 
-    @Query("SELECT c FROM CaseProcessStage c WHERE c.isDeleted = false AND c.caseId = :caseId AND c.stageNum = :stageNum AND c.moduleCode = :moduleCode")
+    @Query("SELECT c FROM CaseProcessStage c WHERE c.caseId = :caseId AND c.stageNum = :stageNum AND c.moduleCode = :moduleCode")
     List<CaseProcessStage> findByCaseIdAndStageNumAndModuleCodeAndNotDeleted(@Param("caseId") Long caseId, @Param("stageNum") Integer stageNum, @Param("moduleCode") String moduleCode);
 
     @Modifying
-    @Query("UPDATE CaseProcessStage c SET c.isDeleted = true WHERE c.caseId = :caseId")
+    @Query("DELETE FROM CaseProcessStage c WHERE c.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

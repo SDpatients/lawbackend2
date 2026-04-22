@@ -15,25 +15,25 @@ import java.util.Optional;
 @Repository
 public interface CaseTaskRepository extends JpaRepository<CaseTask, Long> {
 
-    @Query("SELECT ct FROM CaseTask ct WHERE ct.isDeleted = false AND ct.caseId = :caseId")
+    @Query("SELECT ct FROM CaseTask ct WHERE ct.caseId = :caseId")
     List<CaseTask> findByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT ct FROM CaseTask ct WHERE ct.isDeleted = false AND ct.caseId = :caseId AND ct.status = :status")
+    @Query("SELECT ct FROM CaseTask ct WHERE ct.caseId = :caseId AND ct.status = :status")
     List<CaseTask> findByCaseIdAndStatus(@Param("caseId") Long caseId, @Param("status") String status);
 
-    @Query("SELECT ct FROM CaseTask ct WHERE ct.isDeleted = false AND ct.caseId = :caseId AND ct.taskCode = :taskCode")
+    @Query("SELECT ct FROM CaseTask ct WHERE ct.caseId = :caseId AND ct.taskCode = :taskCode")
     Optional<CaseTask> findByCaseIdAndTaskCode(@Param("caseId") Long caseId, @Param("taskCode") String taskCode);
 
-    @Query("SELECT ct FROM CaseTask ct WHERE ct.isDeleted = false AND ct.caseId = :caseId")
+    @Query("SELECT ct FROM CaseTask ct WHERE ct.caseId = :caseId")
     Page<CaseTask> findByCaseIdWithPage(@Param("caseId") Long caseId, Pageable pageable);
 
-    @Query("SELECT ct FROM CaseTask ct WHERE ct.caseId = :caseId AND ct.isDeleted = false ORDER BY ct.sortOrder")
+    @Query("SELECT ct FROM CaseTask ct WHERE ct.caseId = :caseId ORDER BY ct.sortOrder")
     List<CaseTask> findByCaseIdOrderBySortOrder(@Param("caseId") Long caseId);
 
-    @Query("SELECT COUNT(ct) FROM CaseTask ct WHERE ct.caseId = :caseId AND ct.status = :status AND ct.isDeleted = false")
+    @Query("SELECT COUNT(ct) FROM CaseTask ct WHERE ct.caseId = :caseId AND ct.status = :status")
     Long countByCaseIdAndStatus(@Param("caseId") Long caseId, @Param("status") String status);
 
     @Modifying
-    @Query("UPDATE CaseTask ct SET ct.isDeleted = true WHERE ct.caseId = :caseId")
+    @Query("DELETE FROM CaseTask ct WHERE ct.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

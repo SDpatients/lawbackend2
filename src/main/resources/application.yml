@@ -1,3 +1,13 @@
+info:
+  app:
+    name: lawbackend2
+    description: 法律文书智能处理系统后端
+    version: 0.0.1-SNAPSHOT
+  build:
+    time: ${maven.build.timestamp:2024-01-01T00:00:00Z}
+  java:
+    version: ${java.version}
+
 spring:
   application:
     name: lawbackend2
@@ -49,7 +59,6 @@ spring:
         min-idle: 0
 
 server:
-  address: 192.168.0.151
   port: 8080
   servlet:
     context-path: /api/v1
@@ -76,7 +85,7 @@ login:
 
 file:
   upload:
-    path: C:\\law-upload
+    path: D:\\law-upload
     temp-token-expire-minutes: 30
 
 springdoc:
@@ -114,3 +123,73 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+backup:
+  enabled: true
+  cron: "0 0 2 * * ?"
+  path: D:\\law-backup
+  retention-days: 30
+  mysqldump-path: "C:/Program Files/MySQL/MySQL Server 8.0/bin/mysqldump.exe"
+  host: localhost
+  port: 3306
+  username: root
+  password: 123456
+  database: law
+  compress: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+    loggers:
+      enabled: true
+    env:
+      show-values: always
+    configprops:
+      show-values: always
+  health:
+    db:
+      enabled: true
+    redis:
+      enabled: true
+    diskspace:
+      enabled: true
+      threshold: 10GB
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5,0.95,0.99
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+license:
+  enabled: true
+  file-path: D:\\law-backup\\license.lic
+  public-key: |
+    -----BEGIN PUBLIC KEY-----
+    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsF+z8tktoPigufmvXzed
+    XSPbYttFuOY16Bg0+28lDlcSjC2e+wV8WgDM+/NfvuaF6eu1ffdVHLhRICvbctEO
+    NVaLvmwOq704FtIXYB4TjawOl7lFG5mr1wzno/B3hFMPSJbWMHJsTi3CPsWM/sUf
+    cmdQMZM3UdQuajAijrtwZnESnCgLfwvIPqtrtH/1Ptdkc2wvNKvShjqmxQLIyfG1
+    DspMWBP2NWJrNIrUW5g7YPc6CdG3qOBqjYVVNsblgPIJqItCFiHQHNGVD4O8eWn9
+    vVK6efDN2AalH92TwapJTeRSac0sMqHCk6FaOwDY7mr0p7xp/lWsvBzYdIjt+hsF
+    XQIDAQAB
+    -----END PUBLIC KEY-----
+  warning-days: 30
+  strict-mode: false

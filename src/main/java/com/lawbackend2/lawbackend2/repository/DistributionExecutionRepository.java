@@ -15,10 +15,10 @@ import java.util.Optional;
 @Repository
 public interface DistributionExecutionRepository extends JpaRepository<DistributionExecution, Long> {
 
-    Optional<DistributionExecution> findByDistributionNoAndIsDeleted(String distributionNo, Boolean isDeleted);
+    Optional<DistributionExecution> findByDistributionNo(String distributionNo);
 
-    @Query("SELECT de FROM DistributionExecution de WHERE de.isDeleted = false " +
-           "AND (:caseId IS NULL OR de.caseId = :caseId) " +
+    @Query("SELECT de FROM DistributionExecution de WHERE " +
+           "(:caseId IS NULL OR de.caseId = :caseId) " +
            "AND (:distributionBatch IS NULL OR de.distributionBatch = :distributionBatch) " +
            "AND (:approvalStatus IS NULL OR de.approvalStatus = :approvalStatus) " +
            "AND (:executionStatus IS NULL OR de.executionStatus = :executionStatus)")
@@ -28,9 +28,9 @@ public interface DistributionExecutionRepository extends JpaRepository<Distribut
                                               @Param("executionStatus") String executionStatus,
                                               Pageable pageable);
 
-    List<DistributionExecution> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<DistributionExecution> findByCaseId(Long caseId);
 
     @Modifying
-    @Query("UPDATE DistributionExecution de SET de.isDeleted = true WHERE de.caseId = :caseId")
+    @Query("DELETE FROM DistributionExecution de WHERE de.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

@@ -18,46 +18,45 @@ public interface LibDocumentFolderRepository extends JpaRepository<LibDocumentFo
 
     boolean existsByFolderPath(String folderPath);
 
-    boolean existsByParentIdAndFolderNameAndIsDeletedFalse(Long parentId, String folderName);
+    boolean existsByParentIdAndFolderName(Long parentId, String folderName);
 
-    List<LibDocumentFolder> findByParentIdAndIsDeletedFalseOrderBySortOrderAsc(Long parentId);
+    List<LibDocumentFolder> findByParentIdOrderBySortOrderAsc(Long parentId);
 
-    List<LibDocumentFolder> findByParentIdIsNullAndIsDeletedFalseOrderBySortOrderAsc();
+    List<LibDocumentFolder> findByParentIdIsNullOrderBySortOrderAsc();
 
-    @Query("SELECT f FROM LibDocumentFolder f WHERE f.folderName LIKE %:keyword% AND f.isDeleted = false")
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.folderName LIKE %:keyword%")
     List<LibDocumentFolder> searchByKeyword(@Param("keyword") String keyword);
 
-    @Query("SELECT COUNT(f) FROM LibDocumentFolder f WHERE f.parentId = :parentId AND f.isDeleted = false")
+    @Query("SELECT COUNT(f) FROM LibDocumentFolder f WHERE f.parentId = :parentId")
     Long countByParentId(@Param("parentId") Long parentId);
 
-    @Query("SELECT f FROM LibDocumentFolder f WHERE f.isPublic = true AND f.isDeleted = false ORDER BY f.createTime DESC")
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.isPublic = true ORDER BY f.createTime DESC")
     List<LibDocumentFolder> findPublicFolders();
 
-    @Query("SELECT f FROM LibDocumentFolder f WHERE f.isDeleted = false ORDER BY f.folderLevel ASC, f.sortOrder ASC, f.createTime ASC")
+    @Query("SELECT f FROM LibDocumentFolder f ORDER BY f.folderLevel ASC, f.sortOrder ASC, f.createTime ASC")
     List<LibDocumentFolder> findAllOrderByLevelAndSort();
 
-    @Query("SELECT f FROM LibDocumentFolder f WHERE f.folderLevel = :level AND f.isDeleted = false ORDER BY f.sortOrder ASC, f.createTime ASC")
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.folderLevel = :level ORDER BY f.sortOrder ASC, f.createTime ASC")
     List<LibDocumentFolder> findByFolderLevelOrderBySortOrder(@Param("level") Integer level);
 
-    @Query("SELECT f.id FROM LibDocumentFolder f WHERE f.parentId = :parentId AND f.isDeleted = false")
+    @Query("SELECT f.id FROM LibDocumentFolder f WHERE f.parentId = :parentId")
     List<Long> findIdsByParentId(@Param("parentId") Long parentId);
 
     @Query(value = "WITH RECURSIVE folder_tree AS (" +
-            "SELECT id FROM tb_lib_document_folder WHERE id = :folderId AND is_deleted = 0 " +
+            "SELECT id FROM tb_lib_document_folder WHERE id = :folderId " +
             "UNION ALL " +
             "SELECT f.id FROM tb_lib_document_folder f " +
             "INNER JOIN folder_tree ft ON f.parent_id = ft.id " +
-            "WHERE f.is_deleted = 0" +
             ") SELECT id FROM folder_tree", nativeQuery = true)
     List<Long> findAllDescendantIds(@Param("folderId") Long folderId);
 
-    @Query("SELECT f FROM LibDocumentFolder f WHERE f.parentId IN :parentIds AND f.isDeleted = false ORDER BY f.sortOrder ASC")
+    @Query("SELECT f FROM LibDocumentFolder f WHERE f.parentId IN :parentIds ORDER BY f.sortOrder ASC")
     List<LibDocumentFolder> findByParentIdInOrderBySortOrder(@Param("parentIds") List<Long> parentIds);
 
     @Modifying
     @Query("UPDATE LibDocumentFolder f SET f.sortOrder = :sortOrder WHERE f.id = :id")
     void updateSortOrder(@Param("id") Long id, @Param("sortOrder") Integer sortOrder);
 
-    @Query("SELECT MAX(f.sortOrder) FROM LibDocumentFolder f WHERE f.parentId = :parentId AND f.isDeleted = false")
+    @Query("SELECT MAX(f.sortOrder) FROM LibDocumentFolder f WHERE f.parentId = :parentId")
     Integer findMaxSortOrderByParentId(@Param("parentId") Long parentId);
 }

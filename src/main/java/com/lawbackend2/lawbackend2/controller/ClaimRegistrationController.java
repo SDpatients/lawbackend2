@@ -1,9 +1,11 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.ClaimDetailResponse;
 import com.lawbackend2.lawbackend2.dto.ClaimRegistrationCreateRequest;
+import com.lawbackend2.lawbackend2.dto.ClaimRegistrationStatsResponse;
 import com.lawbackend2.lawbackend2.dto.ClaimRegistrationUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.ExcelImportResponse;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
@@ -41,6 +43,7 @@ public class ClaimRegistrationController {
 
     @Operation(summary = "创建债权申报登记")
     @PostMapping
+    @AuditLog(module = "claim-registration", moduleName = "债权申报登记管理", operationType = "CREATE", operationName = "创建债权申报登记")
     public Result<Map<String, Object>> createClaim(@Valid @RequestBody ClaimRegistrationCreateRequest request) {
         Long userId = getCurrentUserId();
         ClaimRegistration claimRegistration = claimRegistrationService.createClaim(request, userId);
@@ -82,6 +85,7 @@ public class ClaimRegistrationController {
 
     @Operation(summary = "更新债权申报")
     @PutMapping("/{claimId}")
+    @AuditLog(module = "claim-registration", moduleName = "债权申报登记管理", operationType = "UPDATE", operationName = "更新债权申报")
     public Result<Void> updateClaim(
             @Parameter(description = "债权申报ID") @PathVariable Long claimId,
             @Valid @RequestBody ClaimRegistrationUpdateRequest request) {
@@ -92,6 +96,7 @@ public class ClaimRegistrationController {
 
     @Operation(summary = "删除债权申报")
     @DeleteMapping("/{claimId}")
+    @AuditLog(module = "claim-registration", moduleName = "债权申报登记管理", operationType = "DELETE", operationName = "删除债权申报")
     public Result<Void> deleteClaim(@Parameter(description = "债权申报ID") @PathVariable Long claimId) {
         Long userId = getCurrentUserId();
         claimRegistrationService.deleteClaim(claimId, userId);
@@ -172,6 +177,14 @@ public class ClaimRegistrationController {
             log.error("解析Excel失败", e);
             return Result.error("解析Excel失败：" + e.getMessage());
         }
+    }
+
+    @Operation(summary = "获取债权申报统计数据")
+    @GetMapping("/stats/{caseId:\\d+}")
+    public Result<ClaimRegistrationStatsResponse> getClaimRegistrationStats(
+            @Parameter(description = "案件ID") @PathVariable Long caseId) {
+        ClaimRegistrationStatsResponse stats = claimRegistrationService.getClaimRegistrationStats(caseId);
+        return Result.success(stats);
     }
 
     @Operation(summary = "导出债权登记到Excel")

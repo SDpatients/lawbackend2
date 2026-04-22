@@ -61,7 +61,9 @@ public class CaseTaskController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") int size) {
 
-        Pageable pageable = PageRequest.of(page - 1, size);
+        // 防止页码为负数，确保最小为0（Spring Data 页码从0开始）
+        int pageIndex = Math.max(page - 1, 0);
+        Pageable pageable = PageRequest.of(pageIndex, size);
         Page<CaseTaskResponse> result = caseTaskService.getTasksByCaseId(caseId, status, taskCode, pageable);
         return Result.success(result);
     }

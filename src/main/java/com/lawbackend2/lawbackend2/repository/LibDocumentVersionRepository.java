@@ -20,7 +20,7 @@ public interface LibDocumentVersionRepository extends JpaRepository<LibDocumentV
 
     Optional<LibDocumentVersion> findFirstByDocumentIdOrderByVersionNumberDesc(Long documentId);
 
-    @Query("SELECT v FROM LibDocumentVersion v WHERE v.documentId = :documentId AND v.isDeleted = false ORDER BY v.versionNumber DESC")
+    @Query("SELECT v FROM LibDocumentVersion v WHERE v.documentId = :documentId ORDER BY v.versionNumber DESC")
     List<LibDocumentVersion> findActiveVersionsByDocumentId(@Param("documentId") Long documentId);
 
     @Query("SELECT MAX(v.versionNumber) FROM LibDocumentVersion v WHERE v.documentId = :documentId")
@@ -30,6 +30,6 @@ public interface LibDocumentVersionRepository extends JpaRepository<LibDocumentV
     Long countByDocumentId(@Param("documentId") Long documentId);
 
     @Modifying
-    @Query("UPDATE LibDocumentVersion v SET v.isDeleted = true WHERE v.id = :id")
-    void softDelete(@Param("id") Long id);
+    @Query("DELETE FROM LibDocumentVersion v WHERE v.documentId = :documentId")
+    void deleteByDocumentId(@Param("documentId") Long documentId);
 }

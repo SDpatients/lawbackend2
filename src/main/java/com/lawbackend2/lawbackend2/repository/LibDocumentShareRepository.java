@@ -24,6 +24,10 @@ public interface LibDocumentShareRepository extends JpaRepository<LibDocumentSha
     @Query("UPDATE LibDocumentShare s SET s.accessCount = s.accessCount + 1 WHERE s.id = :id")
     void incrementAccessCount(@Param("id") Long id);
 
-    @Query("SELECT s FROM LibDocumentShare s WHERE s.isEnabled = true AND s.isDeleted = false AND (s.expireTime IS NULL OR s.expireTime > CURRENT_TIMESTAMP)")
+    @Query("SELECT s FROM LibDocumentShare s WHERE s.isEnabled = true AND (s.expireTime IS NULL OR s.expireTime > CURRENT_TIMESTAMP)")
     List<LibDocumentShare> findActiveShares();
+
+    @Modifying
+    @Query("DELETE FROM LibDocumentShare s WHERE s.documentId = :documentId")
+    void deleteByDocumentId(@Param("documentId") Long documentId);
 }

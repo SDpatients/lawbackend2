@@ -68,7 +68,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     @CacheEvict(value = "fundTransactionStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "fundTransactionStatistics", key = "#caseId")
     public FundTransactionStatistics getFundTransactionStatistics(Long caseId) {
-        List<FundFlow> transactions = fundFlowRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<FundFlow> transactions = fundFlowRepository.findByCaseId(caseId);
 
         FundTransactionStatistics statistics = new FundTransactionStatistics();
         statistics.setTotalTransactions((long) transactions.size());
@@ -108,7 +108,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public FundTransactionExport exportFundTransactions(Long caseId) {
-        List<FundFlow> transactions = fundFlowRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<FundFlow> transactions = fundFlowRepository.findByCaseId(caseId);
 
         FundTransactionExport export = new FundTransactionExport();
         export.setFileName("fund_transactions_" + LocalDateTime.now().toString() + ".xlsx");
@@ -139,7 +139,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     @CacheEvict(value = "fundApprovalStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "fundApprovalStatistics", key = "#caseId")
     public FundApprovalStatistics getFundApprovalStatistics(Long caseId) {
-        List<FundApproval> approvals = fundApprovalRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<FundApproval> approvals = fundApprovalRepository.findByCaseId(caseId);
 
         FundApprovalStatistics statistics = new FundApprovalStatistics();
         statistics.setTotalApprovals((long) approvals.size());
@@ -182,7 +182,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     @CacheEvict(value = "fundAccountStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "fundAccountStatistics", key = "#caseId")
     public FundAccountStatistics getFundAccountStatistics(Long caseId) {
-        List<FundAccount> accounts = fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<FundAccount> accounts = fundAccountRepository.findByCaseId(caseId);
 
         FundAccountStatistics statistics = new FundAccountStatistics();
         statistics.setTotalAccounts((long) accounts.size());
@@ -223,7 +223,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     @CacheEvict(value = "workPlanStatistics", key = "#caseId", beforeInvocation = true)
     @Cacheable(value = "workPlanStatistics", key = "#caseId")
     public WorkPlanStatistics getWorkPlanStatistics(Long caseId) {
-        List<WorkPlan> plans = workPlanRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<WorkPlan> plans = workPlanRepository.findByCaseId(caseId);
 
         WorkPlanStatistics statistics = new WorkPlanStatistics();
         statistics.setTotalPlans((long) plans.size());
@@ -783,7 +783,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public FundApprovalExport exportFundApprovals(Long caseId) {
-        List<FundApproval> approvals = fundApprovalRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<FundApproval> approvals = fundApprovalRepository.findByCaseId(caseId);
 
         FundApprovalExport export = new FundApprovalExport();
         export.setFileName("fund_approvals_" + LocalDateTime.now().toString() + ".xlsx");
@@ -814,7 +814,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public FundAccountExport exportFundAccounts(Long caseId) {
-        List<FundAccount> accounts = fundAccountRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<FundAccount> accounts = fundAccountRepository.findByCaseId(caseId);
 
         FundAccountExport export = new FundAccountExport();
         export.setFileName("fund_accounts_" + LocalDateTime.now().toString() + ".xlsx");
@@ -848,7 +848,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public WorkPlanExport exportWorkPlans(Long caseId) {
-        List<WorkPlan> plans = workPlanRepository.findByCaseIdAndIsDeleted(caseId, false);
+        List<WorkPlan> plans = workPlanRepository.findByCaseId(caseId);
 
         WorkPlanExport export = new WorkPlanExport();
         export.setFileName("work_plans_" + LocalDateTime.now().toString() + ".xlsx");
@@ -878,7 +878,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public FundApprovalExport exportFundApprovals(Long caseId, Pageable pageable) {
-        Page<FundApproval> approvalPage = fundApprovalRepository.findByCaseIdAndIsDeletedWithPage(caseId, pageable);
+        Page<FundApproval> approvalPage = fundApprovalRepository.findByCaseIdWithPage(caseId, pageable);
 
         FundApprovalExport export = new FundApprovalExport();
         export.setFileName("fund_approvals_" + LocalDateTime.now().toString() + ".xlsx");
@@ -910,7 +910,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public WorkPlanExport exportWorkPlans(Long caseId, Pageable pageable) {
-        Page<WorkPlan> planPage = workPlanRepository.findByCaseIdAndIsDeletedWithPage(caseId, pageable);
+        Page<WorkPlan> planPage = workPlanRepository.findByCaseIdWithPage(caseId, pageable);
 
         WorkPlanExport export = new WorkPlanExport();
         export.setFileName("work_plans_" + LocalDateTime.now().toString() + ".xlsx");

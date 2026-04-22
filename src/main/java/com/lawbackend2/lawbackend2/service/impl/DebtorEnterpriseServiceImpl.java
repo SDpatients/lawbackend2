@@ -104,7 +104,7 @@ public class DebtorEnterpriseServiceImpl implements DebtorEnterpriseService {
 
     @Override
     public List<DebtorEnterprise> getDebtorList(Integer pageNum, Integer pageSize, Long caseId, String enterpriseName) {
-        log.debug("查询债务人列表, pageNum: {}, pageSize: {}, caseId: {}, enterpriseName: {}", 
+        log.debug("查询债务人列表, pageNum: {}, pageSize: {}, caseId: {}, enterpriseName: {}",
                   pageNum, pageSize, caseId, enterpriseName);
 
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
@@ -130,7 +130,7 @@ public class DebtorEnterpriseServiceImpl implements DebtorEnterpriseService {
         } else if (caseId != null) {
             return debtorEnterpriseRepository.findByCaseId(caseId, pageable).getTotalElements();
         } else {
-            return debtorEnterpriseRepository.count();
+            return debtorEnterpriseRepository.countAllActive();
         }
     }
 

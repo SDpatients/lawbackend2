@@ -15,13 +15,16 @@ import java.util.Optional;
 @Repository
 public interface DebtorEnterpriseRepository extends JpaRepository<DebtorEnterprise, Long>, JpaSpecificationExecutor<DebtorEnterprise> {
 
-    @Query("SELECT d FROM DebtorEnterprise d WHERE d.isDeleted = false AND d.unifiedSocialCreditCode = :unifiedSocialCreditCode")
+    Page<DebtorEnterprise> findAll(Pageable pageable);
+
+    @Query("SELECT COUNT(d) FROM DebtorEnterprise d")
+    Long countAllActive();
+
     Optional<DebtorEnterprise> findByUnifiedSocialCreditCode(@Param("unifiedSocialCreditCode") String unifiedSocialCreditCode);
 
-    @Query("SELECT d FROM DebtorEnterprise d WHERE d.isDeleted = false AND d.caseId = :caseId")
     Page<DebtorEnterprise> findByCaseId(@Param("caseId") Long caseId, Pageable pageable);
 
-    @Query("SELECT d FROM DebtorEnterprise d WHERE d.isDeleted = false AND " +
+    @Query("SELECT d FROM DebtorEnterprise d WHERE " +
            "(:caseId IS NULL OR d.caseId = :caseId) AND " +
            "(:enterpriseName IS NULL OR d.enterpriseName LIKE %:enterpriseName%) AND " +
            "(:unifiedSocialCreditCode IS NULL OR d.unifiedSocialCreditCode LIKE %:unifiedSocialCreditCode%) AND " +
@@ -33,6 +36,6 @@ public interface DebtorEnterpriseRepository extends JpaRepository<DebtorEnterpri
                                            Pageable pageable);
 
     @Modifying
-    @Query("UPDATE DebtorEnterprise d SET d.isDeleted = true WHERE d.caseId = :caseId")
+    @Query("DELETE FROM DebtorEnterprise d WHERE d.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

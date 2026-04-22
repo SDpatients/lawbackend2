@@ -15,7 +15,6 @@ import java.util.List;
 public class BankAccountWithTransactionsResponse {
     private Long id;
     private String status;
-    private Boolean isDeleted;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long createUserId;

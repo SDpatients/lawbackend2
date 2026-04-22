@@ -1,11 +1,13 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.*;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.PermissionService;
+import com.lawbackend2.lawbackend2.service.RecentCaseSearchService;
 import com.lawbackend2.lawbackend2.service.UserRoleService;
 import com.lawbackend2.lawbackend2.util.CasePermissionUtil;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
@@ -33,16 +35,19 @@ public class BankruptCaseController {
     private final PermissionService permissionService;
     private final UserRoleService userRoleService;
     private final CasePermissionUtil casePermissionUtil;
+    private final RecentCaseSearchService recentCaseSearchService;
 
-    public BankruptCaseController(BankruptCaseService bankruptCaseService, PermissionService permissionService, UserRoleService userRoleService, CasePermissionUtil casePermissionUtil) {
+    public BankruptCaseController(BankruptCaseService bankruptCaseService, PermissionService permissionService, UserRoleService userRoleService, CasePermissionUtil casePermissionUtil, RecentCaseSearchService recentCaseSearchService) {
         this.bankruptCaseService = bankruptCaseService;
         this.permissionService = permissionService;
         this.userRoleService = userRoleService;
         this.casePermissionUtil = casePermissionUtil;
+        this.recentCaseSearchService = recentCaseSearchService;
     }
 
     @Operation(summary = "创建案件")
     @PostMapping
+    @AuditLog(module = "case", moduleName = "案件管理", operationType = "CREATE", operationName = "创建案件")
     public Result<Map<String, Object>> createCase(@Valid @RequestBody CaseCreateRequest request) {
         Long userId = getCurrentUserId();
         BankruptCase bankruptCase = bankruptCaseService.createCase(request, userId);
@@ -59,6 +64,10 @@ public class BankruptCaseController {
     public Result<BankruptCase> getCaseById(@Parameter(description = "案件ID") @PathVariable Long caseId) {
         casePermissionUtil.checkCaseAccessPermission(caseId);
         BankruptCase bankruptCase = bankruptCaseService.getCaseById(caseId);
+
+        Long userId = getCurrentUserId();
+        recentCaseSearchService.recordCaseSearch(userId, caseId);
+
         return Result.success(bankruptCase);
     }
 
@@ -68,7 +77,8 @@ public class BankruptCaseController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
-            @Parameter(description = "案件进度") @RequestParam(required = false) String caseProgress) {
+            @Parameter(description = "案件进度") @RequestParam(required = false) String caseProgress,
+            @Parameter(description = "关键词（支持案号、案件名称、受理法院、指定机构、主要负责人等多字段模糊搜索）") @RequestParam(required = false) String keyword) {
 
         Long userId = getCurrentUserId();
         List<String> userPermissions = permissionService.getUserPermissions(userId);
@@ -77,11 +87,11 @@ public class BankruptCaseController {
         Long total;
 
         if (userPermissions.contains("case:query:all")) {
-            list = bankruptCaseService.getCaseList(pageNum, pageSize, caseStatus, caseProgress);
-            total = bankruptCaseService.getCaseCount(caseStatus, caseProgress);
+            list = bankruptCaseService.getCaseList(pageNum, pageSize, caseStatus, caseProgress, keyword);
+            total = bankruptCaseService.getCaseCount(caseStatus, caseProgress, keyword);
         } else if (userPermissions.contains("case:query:own")) {
-            list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, null);
-            total = bankruptCaseService.getUserCaseCount(userId, caseStatus, null);
+            list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, keyword);
+            total = bankruptCaseService.getUserCaseCount(userId, caseStatus, keyword);
         } else {
             list = List.of();
             total = 0L;
@@ -92,6 +102,7 @@ public class BankruptCaseController {
 
     @Operation(summary = "更新案件信息")
     @PutMapping("/{caseId}")
+    @AuditLog(module = "case", moduleName = "案件管理", operationType = "UPDATE", operationName = "更新案件信息")
     public Result<Void> updateCase(
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Valid @RequestBody CaseUpdateRequest request) {
@@ -103,6 +114,7 @@ public class BankruptCaseController {
 
     @Operation(summary = "案件状态流转")
     @PutMapping("/{caseId}/status")
+    @AuditLog(module = "case", moduleName = "案件管理", operationType = "UPDATE", operationName = "案件状态流转")
     public Result<Void> updateCaseStatus(
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Valid @RequestBody CaseStatusUpdateRequest request) {
@@ -125,6 +137,7 @@ public class BankruptCaseController {
 
     @Operation(summary = "案件审核")
     @PostMapping("/{caseId}/review")
+    @AuditLog(module = "case", moduleName = "案件管理", operationType = "REVIEW", operationName = "案件审核")
     public Result<Void> reviewCase(
             @Parameter(description = "案件ID") @PathVariable Long caseId,
             @Valid @RequestBody CaseReviewRequest request) {
@@ -206,6 +219,16 @@ public class BankruptCaseController {
         casePermissionUtil.checkCaseAccessPermission(caseId);
         BankruptCase bankruptCase = bankruptCaseService.getReviewStatus(caseId);
         return Result.success(bankruptCase);
+    }
+
+    @Operation(summary = "获取当前用户的案件统计数据", description = "返回当前登录用户的所有案件数量、进行中数量、已结案数量")
+    @GetMapping("/my-stats")
+    public Result<com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse> getMyCaseStatistics() {
+        Long userId = getCurrentUserId();
+        log.info("获取当前用户的案件统计数据, userId: {}", userId);
+        com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse response = 
+            bankruptCaseService.getMyCaseStatistics(userId);
+        return Result.success(response);
     }
 
     @Operation(summary = "案件简单信息查询(分页)")
@@ -320,6 +343,7 @@ public class BankruptCaseController {
 
     @Operation(summary = "删除案件")
     @DeleteMapping("/{caseId}")
+    @AuditLog(module = "case", moduleName = "案件管理", operationType = "DELETE", operationName = "删除案件")
     public Result<Void> deleteCase(@Parameter(description = "案件ID") @PathVariable Long caseId) {
         casePermissionUtil.checkCaseDeletePermission(caseId);
         bankruptCaseService.deleteCase(caseId);
@@ -332,9 +356,38 @@ public class BankruptCaseController {
     public Result<com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse> getCaseRelatedData(
             @Parameter(description = "案件ID") @PathVariable Long caseId) {
         casePermissionUtil.checkCaseAccessPermission(caseId);
-        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse relatedData = 
+        com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse relatedData =
             bankruptCaseService.getCaseRelatedData(caseId);
         return Result.success(relatedData);
+    }
+
+    @Operation(summary = "获取用户最近查询的案件记录")
+    @GetMapping("/recent-searches")
+    public Result<List<com.lawbackend2.lawbackend2.dto.RecentCaseSearchRecord>> getRecentCaseSearches(
+            @Parameter(description = "返回记录数量，默认10条") @RequestParam(defaultValue = "10") Integer limit) {
+        Long userId = getCurrentUserId();
+        List<com.lawbackend2.lawbackend2.dto.RecentCaseSearchRecord> records =
+            recentCaseSearchService.getRecentSearches(userId, limit);
+        return Result.success(records);
+    }
+
+    @Operation(summary = "清除用户最近查询的案件记录")
+    @DeleteMapping("/recent-searches")
+    public Result<Void> clearRecentCaseSearches() {
+        Long userId = getCurrentUserId();
+        recentCaseSearchService.clearRecentSearches(userId);
+        log.info("清除用户最近查询记录, userId: {}", userId);
+        return Result.success();
+    }
+
+    @Operation(summary = "移除指定的最近查询案件记录")
+    @DeleteMapping("/recent-searches/{caseId}")
+    public Result<Void> removeRecentCaseSearch(
+            @Parameter(description = "案件ID") @PathVariable Long caseId) {
+        Long userId = getCurrentUserId();
+        recentCaseSearchService.removeRecentSearch(userId, caseId);
+        log.info("移除用户最近查询记录, userId: {}, caseId: {}", userId, caseId);
+        return Result.success();
     }
 
     private Long getCurrentUserId() {

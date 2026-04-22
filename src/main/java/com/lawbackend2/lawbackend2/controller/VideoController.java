@@ -39,7 +39,7 @@ public class VideoController {
 
     private final FileService fileService;
 
-    @Value("${file.upload.path:C:\\law-upload}")
+    @Value("${file.upload.path:D:\\law-upload}")
     private String uploadPath;
 
     @Autowired

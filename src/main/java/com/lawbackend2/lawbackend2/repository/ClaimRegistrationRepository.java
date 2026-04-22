@@ -17,83 +17,93 @@ import java.util.Optional;
 
 @Repository
 public interface ClaimRegistrationRepository extends JpaRepository<ClaimRegistration, Long>, JpaSpecificationExecutor<ClaimRegistration> {
-    Optional<ClaimRegistration> findByClaimNoAndIsDeletedFalse(String claimNo);
+    Optional<ClaimRegistration> findByClaimNo(String claimNo);
 
-    Page<ClaimRegistration> findByCaseIdAndIsDeletedFalse(Long caseId, Pageable pageable);
+    Page<ClaimRegistration> findByCaseId(Long caseId, Pageable pageable);
 
-    Page<ClaimRegistration> findByRegistrationStatusAndIsDeletedFalse(String registrationStatus, Pageable pageable);
+    Page<ClaimRegistration> findByRegistrationStatus(String registrationStatus, Pageable pageable);
 
-    Page<ClaimRegistration> findByCaseIdAndRegistrationStatusAndIsDeletedFalse(Long caseId, String registrationStatus, Pageable pageable);
+    Page<ClaimRegistration> findByCaseIdAndRegistrationStatus(Long caseId, String registrationStatus, Pageable pageable);
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.caseId = :caseId AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.caseId = :caseId")
     Long countByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.registrationStatus = :status AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.registrationStatus = :status")
     Long countByRegistrationStatus(@Param("status") String status);
 
-    @Query("SELECT SUM(c.principal) FROM ClaimRegistration c WHERE c.isDeleted = false")
+    @Query("SELECT SUM(c.principal) FROM ClaimRegistration c")
     Optional<BigDecimal> sumPrincipal();
 
-    @Query("SELECT SUM(c.interest) FROM ClaimRegistration c WHERE c.isDeleted = false")
+    @Query("SELECT SUM(c.interest) FROM ClaimRegistration c")
     Optional<BigDecimal> sumInterest();
 
-    @Query("SELECT SUM(c.penalty) FROM ClaimRegistration c WHERE c.isDeleted = false")
+    @Query("SELECT SUM(c.penalty) FROM ClaimRegistration c")
     Optional<BigDecimal> sumPenalty();
 
-    @Query("SELECT SUM(c.otherLosses) FROM ClaimRegistration c WHERE c.isDeleted = false")
+    @Query("SELECT SUM(c.otherLosses) FROM ClaimRegistration c")
     Optional<BigDecimal> sumOtherLosses();
 
-    @Query("SELECT SUM(c.totalAmount) FROM ClaimRegistration c WHERE c.isDeleted = false")
+    @Query("SELECT SUM(c.totalAmount) FROM ClaimRegistration c")
     Optional<BigDecimal> sumTotalAmount();
 
-    @Query("SELECT AVG(c.totalAmount) FROM ClaimRegistration c WHERE c.isDeleted = false")
+    @Query("SELECT AVG(c.totalAmount) FROM ClaimRegistration c")
     Optional<Double> getAverageClaimAmount();
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE DATE(c.createTime) = :date AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE DATE(c.createTime) = :date")
     Long countByCreatedAtDate(@Param("date") LocalDate date);
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE YEAR(c.createTime) = :year AND MONTH(c.createTime) = :month AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE YEAR(c.createTime) = :year AND MONTH(c.createTime) = :month")
     Long countByCreatedAtYearAndMonth(@Param("year") int year, @Param("month") int month);
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE YEAR(c.createTime) = :year AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE YEAR(c.createTime) = :year")
     Long countByCreatedAtYear(@Param("year") int year);
 
-    @Query("SELECT c.registrationStatus, COUNT(c) FROM ClaimRegistration c WHERE c.isDeleted = false GROUP BY c.registrationStatus")
+    @Query("SELECT c.registrationStatus, COUNT(c) FROM ClaimRegistration c GROUP BY c.registrationStatus")
     List<Object[]> countByRegistrationStatusGroup();
 
-    @Query("SELECT c.claimType, COUNT(c) FROM ClaimRegistration c WHERE c.claimType IS NOT NULL AND c.isDeleted = false GROUP BY c.claimType")
+    @Query("SELECT c.claimType, COUNT(c) FROM ClaimRegistration c WHERE c.claimType IS NOT NULL GROUP BY c.claimType")
     List<Object[]> countByClaimTypeGroup();
 
-    @Query("SELECT c.claimNature, COUNT(c) FROM ClaimRegistration c WHERE c.claimNature IS NOT NULL AND c.isDeleted = false GROUP BY c.claimNature")
+    @Query("SELECT c.claimNature, COUNT(c) FROM ClaimRegistration c WHERE c.claimNature IS NOT NULL GROUP BY c.claimNature")
     List<Object[]> countByClaimNatureGroup();
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.hasCourtJudgment = :hasCourtJudgment AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.hasCourtJudgment = :hasCourtJudgment")
     Long countByHasCourtJudgment(@Param("hasCourtJudgment") Boolean hasCourtJudgment);
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.hasExecution = :hasExecution AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.hasExecution = :hasExecution")
     Long countByHasExecution(@Param("hasExecution") Boolean hasExecution);
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.hasCollateral = :hasCollateral AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.hasCollateral = :hasCollateral")
     Long countByHasCollateral(@Param("hasCollateral") Boolean hasCollateral);
 
-    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.isDeleted = false")
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate")
     Long countByCreatedAtBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT c.registrationStatus, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.isDeleted = false GROUP BY c.registrationStatus")
+    @Query("SELECT c.registrationStatus, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate GROUP BY c.registrationStatus")
     List<Object[]> countByRegistrationStatusGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT c.claimType, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.claimType IS NOT NULL AND c.isDeleted = false GROUP BY c.claimType")
+    @Query("SELECT c.claimType, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.claimType IS NOT NULL GROUP BY c.claimType")
     List<Object[]> countByClaimTypeGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
-    @Query("SELECT c.claimNature, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.claimNature IS NOT NULL AND c.isDeleted = false GROUP BY c.claimNature")
+    @Query("SELECT c.claimNature, COUNT(c) FROM ClaimRegistration c WHERE c.createTime BETWEEN :startDate AND :endDate AND c.claimNature IS NOT NULL GROUP BY c.claimNature")
     List<Object[]> countByClaimNatureGroupByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     @Modifying
-    @Query("UPDATE ClaimRegistration c SET c.isDeleted = true WHERE c.caseId = :caseId")
+    @Query("DELETE FROM ClaimRegistration c WHERE c.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
-    List<ClaimRegistration> findAllByCreditorNameAndIsDeletedFalse(String creditorName);
+    List<ClaimRegistration> findAllByCreditorName(String creditorName);
 
-    @Query("SELECT MAX(c.claimNo) FROM ClaimRegistration c WHERE c.claimNo LIKE :prefix% AND c.isDeleted = false")
+    @Query("SELECT MAX(c.claimNo) FROM ClaimRegistration c WHERE c.claimNo LIKE :prefix%")
     Optional<String> findMaxClaimNoByPrefix(@Param("prefix") String prefix);
+
+    Page<ClaimRegistration> findAll(Pageable pageable);
+
+    @Query("SELECT COUNT(c) FROM ClaimRegistration c")
+    Long countAllActive();
+
+    // 兼容方法，等同于 findAll
+    default Page<ClaimRegistration> findAllActive(Pageable pageable) {
+        return findAll(pageable);
+    }
 }

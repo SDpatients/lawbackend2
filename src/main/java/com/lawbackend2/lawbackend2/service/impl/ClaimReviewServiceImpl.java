@@ -296,18 +296,14 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
         Long claimRegistrationId = review.getClaimRegistrationId();
         
         // 级联删除：检查并删除相关的债权确认记录
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId);
         for (ClaimConfirmation confirmation : confirmations) {
-            confirmation.setIsDeleted(true);
-            confirmation.setUpdateUserId(userId);
-            claimConfirmationRepository.save(confirmation);
+            claimConfirmationRepository.delete(confirmation);
             log.info("级联删除债权确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimRegistrationId);
         }
         
-        // 删除债权审查
-        review.setIsDeleted(true);
-        review.setUpdateUserId(userId);
-        claimReviewRepository.save(review);
+        // 硬删除债权审查
+        claimReviewRepository.delete(review);
         log.info("债权审查记录删除成功, reviewId: {}", reviewId);
     }
 
@@ -363,11 +359,9 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
         claimReviewRepository.save(review);
         
         // 级联处理相关的债权确认记录
-        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationIdAndIsDeletedFalse(claimRegistrationId);
+        List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId);
         for (ClaimConfirmation confirmation : confirmations) {
-            confirmation.setIsDeleted(true);
-            confirmation.setUpdateUserId(userId);
-            claimConfirmationRepository.save(confirmation);
+            claimConfirmationRepository.delete(confirmation);
             log.info("级联处理审查驳回 - 删除确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimRegistrationId);
         }
         

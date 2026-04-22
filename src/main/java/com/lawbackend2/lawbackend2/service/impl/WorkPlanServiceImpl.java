@@ -82,6 +82,13 @@ public class WorkPlanServiceImpl implements WorkPlanService {
         WorkPlanResponse response = new WorkPlanResponse();
         BeanUtils.copyProperties(workPlan, response);
         
+        if (workPlan.getCreateUserId() != null) {
+            Optional<User> userOpt = userRepository.findById(workPlan.getCreateUserId());
+            if (userOpt.isPresent()) {
+                response.setCreateUserName(userOpt.get().getRealName());
+            }
+        }
+        
         if (workPlan.getResponsibleUserId() != null) {
             Optional<User> userOpt = userRepository.findById(workPlan.getResponsibleUserId());
             if (userOpt.isPresent()) {

@@ -20,6 +20,10 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     Page<Todo> findByUserIdAndDeadlineBetween(Long userId, LocalDateTime startTime, LocalDateTime endTime, Pageable pageable);
 
+    Page<Todo> findByUserIdAndDeadlineBefore(Long userId, LocalDateTime endTime, Pageable pageable);
+
+    Page<Todo> findByUserIdAndDeadlineAfter(Long userId, LocalDateTime startTime, Pageable pageable);
+
     Page<Todo> findByUserIdAndStatus(Long userId, String status, Pageable pageable);
 
     Page<Todo> findByUserIdAndType(Long userId, String type, Pageable pageable);
@@ -50,4 +54,13 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
     Long countPendingByUserId(Long userId);
 
     Long countCompletedByUserId(Long userId);
+
+    @Query("SELECT t.status, COUNT(t) FROM Todo t WHERE t.userId = :userId GROUP BY t.status")
+    List<Object[]> countByUserIdAndStatusGroup(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(t) FROM Todo t WHERE t.userId = :userId")
+    Long countByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(t) FROM Todo t WHERE t.userId = :userId AND t.deadline IS NOT NULL AND t.deadline < CURRENT_TIMESTAMP AND t.status = 'PENDING'")
+    Long countOverdueByUserId(@Param("userId") Long userId);
 }

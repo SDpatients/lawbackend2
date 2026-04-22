@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.annotation.RateLimit;
 import com.lawbackend2.lawbackend2.common.Result;
 import com.lawbackend2.lawbackend2.dto.request.CreatePermissionRequest;
@@ -32,6 +33,7 @@ public class PermissionController {
     @PreAuthorize("hasAuthority('system:permission:add')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "创建权限", description = "创建新权限，需要管理员权限")
+    @AuditLog(module = "permission", moduleName = "权限管理", operationType = "CREATE", operationName = "创建权限")
     public Result<PermissionResponse> createPermission(@Valid @RequestBody CreatePermissionRequest request) {
         log.info("创建权限请求 - 权限代码: {}", request.getPermCode());
         PermissionResponse response = permissionService.createPermission(request);
@@ -76,6 +78,7 @@ public class PermissionController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('system:permission:edit')")
     @Operation(summary = "更新权限", description = "全量更新权限信息，需要管理员权限")
+    @AuditLog(module = "permission", moduleName = "权限管理", operationType = "UPDATE", operationName = "更新权限")
     public Result<PermissionResponse> updatePermission(
             @Parameter(description = "权限ID") @PathVariable Long id,
             @Valid @RequestBody UpdatePermissionRequest request) {
@@ -88,6 +91,7 @@ public class PermissionController {
     @PreAuthorize("hasAuthority('system:permission:delete')")
     @RateLimit(limit = 10, timeout = 60)
     @Operation(summary = "删除权限", description = "逻辑删除权限，需要管理员权限")
+    @AuditLog(module = "permission", moduleName = "权限管理", operationType = "DELETE", operationName = "删除权限")
     public Result<Void> deletePermission(
             @Parameter(description = "权限ID") @PathVariable Long id) {
         log.info("删除权限 - 权限ID: {}", id);

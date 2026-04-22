@@ -12,8 +12,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface FundOperationLogRepository extends JpaRepository<FundOperationLog, Long> {
 
-    @Query("SELECT fol FROM FundOperationLog fol WHERE fol.isDeleted = false " +
-           "AND (:caseId IS NULL OR fol.caseId = :caseId) " +
+    @Query("SELECT fol FROM FundOperationLog fol WHERE " +
+           "(:caseId IS NULL OR fol.caseId = :caseId) " +
            "AND (:operationType IS NULL OR fol.operationType = :operationType) " +
            "AND (:status IS NULL OR fol.status = :status)")
     Page<FundOperationLog> findByConditions(@Param("caseId") Long caseId,
@@ -22,6 +22,6 @@ public interface FundOperationLogRepository extends JpaRepository<FundOperationL
                                              Pageable pageable);
 
     @Modifying
-    @Query("UPDATE FundOperationLog fol SET fol.isDeleted = true WHERE fol.caseId = :caseId")
+    @Query("DELETE FROM FundOperationLog fol WHERE fol.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }

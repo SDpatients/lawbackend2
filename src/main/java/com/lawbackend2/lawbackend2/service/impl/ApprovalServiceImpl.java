@@ -490,9 +490,15 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
 
     @Override
+    @Transactional
     public void deleteApproval(Long approvalId) {
         Approval approval = approvalRepository.findById(approvalId)
                 .orElseThrow(() -> new BusinessException("审批不存在"));
+
+        // 先删除关联的审批历史记录
+        approvalHistoryRepository.deleteByApprovalId(approvalId);
+
+        // 再删除审批记录
         approvalRepository.delete(approval);
     }
 

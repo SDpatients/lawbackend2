@@ -1,6 +1,7 @@
 package com.lawbackend2.lawbackend2.exception;
 
 import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.license.exception.LicenseException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -11,10 +12,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -26,6 +30,25 @@ public class GlobalExceptionHandler {
     public Result<?> handleBusinessException(BusinessException e) {
         log.error("业务异常: {}", e.getMessage());
         return Result.error(e.getCode(), e.getMessage());
+    }
+
+    @ExceptionHandler(LicenseException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Result<?> handleLicenseException(LicenseException e) {
+        log.error("许可证异常 [错误码: {}]: {}", e.getErrorCode(), e.getMessage());
+        
+        Map<String, Object> errorDetails = new HashMap<>();
+        errorDetails.put("errorCode", e.getErrorCode());
+        errorDetails.put("message", e.getMessage());
+        
+        if (e.getModule() != null) {
+            errorDetails.put("module", e.getModule());
+        }
+        if (e.getHelpText() != null) {
+            errorDetails.put("help", e.getHelpText());
+        }
+        
+        return Result.error(403, e.getMessage(), errorDetails);
     }
 
     @ExceptionHandler(RateLimitException.class)
@@ -84,6 +107,15 @@ public class GlobalExceptionHandler {
     public Result<?> handleAccessDeniedException(AccessDeniedException e) {
         log.error("访问拒绝: {}", e.getMessage());
         return Result.error(403, "权限不足，您没有执行此操作的权限");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<?> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException e) {
+        String paramName = e.getName();
+        String paramValue = String.valueOf(e.getValue());
+        log.error("参数类型转换失败 - 参数名: {}, 参数值: {}", paramName, paramValue);
+        return Result.error(400, "参数格式错误: " + paramName + " 应为数字类型");
     }
 
     @ExceptionHandler(PermissionDeniedException.class)

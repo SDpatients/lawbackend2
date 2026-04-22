@@ -199,6 +199,8 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
             throw new BusinessException("报销单已审批，不能删除");
         }
 
+        expenseReimbursementItemRepository.deleteByReimbursementId(reimbursementId);
+        
         expenseReimbursementRepository.delete(reimbursement);
     }
 

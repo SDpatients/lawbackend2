@@ -95,7 +95,7 @@ public class ClaimReviewCreateRequest {
 
     private String reviewReport;
 
-    private List<String> reviewAttachments;
+    private List<ReviewAttachmentDto> reviewAttachments;
 
     private String reviewStatus = "PENDING";
 

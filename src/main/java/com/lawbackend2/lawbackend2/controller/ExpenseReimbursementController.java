@@ -42,7 +42,7 @@ public class ExpenseReimbursementController {
     private final UserRoleService userRoleService;
     private final PermissionChecker permissionChecker;
     
-    private static final String UPLOAD_ROOT_PATH = "C:\\law-upload";
+    private static final String UPLOAD_ROOT_PATH = "D:\\law-upload";
 
     public ExpenseReimbursementController(ExpenseReimbursementService expenseReimbursementService, UserRoleService userRoleService, PermissionChecker permissionChecker) {
         this.expenseReimbursementService = expenseReimbursementService;

@@ -1,5 +1,7 @@
 package com.lawbackend2.lawbackend2.service;
 
+import com.lawbackend2.lawbackend2.dto.request.TodoCreateRequest;
+import com.lawbackend2.lawbackend2.dto.request.TodoUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.Todo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +19,10 @@ public interface TodoService {
                      Long relatedId, String relatedType,
                      Long assigneeId, String assigneeName,
                      Long createUserId, String createUserName);
+
+    Todo createTodoWithCaseAssociation(TodoCreateRequest request);
+
+    Todo updateTodoWithCaseAssociation(Long todoId, TodoUpdateRequest request);
 
     Todo getTodoById(Long todoId);
 
@@ -55,4 +61,6 @@ public interface TodoService {
     Todo updateTodoStatus(Long todoId, String status);
 
     Todo assignTodo(Long todoId, Long assigneeId, String assigneeName);
+
+    com.lawbackend2.lawbackend2.dto.MyTodoStatisticsResponse getMyTodoStatistics(Long userId);
 }

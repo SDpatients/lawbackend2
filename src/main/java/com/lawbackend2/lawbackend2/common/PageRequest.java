@@ -10,4 +10,12 @@ public class PageRequest {
     public Integer getOffset() {
         return (pageNum - 1) * pageSize;
     }
+
+    public Integer getPage() {
+        return pageNum;
+    }
+
+    public Integer getSize() {
+        return pageSize;
+    }
 }

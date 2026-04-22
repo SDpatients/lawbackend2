@@ -1,8 +1,12 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.dto.WebSocketMessage;
+import com.lawbackend2.lawbackend2.dto.request.TodoCreateRequest;
+import com.lawbackend2.lawbackend2.dto.request.TodoUpdateRequest;
+import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.Todo;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.TodoRepository;
 import com.lawbackend2.lawbackend2.service.TodoService;
 import com.lawbackend2.lawbackend2.service.WebSocketService;
@@ -15,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -22,12 +27,15 @@ public class TodoServiceImpl implements TodoService {
 
     private final TodoRepository todoRepository;
     private final WebSocketService webSocketService;
+    private final BankruptCaseRepository bankruptCaseRepository;
 
     @Autowired
     public TodoServiceImpl(TodoRepository todoRepository,
-                            WebSocketService webSocketService) {
+                            WebSocketService webSocketService,
+                            BankruptCaseRepository bankruptCaseRepository) {
         this.todoRepository = todoRepository;
         this.webSocketService = webSocketService;
+        this.bankruptCaseRepository = bankruptCaseRepository;
     }
 
     @Override
@@ -78,6 +86,129 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Todo createTodoWithCaseAssociation(TodoCreateRequest request) {
+        log.info("创建待办事项(支持案件关联), 用户ID: {}, 标题: {}", request.getUserId(), request.getTitle());
+        
+        Long relatedId = request.getRelatedId();
+        String relatedType = request.getRelatedType();
+        
+        if (relatedId == null && relatedType == null) {
+            if (request.getCaseId() != null) {
+                relatedId = request.getCaseId();
+                relatedType = "CASE";
+                log.info("通过案件ID自动关联: caseId={}", request.getCaseId());
+            } else if (request.getCaseNumber() != null && !request.getCaseNumber().isEmpty()) {
+                Optional<BankruptCase> caseOpt = bankruptCaseRepository.findByCaseNumber(request.getCaseNumber());
+                if (caseOpt.isPresent()) {
+                    relatedId = caseOpt.get().getId();
+                    relatedType = "CASE";
+                    log.info("通过案号精确匹配关联: caseNumber={}, caseId={}", request.getCaseNumber(), relatedId);
+                } else {
+                    Page<BankruptCase> fuzzyMatches = bankruptCaseRepository.searchByCaseNumber(
+                        request.getCaseNumber(),
+                        org.springframework.data.domain.PageRequest.of(0, 1, org.springframework.data.domain.Sort.by("createTime"))
+                    );
+                    if (!fuzzyMatches.getContent().isEmpty()) {
+                        relatedId = fuzzyMatches.getContent().get(0).getId();
+                        relatedType = "CASE";
+                        log.info("通过案号模糊匹配关联: caseNumber={}, caseId={}", request.getCaseNumber(), relatedId);
+                    } else {
+                        log.warn("案号不存在: caseNumber={}", request.getCaseNumber());
+                        throw new BusinessException("案号不存在");
+                    }
+                }
+            } else {
+                log.info("未提供案件关联信息，创建常规待办事项");
+            }
+        }
+        
+        Todo todo = Todo.builder()
+                .userId(request.getUserId())
+                .userAccount(request.getUserAccount())
+                .userName(request.getUserName())
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .type(request.getType())
+                .priority(request.getPriority() != null ? request.getPriority() : "NORMAL")
+                .status("PENDING")
+                .deadline(request.getDeadline())
+                .relatedId(relatedId)
+                .relatedType(relatedType)
+                .assigneeId(request.getAssigneeId())
+                .assigneeName(request.getAssigneeName())
+                .createUserId(request.getCreateUserId())
+                .createUserName(request.getCreateUserName())
+                .remark(request.getRemark())
+                .build();
+        
+        Todo savedTodo = todoRepository.save(todo);
+        
+        WebSocketMessage message = WebSocketMessage.builder()
+                .type("NEW_TODO")
+                .userId(todo.getUserId())
+                .title(todo.getTitle())
+                .content(todo.getDescription())
+                .data(savedTodo)
+                .timestamp(System.currentTimeMillis())
+                .build();
+        webSocketService.sendTodoUpdate(todo.getUserId(), message);
+        
+        return savedTodo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Todo updateTodoWithCaseAssociation(Long todoId, TodoUpdateRequest request) {
+        log.info("更新待办事项(支持案件关联), todoId: {}", todoId);
+        
+        Todo existingTodo = getTodoById(todoId);
+        
+        existingTodo.setTitle(request.getTitle() != null ? request.getTitle() : existingTodo.getTitle());
+        existingTodo.setDescription(request.getDescription() != null ? request.getDescription() : existingTodo.getDescription());
+        existingTodo.setType(request.getType() != null ? request.getType() : existingTodo.getType());
+        existingTodo.setPriority(request.getPriority() != null ? request.getPriority() : existingTodo.getPriority());
+        existingTodo.setDeadline(request.getDeadline() != null ? request.getDeadline() : existingTodo.getDeadline());
+        existingTodo.setRemark(request.getRemark() != null ? request.getRemark() : existingTodo.getRemark());
+        
+        if (request.getCaseId() != null || (request.getCaseNumber() != null && !request.getCaseNumber().isEmpty())) {
+            Long relatedId = null;
+            String relatedType = "CASE";
+            
+            if (request.getCaseId() != null) {
+                relatedId = request.getCaseId();
+                log.info("通过案件ID更新关联: caseId={}", request.getCaseId());
+            } else if (request.getCaseNumber() != null && !request.getCaseNumber().isEmpty()) {
+                Optional<BankruptCase> caseOpt = bankruptCaseRepository.findByCaseNumber(request.getCaseNumber());
+                if (caseOpt.isPresent()) {
+                    relatedId = caseOpt.get().getId();
+                    log.info("通过案号精确匹配更新关联: caseNumber={}, caseId={}", request.getCaseNumber(), relatedId);
+                } else {
+                    Page<BankruptCase> fuzzyMatches = bankruptCaseRepository.searchByCaseNumber(
+                        request.getCaseNumber(),
+                        org.springframework.data.domain.PageRequest.of(0, 1, org.springframework.data.domain.Sort.by("createTime"))
+                    );
+                    if (!fuzzyMatches.getContent().isEmpty()) {
+                        relatedId = fuzzyMatches.getContent().get(0).getId();
+                        log.info("通过案号模糊匹配更新关联: caseNumber={}, caseId={}", request.getCaseNumber(), relatedId);
+                    } else {
+                        log.warn("案号不存在: caseNumber={}", request.getCaseNumber());
+                        throw new BusinessException("案号不存在");
+                    }
+                }
+            }
+            
+            existingTodo.setRelatedId(relatedId);
+            existingTodo.setRelatedType(relatedType);
+        } else if (request.getRelatedId() != null && request.getRelatedType() != null) {
+            existingTodo.setRelatedId(request.getRelatedId());
+            existingTodo.setRelatedType(request.getRelatedType());
+        }
+        
+        return todoRepository.save(existingTodo);
+    }
+
+    @Override
     public Todo getTodoById(Long todoId) {
         return todoRepository.findById(todoId)
                 .orElseThrow(() -> new BusinessException("待办事项不存在"));
@@ -90,6 +221,19 @@ public class TodoServiceImpl implements TodoService {
 
     @Override
     public Page<Todo> getUserTodos(Long userId, LocalDateTime startTime, LocalDateTime endTime, Pageable pageable) {
+        // 如果开始时间和结束时间都为null，则查询该用户的所有待办事项
+        if (startTime == null && endTime == null) {
+            return todoRepository.findByUserId(userId, pageable);
+        }
+        // 如果只有开始时间为null，则查询截止时间从开始时间到最大的记录
+        if (startTime == null) {
+            return todoRepository.findByUserIdAndDeadlineBefore(userId, endTime, pageable);
+        }
+        // 如果只有结束时间为null，则查询截止时间从开始时间之后的所有记录
+        if (endTime == null) {
+            return todoRepository.findByUserIdAndDeadlineAfter(userId, startTime, pageable);
+        }
+        // 两个时间都有值，查询时间范围内的记录
         return todoRepository.findByUserIdAndDeadlineBetween(userId, startTime, endTime, pageable);
     }
 
@@ -214,5 +358,30 @@ public class TodoServiceImpl implements TodoService {
         todo.setAssigneeId(assigneeId);
         todo.setAssigneeName(assigneeName);
         return todoRepository.save(todo);
+    }
+
+    @Override
+    public com.lawbackend2.lawbackend2.dto.MyTodoStatisticsResponse getMyTodoStatistics(Long userId) {
+        log.info("查询当前用户的待办统计数据, userId: {}", userId);
+
+        com.lawbackend2.lawbackend2.dto.MyTodoStatisticsResponse response = 
+            new com.lawbackend2.lawbackend2.dto.MyTodoStatisticsResponse();
+
+        // 进行中数量（未完成的）
+        Long inProgressCount = todoRepository.countPendingByUserId(userId);
+        response.setInProgressTodos(inProgressCount);
+
+        // 已完成数量
+        Long completedCount = todoRepository.countCompletedByUserId(userId);
+        response.setCompletedTodos(completedCount);
+
+        // 已逾期数量
+        Long overdueCount = todoRepository.countOverdueByUserId(userId);
+        response.setOverdueTodos(overdueCount);
+
+        log.info("当前用户的待办统计数据: 进行中={}, 已完成={}, 已逾期={}", 
+            response.getInProgressTodos(), response.getCompletedTodos(), response.getOverdueTodos());
+        
+        return response;
     }
 }

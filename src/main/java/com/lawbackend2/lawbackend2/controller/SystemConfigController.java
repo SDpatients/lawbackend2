@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.controller;
 
+import com.lawbackend2.lawbackend2.annotation.AuditLog;
 import com.lawbackend2.lawbackend2.dto.response.ApiResponse;
 import com.lawbackend2.lawbackend2.entity.SystemConfig;
 import com.lawbackend2.lawbackend2.service.SystemConfigService;
@@ -48,6 +49,7 @@ public class SystemConfigController {
 
     @PostMapping
     @Operation(summary = "创建系统配置", description = "创建新的系统配置")
+    @AuditLog(module = "system-config", moduleName = "系统配置管理", operationType = "CREATE", operationName = "创建系统配置")
     public ApiResponse<SystemConfig> createConfig(@Validated @RequestBody SystemConfig config) {
         SystemConfig createdConfig = systemConfigService.createConfig(config);
         return ApiResponse.success(createdConfig);
@@ -55,6 +57,7 @@ public class SystemConfigController {
 
     @PutMapping("/{configKey}")
     @Operation(summary = "更新系统配置", description = "根据配置键更新系统配置")
+    @AuditLog(module = "system-config", moduleName = "系统配置管理", operationType = "UPDATE", operationName = "更新系统配置")
     public ApiResponse<SystemConfig> updateConfig(
             @Parameter(description = "配置键") @PathVariable String configKey,
             @Parameter(description = "配置值") @RequestParam String configValue) {
@@ -73,6 +76,7 @@ public class SystemConfigController {
 
     @DeleteMapping("/{configId}")
     @Operation(summary = "删除系统配置", description = "删除系统配置（软删除）")
+    @AuditLog(module = "system-config", moduleName = "系统配置管理", operationType = "DELETE", operationName = "删除系统配置")
     public ApiResponse<Void> deleteConfig(
             @Parameter(description = "配置ID") @PathVariable Long configId) {
         systemConfigService.deleteConfig(configId);

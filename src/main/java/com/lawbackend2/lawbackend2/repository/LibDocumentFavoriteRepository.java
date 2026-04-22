@@ -18,18 +18,16 @@ public interface LibDocumentFavoriteRepository extends JpaRepository<LibDocument
 
     Optional<LibDocumentFavorite> findByDocumentIdAndUserId(Long documentId, Long userId);
 
-    Optional<LibDocumentFavorite> findByDocumentIdAndUserIdAndIsDeletedFalse(Long documentId, Long userId);
+    boolean existsByDocumentIdAndUserId(Long documentId, Long userId);
 
-    boolean existsByDocumentIdAndUserIdAndIsDeletedFalse(Long documentId, Long userId);
-
-    Page<LibDocumentFavorite> findByUserIdAndIsDeletedFalseOrderByCreateTimeDesc(Long userId, Pageable pageable);
+    Page<LibDocumentFavorite> findByUserIdOrderByCreateTimeDesc(Long userId, Pageable pageable);
 
     List<LibDocumentFavorite> findByUserIdAndFolderName(Long userId, String folderName);
 
-    @Query("SELECT DISTINCT f.folderName FROM LibDocumentFavorite f WHERE f.userId = :userId AND f.folderName IS NOT NULL AND f.isDeleted = false")
+    @Query("SELECT DISTINCT f.folderName FROM LibDocumentFavorite f WHERE f.userId = :userId AND f.folderName IS NOT NULL")
     List<String> findDistinctFolderNamesByUserId(@Param("userId") Long userId);
 
     @Modifying
-    @Query("UPDATE LibDocumentFavorite f SET f.isDeleted = true WHERE f.documentId = :documentId AND f.userId = :userId")
-    void softDeleteByDocumentIdAndUserId(@Param("documentId") Long documentId, @Param("userId") Long userId);
+    @Query("DELETE FROM LibDocumentFavorite f WHERE f.documentId = :documentId")
+    void deleteByDocumentId(@Param("documentId") Long documentId);
 }

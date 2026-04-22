@@ -15,10 +15,10 @@ import java.util.Optional;
 @Repository
 public interface BankruptcyExpenseRepository extends JpaRepository<BankruptcyExpense, Long> {
 
-    Optional<BankruptcyExpense> findByExpenseNoAndIsDeleted(String expenseNo, Boolean isDeleted);
+    Optional<BankruptcyExpense> findByExpenseNo(String expenseNo);
 
-    @Query("SELECT be FROM BankruptcyExpense be WHERE be.isDeleted = false " +
-           "AND (:caseId IS NULL OR be.caseId = :caseId) " +
+    @Query("SELECT be FROM BankruptcyExpense be WHERE " +
+           "(:caseId IS NULL OR be.caseId = :caseId) " +
            "AND (:expenseType IS NULL OR be.expenseType = :expenseType) " +
            "AND (:approvalStatus IS NULL OR be.approvalStatus = :approvalStatus) " +
            "AND (:paymentStatus IS NULL OR be.paymentStatus = :paymentStatus)")
@@ -28,9 +28,9 @@ public interface BankruptcyExpenseRepository extends JpaRepository<BankruptcyExp
                                             @Param("paymentStatus") String paymentStatus,
                                             Pageable pageable);
 
-    List<BankruptcyExpense> findByCaseIdAndIsDeleted(Long caseId, Boolean isDeleted);
+    List<BankruptcyExpense> findByCaseId(Long caseId);
 
     @Modifying
-    @Query("UPDATE BankruptcyExpense be SET be.isDeleted = true WHERE be.caseId = :caseId")
+    @Query("DELETE FROM BankruptcyExpense be WHERE be.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 }
