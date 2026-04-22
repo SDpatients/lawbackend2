@@ -1,6 +1,5 @@
 package com.lawbackend2.lawbackend2.security;
 
-import com.lawbackend2.lawbackend2.service.PermissionCacheService;
 import com.lawbackend2.lawbackend2.service.PermissionService;
 import com.lawbackend2.lawbackend2.service.TokenBlacklistService;
 import com.lawbackend2.lawbackend2.util.JwtTokenUtil;
@@ -32,9 +31,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private PermissionService permissionService;
-
-    @Autowired
-    private PermissionCacheService permissionCacheService;
 
     @Autowired
     private TokenBlacklistService tokenBlacklistService;

@@ -38,9 +38,6 @@ public class PermissionServiceImpl implements PermissionService {
     @Autowired
     private RolePermissionRepository rolePermissionRepository;
 
-    @Autowired
-    private com.lawbackend2.lawbackend2.service.PermissionCacheService permissionCacheService;
-
     @Override
     @Transactional
     public PermissionResponse createPermission(CreatePermissionRequest request) {
@@ -221,12 +218,7 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public List<String> getUserPermissions(Long userId) {
-        log.info("查询用户权限 - 用户ID: {}", userId);
-        
-        List<String> cachedPermissions = permissionCacheService.getUserPermissions(userId);
-        if (cachedPermissions != null) {
-            return cachedPermissions;
-        }
+         log.info("查询用户权限 - 用户ID: {}", userId);
         
         List<Long> roleIds = userRoleRepository.findRoleIdsByUserId(userId);
         if (roleIds.isEmpty()) {
@@ -239,13 +231,11 @@ public class PermissionServiceImpl implements PermissionService {
         }
         
         List<Permission> permissions = permissionRepository.findAllById(permIds);
-        List<String> permCodes = permissions.stream()
+        
+        return permissions.stream()
                 .map(Permission::getPermCode)
                 .distinct()
                 .collect(Collectors.toList());
-        
-        permissionCacheService.setUserPermissions(userId, permCodes);
-        return permCodes;
     }
 
     private void buildChildren(PermissionTreeResponse parent, List<PermissionTreeResponse> allPermissions) {
