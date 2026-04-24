@@ -6,10 +6,14 @@ import com.lawbackend2.lawbackend2.dto.response.RoleListResponse;
 import com.lawbackend2.lawbackend2.dto.response.RoleResponse;
 import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.entity.RolePermission;
+import com.lawbackend2.lawbackend2.entity.Token;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.RolePermissionRepository;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
+import com.lawbackend2.lawbackend2.repository.TokenRepository;
+import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
 import com.lawbackend2.lawbackend2.service.RoleService;
+import com.lawbackend2.lawbackend2.service.TokenBlacklistService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,6 +37,15 @@ public class RoleServiceImpl implements RoleService {
 
     @Autowired
     private RolePermissionRepository rolePermissionRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private TokenRepository tokenRepository;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     @Override
     @Transactional
@@ -103,6 +117,8 @@ public class RoleServiceImpl implements RoleService {
         roleRepository.save(role);
 
         rolePermissionRepository.deleteByRoleId(roleId);
+
+        invalidateUsersWithRole(roleId);
 
         log.info("角色删除成功 - 角色ID: {}", roleId);
     }
@@ -212,6 +228,8 @@ public class RoleServiceImpl implements RoleService {
         }
 
         log.info("为角色分配权限 - 角色ID: {}, 新增权限数量: {}", roleId, permissionIds.size());
+
+        invalidateUsersWithRole(roleId);
     }
 
     @Override
@@ -281,6 +299,36 @@ public class RoleServiceImpl implements RoleService {
         }
 
         log.info("更新角色权限 - 角色ID: {}, 权限数量: {}", roleId, permissionIds.size());
+
+        invalidateUsersWithRole(roleId);
+    }
+
+    private void invalidateUsersWithRole(Long roleId) {
+        try {
+            List<Long> userIds = userRoleRepository.findUserIdsByRoleId(roleId);
+            for (Long userId : userIds) {
+                invalidateUserTokens(userId);
+            }
+            log.info("角色权限变更，已使关联用户的Token失效 - 角色ID: {}, 影响用户数量: {}", roleId, userIds.size());
+        } catch (Exception e) {
+            log.warn("使关联用户Token失效时出错 - 角色ID: {}, 错误: {}", roleId, e.getMessage());
+        }
+    }
+
+    private void invalidateUserTokens(Long userId) {
+        try {
+            List<Token> activeTokens = tokenRepository.findByUserIdAndStatus(userId, "ACTIVE");
+            for (Token token : activeTokens) {
+                if ("A".equals(token.getTokenType())) {
+                    tokenBlacklistService.addToBlacklist(token.getTokenValue());
+                    token.setStatus("INACTIVE");
+                    token.setRevokeTime(LocalDateTime.now());
+                    tokenRepository.save(token);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("使用户Token失效时出错 - 用户ID: {}, 错误: {}", userId, e.getMessage());
+        }
     }
 
     private RoleResponse convertToRoleResponse(Role role) {

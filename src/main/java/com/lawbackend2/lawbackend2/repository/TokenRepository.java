@@ -41,4 +41,7 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
 
     @Query("SELECT t FROM Token t WHERE t.status = :status AND t.isDeleted = false")
     List<Token> findByStatusAndIsDeletedFalse(@Param("status") String status);
+
+    @Query("SELECT t FROM Token t WHERE t.userId = :userId AND t.status = :status AND t.tokenType = 'A'")
+    List<Token> findByUserIdAndStatus(@Param("userId") Long userId, @Param("status") String status);
 }

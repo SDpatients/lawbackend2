@@ -14,8 +14,10 @@ import com.lawbackend2.lawbackend2.dto.response.RefreshTokenResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserInfoResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserLoginResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserResponse;
+import com.lawbackend2.lawbackend2.dto.response.UserRoleCheckResponse;
 import com.lawbackend2.lawbackend2.service.SmsService;
 import com.lawbackend2.lawbackend2.service.UserService;
+import com.lawbackend2.lawbackend2.service.UserRoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -38,6 +41,9 @@ public class AuthController {
 
     @Autowired
     private SmsService smsService;
+
+    @Autowired
+    private UserRoleService userRoleService;
 
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "使用用户名密码登录，获取JWT Token")
@@ -95,6 +101,72 @@ public class AuthController {
 
         log.info("获取当前用户信息 - 用户ID: {}", userId);
         UserInfoResponse response = userService.getCurrentUserInfo(userId);
+        return Result.success(response);
+    }
+
+    @GetMapping("/check-admin")
+    @Operation(summary = "检查当前用户是否为管理员", description = "检查当前登录用户是否具有ADMIN或SUPER_ADMIN角色")
+    public Result<UserRoleCheckResponse> checkAdminRole() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Result.error(401, "用户未登录或Token已过期");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof Long)) {
+            return Result.error(401, "用户未登录或Token已过期");
+        }
+
+        Long userId = (Long) principal;
+
+        List<String> roleCodes = userRoleService.getUserRoleCodes(userId);
+        boolean isAdmin = roleCodes.contains("ADMIN") || roleCodes.contains("SUPER_ADMIN");
+        boolean isSuperAdmin = roleCodes.contains("SUPER_ADMIN");
+
+        UserRoleCheckResponse response = UserRoleCheckResponse.builder()
+                .userId(userId)
+                .username(authentication.getName())
+                .isAdmin(isAdmin)
+                .isSuperAdmin(isSuperAdmin)
+                .roles(roleCodes)
+                .build();
+
+        log.info("检查管理员权限 - 用户ID: {}, isAdmin: {}, isSuperAdmin: {}", userId, isAdmin, isSuperAdmin);
+        return Result.success(response);
+    }
+
+    @GetMapping("/check-role/{roleCode}")
+    @Operation(summary = "检查当前用户是否具有指定角色", description = "检查当前登录用户是否具有指定的角色")
+    public Result<UserRoleCheckResponse> checkRole(
+            @PathVariable String roleCode) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return Result.error(401, "用户未登录或Token已过期");
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof Long)) {
+            return Result.error(401, "用户未登录或Token已过期");
+        }
+
+        Long userId = (Long) principal;
+
+        List<String> roleCodes = userRoleService.getUserRoleCodes(userId);
+        boolean hasRole = roleCodes.contains(roleCode);
+        boolean isAdmin = roleCodes.contains("ADMIN") || roleCodes.contains("SUPER_ADMIN");
+        boolean isSuperAdmin = roleCodes.contains("SUPER_ADMIN");
+
+        UserRoleCheckResponse response = UserRoleCheckResponse.builder()
+                .userId(userId)
+                .username(authentication.getName())
+                .isAdmin(isAdmin)
+                .isSuperAdmin(isSuperAdmin)
+                .roles(roleCodes)
+                .build();
+
+        log.info("检查角色权限 - 用户ID: {}, roleCode: {}, hasRole: {}", userId, roleCode, hasRole);
         return Result.success(response);
     }
 

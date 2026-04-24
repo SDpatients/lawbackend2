@@ -23,6 +23,12 @@ import java.time.Duration;
 @EnableCaching
 public class CacheConfig {
 
+    private final AppProperties appProperties;
+
+    public CacheConfig(AppProperties appProperties) {
+        this.appProperties = appProperties;
+    }
+
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -36,8 +42,9 @@ public class CacheConfig {
         
         GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
         
+        int ttlMinutes = appProperties.getCache().getDefaultTtlMinutes();
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(10))
+                .entryTtl(Duration.ofMinutes(ttlMinutes))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
                 .disableCachingNullValues();

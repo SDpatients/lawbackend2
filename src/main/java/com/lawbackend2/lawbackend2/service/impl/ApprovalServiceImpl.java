@@ -15,6 +15,7 @@ import com.lawbackend2.lawbackend2.entity.CaseTask;
 import com.lawbackend2.lawbackend2.entity.CaseTaskSubmission;
 import com.lawbackend2.lawbackend2.entity.FileRecord;
 import com.lawbackend2.lawbackend2.entity.User;
+import com.lawbackend2.lawbackend2.enums.CaseStatus;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.ApprovalHistoryRepository;
 import com.lawbackend2.lawbackend2.repository.ApprovalRepository;
@@ -68,7 +69,8 @@ public class ApprovalServiceImpl implements ApprovalService {
         // 校验：如果案件状态已为 COMPLETED，则不能再次提交审批
         BankruptCase bankruptCase = bankruptCaseRepository.findById(request.getCaseId())
                 .orElseThrow(() -> new BusinessException("案件不存在"));
-        if ("COMPLETED".equals(bankruptCase.getCaseStatus())) {
+        CaseStatus currentStatus = CaseStatus.fromString(bankruptCase.getCaseStatus());
+        if (currentStatus != null && currentStatus.isFinished()) {
             throw new BusinessException("该案件已结案，无法再次提交审批");
         }
         
@@ -120,7 +122,7 @@ public class ApprovalServiceImpl implements ApprovalService {
             // 如果 approvalType 为 CASE_SUBMIT，则查询该案件的所有 CASE_SUBMIT 类型的文件
             enrichApprovalWithCaseSubmitFiles(approval, request.getCaseId(), request.getApprovalAttachment());
             // 将案件状态改为 AWAITING
-            bankruptCase.setCaseStatus("AWAITING");
+            bankruptCase.setCaseStatus(CaseStatus.AWAITING.name());
             bankruptCaseRepository.save(bankruptCase);
         }
         
@@ -448,11 +450,11 @@ public class ApprovalServiceImpl implements ApprovalService {
             
             if ("PASS".equals(request.getApprovalResult())) {
                 // 审批通过：案件状态改为 COMPLETED，并设置结案日期为当天
-                bankruptCase.setCaseStatus("COMPLETED");
+                bankruptCase.setCaseStatus(CaseStatus.COMPLETED.name());
                 bankruptCase.setClosingDate(java.time.LocalDate.now());
             } else if ("FAIL".equals(request.getApprovalResult())) {
                 // 审批不通过：案件状态改为 ONGOING
-                bankruptCase.setCaseStatus("ONGOING");
+                bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
             }
             
             bankruptCaseRepository.save(bankruptCase);

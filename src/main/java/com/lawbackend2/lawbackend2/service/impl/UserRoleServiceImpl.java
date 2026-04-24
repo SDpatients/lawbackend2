@@ -2,18 +2,22 @@ package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.dto.response.UserWithRolesResponse;
 import com.lawbackend2.lawbackend2.entity.Role;
+import com.lawbackend2.lawbackend2.entity.Token;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.entity.UserRole;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.RoleRepository;
+import com.lawbackend2.lawbackend2.repository.TokenRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
+import com.lawbackend2.lawbackend2.service.TokenBlacklistService;
 import com.lawbackend2.lawbackend2.service.UserRoleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +35,12 @@ public class UserRoleServiceImpl implements UserRoleService {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private TokenRepository tokenRepository;
+
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
 
     @Override
     @Transactional
@@ -55,6 +65,8 @@ public class UserRoleServiceImpl implements UserRoleService {
                 userRoleRepository.save(userRole);
             }
         }
+
+        invalidateUserTokens(userId);
 
         log.info("为用户分配角色 - 用户ID: {}, 新增角色数量: {}", userId, roleIds.size());
     }
@@ -89,6 +101,8 @@ public class UserRoleServiceImpl implements UserRoleService {
                 .collect(Collectors.toList());
 
         userRoleRepository.deleteAll(toRemove);
+
+        invalidateUserTokens(userId);
 
         log.info("移除用户角色 - 用户ID: {}, 移除角色数量: {}", userId, toRemove.size());
     }
@@ -183,5 +197,22 @@ public class UserRoleServiceImpl implements UserRoleService {
         List<String> roleCodes = roleRepository.findRoleCodesByIds(roleIds);
         log.info("查询用户角色代码 - 用户ID: {}, 角色代码: {}", userId, roleCodes);
         return roleCodes;
+    }
+
+    private void invalidateUserTokens(Long userId) {
+        try {
+            List<Token> activeTokens = tokenRepository.findByUserIdAndStatus(userId, "ACTIVE");
+            for (Token token : activeTokens) {
+                if ("A".equals(token.getTokenType())) {
+                    tokenBlacklistService.addToBlacklist(token.getTokenValue());
+                    token.setStatus("INACTIVE");
+                    token.setRevokeTime(LocalDateTime.now());
+                    tokenRepository.save(token);
+                }
+            }
+            log.info("用户Token已失效 - 用户ID: {}, 失效Token数量: {}", userId, activeTokens.size());
+        } catch (Exception e) {
+            log.warn("使用户Token失效时出错 - 用户ID: {}, 错误: {}", userId, e.getMessage());
+        }
     }
 }

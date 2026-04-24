@@ -8,6 +8,7 @@ import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.entity.WorkTeam;
 import com.lawbackend2.lawbackend2.entity.WorkTeamMember;
 import com.lawbackend2.lawbackend2.entity.WorkTeamPermission;
+import com.lawbackend2.lawbackend2.enums.CaseStatus;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.*;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
@@ -173,7 +174,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         bankruptCase.setCreateUserId(userId);
         bankruptCase.setUpdateUserId(userId);
         bankruptCase.setIsSimplifiedTrial(request.getIsSimplifiedTrial() != null && request.getIsSimplifiedTrial() == 1);
-        bankruptCase.setCaseStatus("ONGOING");
+        bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
 
         BankruptCase savedCase = bankruptCaseRepository.save(bankruptCase);
         
@@ -328,10 +329,10 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         bankruptCase.setReviewCount(bankruptCase.getReviewCount() + 1);
 
         if ("APPROVED".equals(request.getReviewStatus())) {
-            bankruptCase.setCaseStatus("COMPLETED");
+            bankruptCase.setCaseStatus(CaseStatus.COMPLETED.name());
             log.info("案件审核通过, caseId: {}", caseId);
         } else if ("REJECTED".equals(request.getReviewStatus())) {
-            bankruptCase.setCaseStatus("ONGOING");
+            bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
             log.info("案件审核驳回, caseId: {}", caseId);
         }
 
@@ -351,7 +352,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         }
 
         bankruptCase.setReviewStatus("PENDING");
-        bankruptCase.setCaseStatus("AWAITING");
+        bankruptCase.setCaseStatus(CaseStatus.AWAITING.name());
         bankruptCase.setUpdateUserId(userId);
         bankruptCaseRepository.save(bankruptCase);
         log.info("案件提交审核成功, caseId: {}", caseId);
@@ -369,7 +370,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         }
 
         bankruptCase.setReviewStatus(null);
-        bankruptCase.setCaseStatus("ONGOING");
+        bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
         bankruptCase.setReviewerId(null);
         bankruptCase.setReviewOpinion(null);
         bankruptCase.setReviewTime(null);
@@ -390,7 +391,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         }
 
         bankruptCase.setReviewStatus("PENDING");
-        bankruptCase.setCaseStatus("AWAITING");
+        bankruptCase.setCaseStatus(CaseStatus.AWAITING.name());
         bankruptCase.setReviewerId(null);
         bankruptCase.setReviewOpinion(null);
         bankruptCase.setReviewTime(null);
@@ -427,9 +428,9 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
                 bankruptCase.setReviewCount(bankruptCase.getReviewCount() + 1);
 
                 if ("APPROVED".equals(request.getReviewStatus())) {
-                    bankruptCase.setCaseStatus("COMPLETED");
+                    bankruptCase.setCaseStatus(CaseStatus.COMPLETED.name());
                 } else if ("REJECTED".equals(request.getReviewStatus())) {
-                    bankruptCase.setCaseStatus("ONGOING");
+                    bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
                 }
 
                 bankruptCaseRepository.save(bankruptCase);
@@ -471,7 +472,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
 
         String oldReviewStatus = bankruptCase.getReviewStatus();
         bankruptCase.setReviewStatus("PENDING");
-        bankruptCase.setCaseStatus("AWAITING");
+        bankruptCase.setCaseStatus(CaseStatus.AWAITING.name());
         bankruptCase.setReviewerId(null);
         bankruptCase.setReviewOpinion(null);
         bankruptCase.setReviewTime(null);
@@ -755,7 +756,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         Long totalCount = bankruptCaseRepository.countByCreateUserId(userId);
         response.setTotalCases(totalCount);
 
-        // 查询进行中案件数量（caseStatus 不为 CLOSED, COMPLETED, TERMINATED, ARCHIVED）
+        // 查询进行中案件数量
         List<Object[]> statusGroup = bankruptCaseRepository.countByUserIdAndStatusGroup(userId);
         long inProgressCount = 0;
         long completedCount = 0;
@@ -764,14 +765,17 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             String status = (String) row[0];
             Long count = (Long) row[1];
             
-            // 进行中的状态
-            if ("PENDING".equals(status) || "ONGOING".equals(status) || "APPROVED".equals(status)) {
-                inProgressCount += count;
-            }
-            
-            // 已结案的状态
-            if ("COMPLETED".equals(status)) {
-                completedCount += count;
+            CaseStatus caseStatus = CaseStatus.fromString(status);
+            if (caseStatus != null) {
+                // 进行中的状态
+                if (caseStatus.isInProgress()) {
+                    inProgressCount += count;
+                }
+                
+                // 已结案的状态
+                if (caseStatus.isFinished()) {
+                    completedCount += count;
+                }
             }
         }
         

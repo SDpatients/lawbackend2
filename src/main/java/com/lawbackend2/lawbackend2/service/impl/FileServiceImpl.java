@@ -1,7 +1,7 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
 import com.lawbackend2.lawbackend2.common.PageResult;
-import com.lawbackend2.lawbackend2.constant.VideoConstants;
+import com.lawbackend2.lawbackend2.config.AppProperties;
 import com.lawbackend2.lawbackend2.dto.FileRecordInfo;
 import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
 import com.lawbackend2.lawbackend2.entity.ClaimReview;
@@ -14,7 +14,6 @@ import com.lawbackend2.lawbackend2.repository.FileRecordRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.FileService;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -45,18 +44,22 @@ public class FileServiceImpl implements FileService {
     private final UserRepository userRepository;
     private final ClaimReviewRepository claimReviewRepository;
     private final ClaimConfirmationRepository claimConfirmationRepository;
+    private final AppProperties appProperties;
 
-    @Value("${file.upload.path:D:\\law-upload}")
-    private String uploadPath;
-
-    public FileServiceImpl(FileRecordRepository fileRecordRepository, 
+    public FileServiceImpl(FileRecordRepository fileRecordRepository,
                           UserRepository userRepository,
                           ClaimReviewRepository claimReviewRepository,
-                          ClaimConfirmationRepository claimConfirmationRepository) {
+                          ClaimConfirmationRepository claimConfirmationRepository,
+                          AppProperties appProperties) {
         this.fileRecordRepository = fileRecordRepository;
         this.userRepository = userRepository;
         this.claimReviewRepository = claimReviewRepository;
         this.claimConfirmationRepository = claimConfirmationRepository;
+        this.appProperties = appProperties;
+    }
+
+    private String getUploadPath() {
+        return appProperties.getFile().getUploadPath();
     }
 
     @Override
@@ -66,8 +69,9 @@ public class FileServiceImpl implements FileService {
         }
 
         long fileSize = file.getSize();
-        if (fileSize > 50 * 1024 * 1024) {
-            throw new BusinessException("文件大小不能超过50MB");
+        long maxSize = appProperties.getFile().getMaxSize();
+        if (fileSize > maxSize) {
+            throw new BusinessException("文件大小不能超过" + (maxSize / 1024 / 1024) + "MB");
         }
 
         String originalFileName = file.getOriginalFilename();
@@ -75,7 +79,7 @@ public class FileServiceImpl implements FileService {
 
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         String modulePath = bizType != null ? bizType : "common";
-        String datePath = Paths.get(uploadPath, modulePath, dateStr).toString();
+        String datePath = Paths.get(getUploadPath(), modulePath, dateStr).toString();
 
         try {
             Files.createDirectories(Paths.get(datePath));
@@ -337,21 +341,22 @@ public class FileServiceImpl implements FileService {
         }
 
         long fileSize = file.getSize();
-        if (fileSize > VideoConstants.MAX_VIDEO_SIZE) {
-            throw new BusinessException("视频文件大小不能超过500MB");
+        long maxVideoSize = appProperties.getFile().getVideo().getMaxSize();
+        if (fileSize > maxVideoSize) {
+            throw new BusinessException("视频文件大小不能超过" + (maxVideoSize / 1024 / 1024) + "MB");
         }
 
         String originalFileName = file.getOriginalFilename();
         String fileExtension = getFileExtension(originalFileName);
         String contentType = file.getContentType();
 
-        if (!VideoConstants.isVideoFile(contentType, fileExtension)) {
-            throw new BusinessException("不支持的视频格式，仅支持: MP4, AVI, MOV, WMV, FLV, MKV, WEBM, MPEG, 3GP");
+        if (!appProperties.getFile().getVideo().isVideoFile(contentType, fileExtension)) {
+            throw new BusinessException("不支持的视频格式，仅支持: " + appProperties.getFile().getVideo().getAllowedTypes());
         }
 
         String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        String modulePath = bizType != null ? bizType : VideoConstants.BIZ_TYPE_VIDEO;
-        String datePath = Paths.get(uploadPath, modulePath, dateStr).toString();
+        String modulePath = bizType != null ? bizType : "VIDEO";
+        String datePath = Paths.get(getUploadPath(), modulePath, dateStr).toString();
 
         try {
             Files.createDirectories(Paths.get(datePath));
@@ -377,7 +382,7 @@ public class FileServiceImpl implements FileService {
             fileRecord.setUploadUserId(currentUserId);
             fileRecord.setFileStatus(1);
             fileRecord.setStatus("ACTIVE");
-            fileRecord.setVideoStatus(VideoConstants.VIDEO_STATUS_PENDING);
+            fileRecord.setVideoStatus("PENDING");
             fileRecord.setCreateUserId(currentUserId);
             fileRecord.setUpdateUserId(currentUserId);
             fileRecord.setCreateTime(now);
@@ -392,7 +397,7 @@ public class FileServiceImpl implements FileService {
     @Override
     public boolean isVideoFile(Long fileId) {
         FileRecord fileRecord = getFileInfo(fileId);
-        return VideoConstants.isVideoFile(fileRecord.getMimeType(), fileRecord.getFileExtension());
+        return appProperties.getFile().getVideo().isVideoFile(fileRecord.getMimeType(), fileRecord.getFileExtension());
     }
 
     private String getFileExtension(String fileName) {

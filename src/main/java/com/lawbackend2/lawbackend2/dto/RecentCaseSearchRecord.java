@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Data
 @NoArgsConstructor
@@ -20,12 +21,15 @@ public class RecentCaseSearchRecord implements Serializable {
     private String caseProgress;
     private LocalDateTime searchTime;
 
-    public RecentCaseSearchRecord(Long caseId, String caseNumber, String caseName, String caseStatus, String caseProgress) {
+    public RecentCaseSearchRecord(Long caseId, String caseNumber, String caseName, String caseStatus, String caseProgress, Long timestamp) {
         this.caseId = caseId;
         this.caseNumber = caseNumber;
         this.caseName = caseName;
         this.caseStatus = caseStatus;
         this.caseProgress = caseProgress;
-        this.searchTime = LocalDateTime.now();
+        this.searchTime = LocalDateTime.ofInstant(
+            java.time.Instant.ofEpochMilli(timestamp),
+            ZoneId.systemDefault()
+        );
     }
 }

@@ -126,13 +126,14 @@ public class UserServiceImpl implements UserService {
         user = userRepository.save(user);
         log.info("用户注册成功 - 用户ID: {}, 用户名: {}", user.getId(), user.getUsername());
 
-        String accessToken = jwtTokenUtil.generateAccessToken(user.getId(), user.getUsername());
+        List<String> permissions = permissionService.getUserPermissions(user.getId());
+        String accessToken = jwtTokenUtil.generateTokenWithPermissions(user.getId(), user.getUsername(), permissions);
         String refreshToken = jwtTokenUtil.generateRefreshToken(user.getId(), user.getUsername());
 
         saveToken(user.getId(), accessToken, "A", null, null);
         saveToken(user.getId(), refreshToken, "R", null, null);
 
-        return generateLoginResponse(user, accessToken, refreshToken, null);
+        return generateLoginResponse(user, accessToken, refreshToken, permissions);
     }
 
     @Override
@@ -173,7 +174,8 @@ public class UserServiceImpl implements UserService {
 
         resetLoginFailures(username, ipAddress);
 
-        String accessToken = jwtTokenUtil.generateAccessToken(user.getId(), username);
+        List<String> permissions = permissionService.getUserPermissions(user.getId());
+        String accessToken = jwtTokenUtil.generateTokenWithPermissions(user.getId(), username, permissions);
         String refreshToken = jwtTokenUtil.generateRefreshToken(user.getId(), username);
 
         saveToken(user.getId(), accessToken, "A", ipAddress, deviceInfo);
@@ -183,9 +185,9 @@ public class UserServiceImpl implements UserService {
 
         recordLoginSuccess(user, ipAddress, deviceInfo);
 
-        log.info("用户登录成功 - 用户ID: {}, 用户名: {}, IP: {}", user.getId(), user.getUsername(), ipAddress);
+        log.info("用户登录成功 - 用户ID: {}, 用户名: {}, IP: {}, 权限数量: {}", user.getId(), user.getUsername(), ipAddress, permissions.size());
 
-        return generateLoginResponse(user, accessToken, refreshToken, null);
+        return generateLoginResponse(user, accessToken, refreshToken, permissions);
     }
 
     @Override
@@ -232,7 +234,8 @@ public class UserServiceImpl implements UserService {
             tokenBlacklistService.addToBlacklist(token);
         }
 
-        String newAccessToken = jwtTokenUtil.generateAccessToken(userId, username);
+        String newAccessToken = jwtTokenUtil.generateTokenWithPermissions(userId, username, 
+                permissionService.getUserPermissions(userId));
         String newRefreshToken = jwtTokenUtil.generateRefreshToken(userId, username);
 
         saveToken(userId, newAccessToken, "A", null, null);
@@ -240,7 +243,8 @@ public class UserServiceImpl implements UserService {
 
         log.info("Token刷新成功 - 用户ID: {}", userId);
 
-        return generateLoginResponse(user, newAccessToken, newRefreshToken, null);
+        return generateLoginResponse(user, newAccessToken, newRefreshToken, 
+                permissionService.getUserPermissions(userId));
     }
 
     @Override
@@ -276,7 +280,8 @@ public class UserServiceImpl implements UserService {
             }
         }
 
-        String newAccessToken = jwtTokenUtil.generateAccessToken(userId, username);
+        List<String> userPermissions = permissionService.getUserPermissions(userId);
+        String newAccessToken = jwtTokenUtil.generateTokenWithPermissions(userId, username, userPermissions);
         String newRefreshToken = jwtTokenUtil.generateRefreshToken(userId, username);
 
         saveToken(userId, newAccessToken, "A", null, null);
@@ -421,8 +426,11 @@ public class UserServiceImpl implements UserService {
     }
 
     private UserLoginResponse generateLoginResponse(User user, String accessToken, String refreshToken, List<String> permissions) {
-        if (accessToken == null) {
-            accessToken = jwtTokenUtil.generateAccessToken(user.getId(), user.getUsername());
+        if (accessToken == null && permissions != null) {
+            accessToken = jwtTokenUtil.generateTokenWithPermissions(user.getId(), user.getUsername(), permissions);
+        } else if (accessToken == null) {
+            List<String> userPerms = permissionService.getUserPermissions(user.getId());
+            accessToken = jwtTokenUtil.generateTokenWithPermissions(user.getId(), user.getUsername(), userPerms);
         }
 
         if (refreshToken == null) {
@@ -430,7 +438,7 @@ public class UserServiceImpl implements UserService {
         }
 
         if (permissions == null) {
-            permissions = Arrays.asList("user:read", "user:write");
+            permissions = permissionService.getUserPermissions(user.getId());
         }
 
         return UserLoginResponse.builder()

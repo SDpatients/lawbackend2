@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "tb_token", indexes = {
     @Index(name = "idx_user_id", columnList = "user_id"),
-    @Index(name = "idx_token_value", columnList = "token_value"),
     @Index(name = "idx_expire_time", columnList = "expire_time"),
     @Index(name = "idx_status", columnList = "status")
 })
@@ -31,7 +30,7 @@ public class Token {
     @Column(name = "token_type", nullable = false, length = 1)
     private String tokenType;
 
-    @Column(name = "token_value", nullable = false, length = 500)
+    @Column(name = "token_value", nullable = false, length = 2000)
     private String tokenValue;
 
     @Column(name = "device_id", length = 200)

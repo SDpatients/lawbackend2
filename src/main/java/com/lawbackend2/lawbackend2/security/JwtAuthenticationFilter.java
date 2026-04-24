@@ -75,7 +75,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         Long userId = jwtTokenUtil.getUserIdFromToken(token);
                         String username = jwtTokenUtil.getUsernameFromToken(token);
 
-                        List<String> permissions = permissionService.getUserPermissions(userId);
+                        List<String> permissions = jwtTokenUtil.getPermissionsFromToken(token);
+                        
+                        if (permissions == null || permissions.isEmpty()) {
+                            log.debug("Token中未包含权限信息，从数据库加载 - 用户ID: {}", userId);
+                            permissions = permissionService.getUserPermissions(userId);
+                        }
                         
                         List<SimpleGrantedAuthority> authorities = permissions.stream()
                                 .map(SimpleGrantedAuthority::new)
@@ -125,6 +130,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         boolean isAuthEndpoint = requestURI.contains("/auth/");
         boolean needsAuth = requestURI.contains("/auth/current-user") ||
                            requestURI.contains("/auth/change-password") ||
+                           requestURI.contains("/auth/check-admin") ||
+                           requestURI.contains("/auth/check-role") ||
                            requestURI.contains("/auth/statistics") ||
                            requestURI.contains("/auth/recent-failed") ||
                            requestURI.contains("/auth/login-history") ||

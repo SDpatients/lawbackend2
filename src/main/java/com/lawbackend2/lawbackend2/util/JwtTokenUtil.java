@@ -4,15 +4,19 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class JwtTokenUtil {
 
@@ -38,11 +42,13 @@ public class JwtTokenUtil {
         return generateToken(claims, username, accessTokenExpiration);
     }
 
-    public String generateAccessToken(Long userId, String username) {
+    public String generateTokenWithPermissions(Long userId, String username, List<String> permissions) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
         claims.put("type", "ACCESS");
+        claims.put("permissions", permissions);
+        claims.put("permHash", generatePermissionsHash(permissions));
         return generateToken(claims, username, accessTokenExpiration);
     }
 
@@ -52,6 +58,63 @@ public class JwtTokenUtil {
         claims.put("username", username);
         claims.put("type", "REFRESH");
         return generateToken(claims, username, refreshTokenExpiration);
+    }
+
+    private String generatePermissionsHash(List<String> permissions) {
+        if (permissions == null || permissions.isEmpty()) {
+            return "empty";
+        }
+        String sortedPermissions = permissions.stream()
+                .sorted()
+                .collect(java.util.stream.Collectors.joining("|"));
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(sortedPermissions.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            return String.valueOf(sortedPermissions.hashCode());
+        }
+    }
+
+    public List<String> getPermissionsFromToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            Object permObj = claims.get("permissions");
+            if (permObj instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<String> permissions = (List<String>) permObj;
+                return permissions;
+            }
+        } catch (Exception e) {
+            log.warn("从Token中获取权限失败: {}", e.getMessage());
+        }
+        return new ArrayList<>();
+    }
+
+    public String getPermissionsHashFromToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            Object hashObj = claims.get("permHash");
+            if (hashObj != null) {
+                return hashObj.toString();
+            }
+        } catch (Exception e) {
+            log.warn("从Token中获取权限哈希失败: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public Boolean isPermissionsValid(String token, List<String> currentPermissions) {
+        String tokenHash = getPermissionsHashFromToken(token);
+        if (tokenHash == null) {
+            return false;
+        }
+        String currentHash = generatePermissionsHash(currentPermissions);
+        return tokenHash.equals(currentHash);
     }
 
     public String generateToken(Map<String, Object> claims, String subject, Long expiration) {

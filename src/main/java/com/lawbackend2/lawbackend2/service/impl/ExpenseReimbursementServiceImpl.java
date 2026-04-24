@@ -26,6 +26,7 @@ import com.lawbackend2.lawbackend2.repository.FileRecordRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.BankAccountTransactionService;
 import com.lawbackend2.lawbackend2.service.ExpenseReimbursementService;
+import com.lawbackend2.lawbackend2.service.NotificationService;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
@@ -54,6 +55,7 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
     private final UserRepository userRepository;
     private final BankAccountTransactionService bankAccountTransactionService;
     private final FileRecordRepository fileRecordRepository;
+    private final NotificationService notificationService;
 
     public ExpenseReimbursementServiceImpl(ExpenseReimbursementRepository expenseReimbursementRepository,
                                         ExpenseReimbursementItemRepository expenseReimbursementItemRepository,
@@ -62,7 +64,8 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
                                         BankAccountRepository bankAccountRepository,
                                         UserRepository userRepository,
                                         BankAccountTransactionService bankAccountTransactionService,
-                                        FileRecordRepository fileRecordRepository) {
+                                        FileRecordRepository fileRecordRepository,
+                                        NotificationService notificationService) {
         this.expenseReimbursementRepository = expenseReimbursementRepository;
         this.expenseReimbursementItemRepository = expenseReimbursementItemRepository;
         this.expenseReimbursementAttachmentRepository = expenseReimbursementAttachmentRepository;
@@ -71,6 +74,7 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         this.userRepository = userRepository;
         this.bankAccountTransactionService = bankAccountTransactionService;
         this.fileRecordRepository = fileRecordRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -199,9 +203,29 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
             throw new BusinessException("报销单已审批，不能删除");
         }
 
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User deleter = userRepository.findById(currentUserId).orElse(null);
+        String deleterName = deleter != null ? deleter.getRealName() : "未知用户";
+
         expenseReimbursementItemRepository.deleteByReimbursementId(reimbursementId);
         
         expenseReimbursementRepository.delete(reimbursement);
+
+        String content = String.format("%s 删除了费用报销申请：%s，金额：%.2f元", 
+                deleterName, 
+                reimbursement.getReimbursementNumber(),
+                reimbursement.getTotalAmount());
+        
+        notificationService.sendNotificationToUser(
+                reimbursement.getApplicantId(),
+                "费用报销已删除",
+                content,
+                "EXPENSE_REIMBURSEMENT",
+                reimbursementId,
+                "ExpenseReimbursement",
+                currentUserId,
+                deleterName
+        );
     }
 
     @Override
@@ -217,7 +241,6 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
             throw new BusinessException("审批状态不正确");
         }
 
-        // 查询审批人信息
         User approver = userRepository.findById(approverId)
                 .orElseThrow(() -> new BusinessException("审批人不存在"));
 
@@ -228,6 +251,25 @@ public class ExpenseReimbursementServiceImpl implements ExpenseReimbursementServ
         reimbursement.setApproverName(approver.getRealName());
 
         expenseReimbursementRepository.save(reimbursement);
+
+        String action = "APPROVED".equals(request.getApprovalStatus()) ? "通过" : "驳回";
+        String content = String.format("%s %s了您的费用报销申请：%s，金额：%.2f元。%s", 
+                approver.getRealName(), 
+                action, 
+                reimbursement.getReimbursementNumber(),
+                reimbursement.getTotalAmount(),
+                request.getApprovalOpinion() != null ? "审批意见：" + request.getApprovalOpinion() : "");
+        
+        notificationService.sendNotificationToUser(
+                reimbursement.getApplicantId(),
+                "费用报销审批结果",
+                content,
+                "EXPENSE_REIMBURSEMENT",
+                reimbursementId,
+                "ExpenseReimbursement",
+                approverId,
+                approver.getRealName()
+        );
 
         if ("APPROVED".equals(request.getApprovalStatus())) {
             createTransactionForApprovedReimbursement(reimbursement);

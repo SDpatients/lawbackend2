@@ -7,23 +7,33 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SwaggerConfig {
 
+    private final AppProperties appProperties;
+
+    public SwaggerConfig(AppProperties appProperties) {
+        this.appProperties = appProperties;
+    }
+
     @Bean
+    @ConditionalOnProperty(name = "app.swagger.enabled", havingValue = "true", matchIfMissing = true)
     public OpenAPI customOpenAPI() {
         String securitySchemeName = "BearerAuth";
+        AppProperties.SwaggerConfig swaggerConfig = appProperties.getSwagger();
+        
         return new OpenAPI()
                 .info(new Info()
-                        .title("Law Backend API")
-                        .version("1.0.0")
-                        .description("法律破产管理系统后端API文档")
+                        .title(swaggerConfig.getTitle())
+                        .version(swaggerConfig.getVersion())
+                        .description(swaggerConfig.getDescription())
                         .contact(new Contact()
-                                .name("Law Backend Team")
-                                .email("support@lawbackend.com"))
+                                .name(swaggerConfig.getContactName())
+                                .email(swaggerConfig.getContactEmail()))
                         .license(new License()
                                 .name("Apache 2.0")
                                 .url("https://www.apache.org/licenses/LICENSE-2.0.html")))

@@ -214,7 +214,7 @@ public class ExpenseReimbursementController {
         java.io.File file = new java.io.File(fullPath);
         if (!file.exists()) {
             log.error("文件不存在，attachmentId: {}, fullPath: {}, UPLOAD_ROOT_PATH: {}", attachmentId, fullPath, UPLOAD_ROOT_PATH);
-            throw new RuntimeException("文件不存在，文件路径：" + fullPath);
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException(404, "文件不存在或已被删除");
         }
         
         Resource resource = new org.springframework.core.io.FileSystemResource(file);
@@ -245,7 +245,7 @@ public class ExpenseReimbursementController {
         java.io.File file = new java.io.File(fullPath);
         if (!file.exists()) {
             log.error("文件不存在，attachmentId: {}, fullPath: {}", attachmentId, fullPath);
-            throw new RuntimeException("文件不存在，文件路径：" + fullPath);
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException(404, "文件不存在或已被删除");
         }
         
         String contentType = attachment.getFileType();

@@ -62,6 +62,54 @@ server:
   port: 8080
   servlet:
     context-path: /api/v1
+
+app:
+  name: 法律破产管理系统
+  company: ""
+  logo-url: ""
+  footer-text: ""
+  default-language: zh-CN
+  timezone: Asia/Shanghai
+  server:
+    url: http://localhost:8080
+  file:
+    upload-path: D:\\law-upload
+    download-url: http://localhost:8080/api/v1/file/download/
+    max-size: 52428800
+    allowed-types: jpg,jpeg,png,gif,bmp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar
+    video:
+      max-size: 524288000
+      allowed-types: mp4,avi,mov,wmv,flv,mkv,webm,mpeg,mpg,3gp
+      allowed-mime-types: video/mp4,video/avi,video/x-msvideo,video/quicktime,video/x-ms-wmv,video/x-flv,video/x-matroska,video/webm,video/mpeg,video/3gpp
+  cache:
+    default-ttl-minutes: 10
+    recent-case:
+      max-records: 50
+      expire-days: 30
+  security:
+    password-min-length: 6
+    password-require-special-char: false
+    password-require-digit: false
+    password-require-uppercase: false
+  features:
+    ai-chat: true
+    only-office: true
+    video-upload: true
+    data-export: true
+    batch-import: true
+  swagger:
+    enabled: true
+    title: 法律破产管理系统API
+    description: 法律破产管理系统后端API文档
+    version: 1.0.0
+    contact-name: 技术支持
+    contact-email: support@example.com
+  cors:
+    allowed-origins: "*"
+    allowed-methods: GET,POST,PUT,DELETE,OPTIONS
+    allowed-headers: "*"
+    allow-credentials: true
+    max-age: 3600
 jwt:
   secret: lawbackend2-secret-key-for-jwt-token-generation-and-verification-must-be-at-least-256-bits
   access-token-expiration: 180000000
@@ -95,12 +143,6 @@ springdoc:
     path: /swagger-ui
     enabled: true
     packages-to-scan: com.lawbackend2.lawbackend2.controller
-
-app:
-  server:
-    url: http://localhost:8080
-  file:
-    download-url: http://localhost:8080/api/v1/file/download/
 
 onlyoffice:
   server-url: http://localhost:8081

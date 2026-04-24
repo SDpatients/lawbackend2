@@ -1,18 +1,20 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
+import com.lawbackend2.lawbackend2.config.AppProperties;
 import com.lawbackend2.lawbackend2.dto.RecentCaseSearchRecord;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
-import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.service.RecentCaseSearchService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -22,15 +24,25 @@ public class RecentCaseSearchServiceImpl implements RecentCaseSearchService {
 
     private static final String RECENT_CASE_SEARCH_KEY_PREFIX = "recent_case_search:user:";
     private static final int DEFAULT_LIMIT = 10;
-    private static final Duration KEY_EXPIRATION = Duration.ofDays(30);
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final BankruptCaseRepository bankruptCaseRepository;
+    private final AppProperties appProperties;
 
     public RecentCaseSearchServiceImpl(RedisTemplate<String, Object> redisTemplate,
-                                       BankruptCaseRepository bankruptCaseRepository) {
+                                       BankruptCaseRepository bankruptCaseRepository,
+                                       AppProperties appProperties) {
         this.redisTemplate = redisTemplate;
         this.bankruptCaseRepository = bankruptCaseRepository;
+        this.appProperties = appProperties;
+    }
+
+    private int getMaxRecords() {
+        return appProperties.getCache().getRecentCase().getMaxRecords();
+    }
+
+    private Duration getKeyExpiration() {
+        return Duration.ofDays(appProperties.getCache().getRecentCase().getExpireDays());
     }
 
     @Override
@@ -42,29 +54,24 @@ public class RecentCaseSearchServiceImpl implements RecentCaseSearchService {
         String key = getKey(userId);
 
         try {
-            BankruptCase bankruptCase = bankruptCaseRepository.findById(caseId)
-                    .orElseThrow(() -> new BusinessException("案件不存在"));
-
-            RecentCaseSearchRecord record = new RecentCaseSearchRecord(
-                    bankruptCase.getId(),
-                    bankruptCase.getCaseNumber(),
-                    bankruptCase.getCaseName(),
-                    bankruptCase.getCaseStatus(),
-                    bankruptCase.getCaseProgress()
-            );
+            if (!bankruptCaseRepository.existsById(caseId)) {
+                log.warn("案件不存在, caseId: {}", caseId);
+                return;
+            }
 
             String memberKey = caseId.toString();
 
-            redisTemplate.opsForZSet().remove(key, caseId);
+            redisTemplate.opsForZSet().remove(key, memberKey);
 
             redisTemplate.opsForZSet().add(key, memberKey, System.currentTimeMillis());
 
-            Set<Object> allMembers = redisTemplate.opsForZSet().reverseRange(key, 0, -1);
-            if (allMembers != null && allMembers.size() > 50) {
-                redisTemplate.opsForZSet().removeRange(key, 0, allMembers.size() - 51);
+            Long size = redisTemplate.opsForZSet().size(key);
+            int maxRecords = getMaxRecords();
+            if (size != null && size > maxRecords) {
+                redisTemplate.opsForZSet().removeRange(key, 0, size - maxRecords - 1);
             }
 
-            redisTemplate.expire(key, KEY_EXPIRATION);
+            redisTemplate.expire(key, getKeyExpiration());
 
             log.debug("记录用户最近查询案件, userId: {}, caseId: {}", userId, caseId);
         } catch (Exception e) {
@@ -84,20 +91,22 @@ public class RecentCaseSearchServiceImpl implements RecentCaseSearchService {
         }
 
         try {
-            Set<Object> caseIds = redisTemplate.opsForZSet().reverseRange(key, 0, limit - 1);
+            Set<ZSetOperations.TypedTuple<Object>> tuples = redisTemplate.opsForZSet()
+                    .reverseRangeWithScores(key, 0, limit - 1);
 
-            if (caseIds == null || caseIds.isEmpty()) {
+            if (tuples == null || tuples.isEmpty()) {
                 return new ArrayList<>();
             }
 
-            List<Long> ids = caseIds.stream()
-                    .map(obj -> {
-                        if (obj instanceof Long) {
-                            return (Long) obj;
-                        } else if (obj instanceof String) {
-                            return Long.parseLong((String) obj);
-                        } else if (obj instanceof Integer) {
-                            return ((Integer) obj).longValue();
+            List<Long> ids = tuples.stream()
+                    .map(tuple -> {
+                        Object value = tuple.getValue();
+                        if (value instanceof Long) {
+                            return (Long) value;
+                        } else if (value instanceof String) {
+                            return Long.parseLong((String) value);
+                        } else if (value instanceof Integer) {
+                            return ((Integer) value).longValue();
                         }
                         return null;
                     })
@@ -108,10 +117,34 @@ public class RecentCaseSearchServiceImpl implements RecentCaseSearchService {
                 return new ArrayList<>();
             }
 
+            Map<Long, Double> caseIdToScoreMap = tuples.stream()
+                    .filter(tuple -> tuple.getValue() != null && tuple.getScore() != null)
+                    .collect(Collectors.toMap(
+                            tuple -> {
+                                Object value = tuple.getValue();
+                                if (value instanceof Long) {
+                                    return (Long) value;
+                                } else if (value instanceof String) {
+                                    return Long.parseLong((String) value);
+                                } else if (value instanceof Integer) {
+                                    return ((Integer) value).longValue();
+                                }
+                                return -1L;
+                            },
+                            tuple -> tuple.getScore(),
+                            (existing, replacement) -> existing
+                    ));
+
             List<BankruptCase> cases = bankruptCaseRepository.findAllById(ids);
 
             List<RecentCaseSearchRecord> records = new ArrayList<>();
             for (Long caseId : ids) {
+                Double score = caseIdToScoreMap.get(caseId);
+                if (score == null) {
+                    continue;
+                }
+                Long timestamp = score.longValue();
+
                 cases.stream()
                         .filter(c -> c.getId().equals(caseId))
                         .findFirst()
@@ -120,7 +153,8 @@ public class RecentCaseSearchServiceImpl implements RecentCaseSearchService {
                                 c.getCaseNumber(),
                                 c.getCaseName(),
                                 c.getCaseStatus(),
-                                c.getCaseProgress()
+                                c.getCaseProgress(),
+                                timestamp
                         )));
             }
 

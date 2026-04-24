@@ -15,17 +15,30 @@ import java.io.IOException;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorsFilter implements Filter {
 
+    private final AppProperties appProperties;
+
+    public CorsFilter(AppProperties appProperties) {
+        this.appProperties = appProperties;
+    }
+
     @Override
     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
         HttpServletResponse response = (HttpServletResponse) res;
         HttpServletRequest request = (HttpServletRequest) req;
 
+        AppProperties.CorsConfig corsConfig = appProperties.getCors();
+        
         String origin = request.getHeader("Origin");
-        response.setHeader("Access-Control-Allow-Origin", origin != null ? origin : "*");
-        response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        response.setHeader("Access-Control-Allow-Headers", "*");
-        response.setHeader("Access-Control-Allow-Credentials", "true");
-        response.setHeader("Access-Control-Max-Age", "3600");
+        String allowedOrigins = corsConfig.getAllowedOrigins();
+        if ("*".equals(allowedOrigins)) {
+            response.setHeader("Access-Control-Allow-Origin", origin != null ? origin : "*");
+        } else {
+            response.setHeader("Access-Control-Allow-Origin", allowedOrigins);
+        }
+        response.setHeader("Access-Control-Allow-Methods", corsConfig.getAllowedMethods());
+        response.setHeader("Access-Control-Allow-Headers", corsConfig.getAllowedHeaders());
+        response.setHeader("Access-Control-Allow-Credentials", String.valueOf(corsConfig.isAllowCredentials()));
+        response.setHeader("Access-Control-Max-Age", String.valueOf(corsConfig.getMaxAge()));
 
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_OK);
