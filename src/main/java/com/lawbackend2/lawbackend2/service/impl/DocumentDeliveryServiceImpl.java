@@ -702,6 +702,10 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
     public void updateDocumentDelivery(Long deliveryId, DocumentDeliveryUpdateRequest request) {
         DocumentDelivery documentDelivery = getDocumentDeliveryDetail(deliveryId);
 
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User updater = userRepository.findById(currentUserId).orElse(null);
+        String updaterName = updater != null ? updater.getRealName() : "未知用户";
+
         if (request.getCaseId() != null) {
             BankruptCase bankruptCase = bankruptCaseRepository.findById(request.getCaseId()).orElse(null);
             if (bankruptCase != null) {
@@ -754,15 +758,42 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
         }
 
         documentDeliveryRepository.save(documentDelivery);
+
+        String content = String.format("%s 更新了文书送达：%s", updaterName, documentDelivery.getDocumentName());
+        notificationService.sendNotificationToUser(
+                documentDelivery.getCreateUserId(),
+                "文书送达已更新",
+                content,
+                "DOCUMENT_DELIVERY",
+                deliveryId,
+                "DocumentDelivery",
+                currentUserId,
+                updaterName
+        );
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteDocumentDelivery(Long deliveryId) {
-        if (!documentDeliveryRepository.existsById(deliveryId)) {
-            throw new BusinessException("文书送达记录不存在");
-        }
+        DocumentDelivery documentDelivery = getDocumentDeliveryDetail(deliveryId);
+        
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User deleter = userRepository.findById(currentUserId).orElse(null);
+        String deleterName = deleter != null ? deleter.getRealName() : "未知用户";
+        
         documentDeliveryRepository.deleteById(deliveryId);
+
+        String content = String.format("%s 删除了文书送达：%s", deleterName, documentDelivery.getDocumentName());
+        notificationService.sendNotificationToUser(
+                documentDelivery.getCreateUserId(),
+                "文书送达已删除",
+                content,
+                "DOCUMENT_DELIVERY",
+                deliveryId,
+                "DocumentDelivery",
+                currentUserId,
+                deleterName
+        );
     }
 
     @Override
@@ -779,6 +810,28 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
         }
 
         documentDeliveryRepository.save(documentDelivery);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User updater = userRepository.findById(currentUserId).orElse(null);
+        String updaterName = updater != null ? updater.getRealName() : "未知用户";
+
+        String statusText = "SENT".equals(sendStatus) ? "已发送" : ("FAILED".equals(sendStatus) ? "发送失败" : sendStatus);
+        String content = String.format("%s 更新了文书送达发送状态为：%s，文书：%s", 
+                updaterName, statusText, documentDelivery.getDocumentName());
+        if ("FAILED".equals(sendStatus) && failureReason != null) {
+            content += "，失败原因：" + failureReason;
+        }
+
+        notificationService.sendNotificationToUser(
+                documentDelivery.getCreateUserId(),
+                "文书送达状态更新",
+                content,
+                "DOCUMENT_DELIVERY",
+                deliveryId,
+                "DocumentDelivery",
+                currentUserId,
+                updaterName
+        );
     }
 
     @Override
@@ -792,6 +845,25 @@ public class DocumentDeliveryServiceImpl implements DocumentDeliveryService {
         }
 
         documentDeliveryRepository.save(documentDelivery);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User updater = userRepository.findById(currentUserId).orElse(null);
+        String updaterName = updater != null ? updater.getRealName() : "未知用户";
+
+        String statusText = "DELIVERED".equals(sendStatus) ? "已送达" : sendStatus;
+        String content = String.format("%s 更新了文书送达状态为：%s，文书：%s", 
+                updaterName, statusText, documentDelivery.getDocumentName());
+
+        notificationService.sendNotificationToUser(
+                documentDelivery.getCreateUserId(),
+                "文书送达状态更新",
+                content,
+                "DOCUMENT_DELIVERY",
+                deliveryId,
+                "DocumentDelivery",
+                currentUserId,
+                updaterName
+        );
     }
 
     @Override

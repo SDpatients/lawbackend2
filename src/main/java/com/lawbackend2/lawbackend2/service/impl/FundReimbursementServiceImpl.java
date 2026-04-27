@@ -5,9 +5,13 @@ import com.lawbackend2.lawbackend2.dto.request.FundReimbursementApprovalRequest;
 import com.lawbackend2.lawbackend2.dto.request.FundReimbursementCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.FundReimbursementPaymentRequest;
 import com.lawbackend2.lawbackend2.entity.FundReimbursement;
+import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.FundReimbursementRepository;
+import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.FundReimbursementService;
+import com.lawbackend2.lawbackend2.service.NotificationService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,9 +29,15 @@ import java.util.UUID;
 public class FundReimbursementServiceImpl implements FundReimbursementService {
 
     private final FundReimbursementRepository fundReimbursementRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
-    public FundReimbursementServiceImpl(FundReimbursementRepository fundReimbursementRepository) {
+    public FundReimbursementServiceImpl(FundReimbursementRepository fundReimbursementRepository,
+                                       UserRepository userRepository,
+                                       NotificationService notificationService) {
         this.fundReimbursementRepository = fundReimbursementRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -76,6 +86,29 @@ public class FundReimbursementServiceImpl implements FundReimbursementService {
         }
 
         fundReimbursementRepository.save(reimbursement);
+
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User approver = userRepository.findById(currentUserId).orElse(null);
+        String approverName = approver != null ? approver.getRealName() : "未知用户";
+
+        String action = "APPROVED".equals(request.getApprovalStatus()) ? "通过" : "驳回";
+        String content = String.format("%s %s了您的资金报销申请：%s，金额：%.2f元。%s",
+                approverName,
+                action,
+                reimbursement.getReimbursementNo(),
+                reimbursement.getAppliedAmount() != null ? reimbursement.getAppliedAmount() : 0,
+                request.getApprovalOpinion() != null ? "审批意见：" + request.getApprovalOpinion() : "");
+
+        notificationService.sendNotificationToUser(
+                reimbursement.getApplicantId(),
+                "资金报销审批结果",
+                content,
+                "FUND_REIMBURSEMENT",
+                reimbursementId,
+                "FundReimbursement",
+                currentUserId,
+                approverName
+        );
     }
 
     @Override
@@ -99,7 +132,28 @@ public class FundReimbursementServiceImpl implements FundReimbursementService {
     @Override
     public void deleteFundReimbursement(Long reimbursementId) {
         FundReimbursement reimbursement = getFundReimbursementDetail(reimbursementId);
+        
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User deleter = userRepository.findById(currentUserId).orElse(null);
+        String deleterName = deleter != null ? deleter.getRealName() : "未知用户";
+        
         fundReimbursementRepository.delete(reimbursement);
+
+        String content = String.format("%s 删除了资金报销申请：%s，金额：%.2f元",
+                deleterName,
+                reimbursement.getReimbursementNo(),
+                reimbursement.getAppliedAmount() != null ? reimbursement.getAppliedAmount() : 0);
+
+        notificationService.sendNotificationToUser(
+                reimbursement.getApplicantId(),
+                "资金报销已删除",
+                content,
+                "FUND_REIMBURSEMENT",
+                reimbursementId,
+                "FundReimbursement",
+                currentUserId,
+                deleterName
+        );
     }
 
     private String generateReimbursementNo() {

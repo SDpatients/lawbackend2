@@ -4,6 +4,7 @@ import com.lawbackend2.lawbackend2.dto.CaseProgressCreateRequest;
 import com.lawbackend2.lawbackend2.dto.CaseProgressUpdateRequest;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.CaseProgress;
+import com.lawbackend2.lawbackend2.enums.CaseStatus;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.CaseProgressRepository;

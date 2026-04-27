@@ -3,6 +3,7 @@ package com.lawbackend2.lawbackend2.service.impl;
 import com.lawbackend2.lawbackend2.dto.CaseStatisticsRequest;
 import com.lawbackend2.lawbackend2.dto.CaseStatisticsResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
+import com.lawbackend2.lawbackend2.enums.CaseStatus;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
@@ -149,9 +150,9 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
                 }
                 response.setApprovedCases(approvedCases != null ? approvedCases : 0L);
 
-                Long completedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "COMPLETED");
-                if (realName != null) {
-                    completedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "COMPLETED");
+                Long completedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, CaseStatus.COMPLETED.name());
+                if (realName != null && !realName.isEmpty()) {
+                    completedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, CaseStatus.COMPLETED.name());
                 }
                 response.setCompletedCases(completedCases != null ? completedCases : 0L);
 
@@ -182,7 +183,7 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
                 Long approvedCases = caseRepository.countByCaseStatus("APPROVED");
                 response.setApprovedCases(approvedCases != null ? approvedCases : 0L);
 
-                Long completedCases = caseRepository.countByCaseStatus("COMPLETED");
+                Long completedCases = caseRepository.countByCaseStatus(CaseStatus.COMPLETED.name());
                 response.setCompletedCases(completedCases != null ? completedCases : 0L);
 
                 Long closedCases = caseRepository.countByCaseStatus("CLOSED");
