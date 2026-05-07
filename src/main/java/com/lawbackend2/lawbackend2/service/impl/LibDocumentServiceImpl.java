@@ -31,12 +31,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.transaction.support.TransactionTemplate;
+
 import java.io.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,6 +57,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     private final LibDocumentPermissionRelRepository permissionRelRepository;
     private final LibDocumentOperationLogService operationLogService;
     private final UserRepository userRepository;
+    private final TransactionTemplate transactionTemplate;
 
     private String getUsernameById(Long userId) {
         if (userId == null) {
@@ -224,22 +228,41 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     @CacheEvict(value = "libDashboard", allEntries = true)
     public void deleteDocument(Long id, Long userId) {
         LibDocument document = documentRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("文档不存在"));
+                .orElseThrow(() -> new BusinessException("文档不存在，无法删除"));
 
         if (document.getIsLocked()) {
-            throw new BusinessException("文档已被锁定，禁止删除");
+            throw new BusinessException("文档已被锁定，禁止删除。如需删除，请先解锁文档");
         }
 
         if (!document.getCreateUserId().equals(userId)) {
-            throw new BusinessException("无权限删除该文档");
+            throw new BusinessException("您没有权限删除该文档，只有文档创建者才能删除");
         }
 
-        // 删除物理文件
+        // 删除当前版本物理文件
         String filePath = document.getFilePath();
         if (filePath != null) {
             File file = new File(filePath);
             if (file.exists()) {
-                file.delete();
+                boolean deleted = file.delete();
+                if (!deleted) {
+                    log.error("删除文档物理文件失败，文件可能被占用或权限不足 - 文档ID: {}, 路径: {}", id, filePath);
+                    throw new BusinessException("删除文档失败：无法删除文档物理文件，请检查文件是否被其他程序占用或您是否有足够的权限");
+                }
+            }
+        }
+
+        // 删除该文档所有历史版本的物理文件
+        List<com.lawbackend2.lawbackend2.entity.LibDocumentVersion> versions = versionRepository.findByDocumentIdOrderByVersionNumberDesc(id);
+        for (com.lawbackend2.lawbackend2.entity.LibDocumentVersion version : versions) {
+            String versionFilePath = version.getFilePath();
+            if (versionFilePath != null) {
+                File versionFile = new File(versionFilePath);
+                if (versionFile.exists()) {
+                    boolean deleted = versionFile.delete();
+                    if (!deleted) {
+                        log.warn("删除版本物理文件失败，文件可能被占用或权限不足 - 版本ID: {}, 路径: {}", version.getId(), versionFilePath);
+                    }
+                }
             }
         }
 
@@ -253,7 +276,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         documentRepository.deleteById(id);
 
         log.info("删除文档成功 - 文档 ID: {}, 用户 ID: {}", id, userId);
-        operationLogService.logOperation(id, document.getFolderId(), "DELETE", "删除文档", document.getFilePath(), null, userId, null, null);
+        operationLogService.logOperation(id, document.getFolderId(), "DELETE", "删除文档", filePath, null, userId, null, null);
     }
 
     @Override
@@ -380,6 +403,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         }
 
         incrementViewCount(id);
+        documentRepository.incrementDownloadCount(id);
         operationLogService.logOperation(id, document.getFolderId(), "DOWNLOAD", "下载文档", null, null, userId, null, null);
     }
 
@@ -449,11 +473,48 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     @Transactional
     public void copyDocument(Long documentId, Long targetFolderId, Long userId) {
         LibDocument document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new BusinessException("文档不存在"));
+                .orElseThrow(() -> new BusinessException("文档不存在，无法复制"));
+
+        if (document.getIsLocked()) {
+            throw new BusinessException("文档已被锁定，禁止复制。如需复制，请先解锁文档");
+        }
 
         if (targetFolderId != null) {
             folderRepository.findById(targetFolderId)
-                    .orElseThrow(() -> new BusinessException("目标文件夹不存在"));
+                    .orElseThrow(() -> new BusinessException("目标文件夹不存在，请确认文件夹ID是否正确"));
+        }
+
+        // 复制物理文件，避免新旧文档共享同一文件
+        String newFilePath = null;
+        String sourceFilePath = document.getFilePath();
+        if (sourceFilePath != null) {
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.exists()) {
+                throw new BusinessException("复制文档失败：原文档的物理文件不存在或已被删除");
+            }
+
+            String baseDir = System.getProperty("user.dir");
+            String uploadDir = baseDir + File.separator + "uploads" + File.separator + "documents" + File.separator;
+            if (targetFolderId != null) {
+                uploadDir += "folder_" + targetFolderId + File.separator;
+            }
+
+            File dir = new File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            String newFileName = timestamp + "_副本_" + document.getFileName();
+            File destFile = new File(uploadDir + newFileName);
+
+            try {
+                java.nio.file.Files.copy(sourceFile.toPath(), destFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                newFilePath = destFile.getAbsolutePath();
+            } catch (IOException e) {
+                log.error("复制文档物理文件失败 - 原文档ID: {}, 源路径: {}, 目标路径: {}, 错误: {}", documentId, sourceFilePath, destFile.getAbsolutePath(), e.getMessage());
+                throw new BusinessException("复制文档失败：无法复制文档文件，请检查磁盘空间或文件权限");
+            }
         }
 
         LibDocument newDocument = LibDocument.builder()
@@ -462,7 +523,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
                 .folderId(targetFolderId)
                 .documentType(document.getDocumentType())
                 .fileName(document.getFileName())
-                .filePath(document.getFilePath())
+                .filePath(newFilePath)
                 .fileSize(document.getFileSize())
                 .fileExtension(document.getFileExtension())
                 .mimeType(document.getMimeType())
@@ -476,7 +537,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         newDocument = documentRepository.save(newDocument);
 
         log.info("复制文档成功 - 原文档 ID: {}, 新文档 ID: {}, 用户 ID: {}", documentId, newDocument.getId(), userId);
-        operationLogService.logOperation(newDocument.getId(), targetFolderId, "COPY", "复制文档", null, document.getFilePath(), userId, null, null);
+        operationLogService.logOperation(newDocument.getId(), targetFolderId, "COPY", "复制文档", sourceFilePath, newFilePath, userId, null, null);
     }
 
     @Override
@@ -484,16 +545,19 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         LibDocument document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException("文档不存在"));
 
+        // 公开文档：所有人都有READ权限，其他权限需要进一步判断
         if (document.getIsPublic()) {
+            return "READ".equals(permissionType) || "PREVIEW".equals(permissionType) || "DOWNLOAD".equals(permissionType);
+        }
+
+        // 文档创建者拥有所有权限
+        if (document.getCreateUserId() != null && document.getCreateUserId().equals(userId)) {
             return true;
         }
 
-        if (document.getCreateUserId().equals(userId)) {
-            return true;
-        }
-
+        // 收藏者仅拥有READ/PREVIEW/DOWNLOAD权限
         if (favoriteRepository.existsByDocumentIdAndUserId(documentId, userId)) {
-            return true;
+            return "READ".equals(permissionType) || "PREVIEW".equals(permissionType) || "DOWNLOAD".equals(permissionType);
         }
 
         return false;
@@ -507,16 +571,19 @@ public class LibDocumentServiceImpl implements LibDocumentService {
 
     private void incrementViewCountInternal(Long id) {
         try {
-            documentRepository.incrementViewCount(id);
+            transactionTemplate.executeWithoutResult(status -> {
+                documentRepository.incrementViewCount(id);
+            });
         } catch (Exception e) {
             log.error("增加浏览次数失败：{}", e.getMessage());
         }
     }
 
     private void incrementViewCountAsync(Long id) {
-        // 在新的事务中执行更新，避免与只读事务冲突
         try {
-            incrementViewCount(id);
+            transactionTemplate.executeWithoutResult(status -> {
+                documentRepository.incrementViewCount(id);
+            });
         } catch (Exception e) {
             log.error("增加浏览次数失败：{}", e.getMessage());
         }
@@ -533,11 +600,13 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     @Transactional
     public void previewDocument(Long id, HttpServletResponse response, Long userId) {
         LibDocument document = documentRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("文档不存在"));
+                .orElseThrow(() -> new BusinessException("文档不存在，无法预览"));
+
+        validateDocumentAccess(document, userId);
 
         File file = new File(document.getFilePath());
         if (!file.exists()) {
-            throw new BusinessException("文件不存在");
+            throw new BusinessException("文档对应的物理文件不存在或已被删除，无法预览");
         }
 
         String mimeType = document.getMimeType();
@@ -657,15 +726,36 @@ public class LibDocumentServiceImpl implements LibDocumentService {
 
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String originalFileName = file.getOriginalFilename();
+
+        // 安全检查：过滤路径遍历字符
+        if (originalFileName != null) {
+            originalFileName = originalFileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+            originalFileName = originalFileName.replaceAll("\\.\\./", "_");
+            originalFileName = originalFileName.replaceAll("\\./", "_");
+            if (originalFileName.isBlank()) {
+                originalFileName = "unnamed_file";
+            }
+        } else {
+            originalFileName = "unnamed_file";
+        }
+
         String newFileName = timestamp + "_" + originalFileName;
 
         try {
             File destFile = new File(uploadDir + newFileName);
+            // 确保解析后的路径在目标目录内，防止路径遍历
+            String canonicalDestPath = destFile.getCanonicalPath();
+            String canonicalDirPath = dir.getCanonicalPath();
+            if (!canonicalDestPath.startsWith(canonicalDirPath)) {
+                log.error("检测到非法文件路径，可能存在路径遍历攻击 - 文件名: {}", originalFileName);
+                throw new BusinessException("上传文件失败：文件名包含非法字符");
+            }
+
             file.transferTo(destFile);
             return destFile.getAbsolutePath();
         } catch (IOException e) {
             log.error("保存文件失败：{}", e.getMessage());
-            throw new BusinessException("保存文件失败");
+            throw new BusinessException("保存文件失败：无法写入文件，请检查磁盘空间或目录权限");
         }
     }
 
@@ -722,6 +812,15 @@ public class LibDocumentServiceImpl implements LibDocumentService {
         }
         if (userId != null && document.getCreateUserId().equals(userId)) {
             return true;
+        }
+        if (userId != null) {
+            List<com.lawbackend2.lawbackend2.entity.LibDocumentPermissionRel> permRels =
+                    permissionRelRepository.findByDocumentId(document.getId());
+            for (com.lawbackend2.lawbackend2.entity.LibDocumentPermissionRel rel : permRels) {
+                if ("USER".equals(rel.getTargetType()) && userId.equals(rel.getTargetId())) {
+                    return true;
+                }
+            }
         }
         return false;
     }

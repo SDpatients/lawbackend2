@@ -3,11 +3,13 @@ package com.lawbackend2.lawbackend2.service.impl;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimQueryRequest;
 import com.lawbackend2.lawbackend2.dto.CreditorClaimQueryResponse;
+import com.lawbackend2.lawbackend2.entity.BankruptCase;
 import com.lawbackend2.lawbackend2.entity.ClaimConfirmation;
 import com.lawbackend2.lawbackend2.entity.ClaimRegistration;
 import com.lawbackend2.lawbackend2.entity.ClaimReview;
 import com.lawbackend2.lawbackend2.entity.CreditorInfo;
 import com.lawbackend2.lawbackend2.enums.CreditorStatus;
+import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
@@ -35,15 +37,18 @@ public class CreditorClaimQueryServiceImpl implements CreditorClaimQueryService 
     private final ClaimConfirmationRepository claimConfirmationRepository;
     private final ClaimReviewRepository claimReviewRepository;
     private final CreditorInfoRepository creditorInfoRepository;
+    private final BankruptCaseRepository bankruptCaseRepository;
 
     public CreditorClaimQueryServiceImpl(ClaimRegistrationRepository claimRegistrationRepository,
                                          ClaimConfirmationRepository claimConfirmationRepository,
                                          ClaimReviewRepository claimReviewRepository,
-                                         CreditorInfoRepository creditorInfoRepository) {
+                                         CreditorInfoRepository creditorInfoRepository,
+                                         BankruptCaseRepository bankruptCaseRepository) {
         this.claimRegistrationRepository = claimRegistrationRepository;
         this.claimConfirmationRepository = claimConfirmationRepository;
         this.claimReviewRepository = claimReviewRepository;
         this.creditorInfoRepository = creditorInfoRepository;
+        this.bankruptCaseRepository = bankruptCaseRepository;
     }
 
     @Override
@@ -83,6 +88,16 @@ public class CreditorClaimQueryServiceImpl implements CreditorClaimQueryService 
                 .map(CreditorInfo::getId)
                 .collect(Collectors.toList());
 
+        Map<Long, BankruptCase> caseMap = creditors.stream()
+                .map(CreditorInfo::getCaseId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        id -> bankruptCaseRepository.findById(id).orElse(null),
+                        (existing, replacement) -> existing
+                ));
+
         List<ClaimRegistration> registrations = claimRegistrationRepository.findAll((root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.isFalse(root.get("isDeleted")));
@@ -113,9 +128,26 @@ public class CreditorClaimQueryServiceImpl implements CreditorClaimQueryService 
                     CreditorClaimQueryResponse response = new CreditorClaimQueryResponse();
                     
                     response.setCreditorId(creditor.getId());
+                    response.setCaseId(creditor.getCaseId());
                     response.setCreditorName(creditor.getCreditorName());
                     response.setCreditorType(creditor.getCreditorType());
                     response.setCreditorStatus(creditor.getCreditorStatus() != null ? creditor.getCreditorStatus().name() : null);
+                    response.setContactPhone(creditor.getContactPhone());
+                    response.setContactEmail(creditor.getContactEmail());
+                    response.setAddress(creditor.getAddress());
+                    response.setIdNumber(creditor.getIdNumber());
+                    response.setLegalRepresentative(creditor.getLegalRepresentative());
+                    response.setRegisteredCapital(creditor.getRegisteredCapital());
+                    response.setCreateTime(creditor.getCreateTime());
+                    response.setUpdateTime(creditor.getUpdateTime());
+
+                    if (creditor.getCaseId() != null) {
+                        BankruptCase bankruptCase = caseMap.get(creditor.getCaseId());
+                        if (bankruptCase != null) {
+                            response.setCaseNumber(bankruptCase.getCaseNumber());
+                            response.setCaseName(bankruptCase.getCaseName());
+                        }
+                    }
                     
                     List<ClaimRegistration> creditorRegistrations = registrationMap.getOrDefault(creditor.getCreditorName(), new ArrayList<>());
                     ClaimRegistration latestRegistration = creditorRegistrations.stream()

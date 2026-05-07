@@ -11,6 +11,7 @@ import com.lawbackend2.lawbackend2.repository.ArchiveRecordRepository;
 import com.lawbackend2.lawbackend2.repository.FileRecordRepository;
 import com.lawbackend2.lawbackend2.service.ArchiveService;
 import com.lawbackend2.lawbackend2.service.FileService;
+import com.lawbackend2.lawbackend2.service.SystemConfigService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,16 +39,19 @@ public class ArchiveServiceImpl implements ArchiveService {
     private final ArchiveRecordRepository archiveRecordRepository;
     private final FileRecordRepository fileRecordRepository;
     private final FileService fileService;
+    private final SystemConfigService systemConfigService;
 
     @Autowired
     public ArchiveServiceImpl(ArchiveCategoryRepository archiveCategoryRepository,
                             ArchiveRecordRepository archiveRecordRepository,
                             FileRecordRepository fileRecordRepository,
-                            FileService fileService) {
+                            FileService fileService,
+                            SystemConfigService systemConfigService) {
         this.archiveCategoryRepository = archiveCategoryRepository;
         this.archiveRecordRepository = archiveRecordRepository;
         this.fileRecordRepository = fileRecordRepository;
         this.fileService = fileService;
+        this.systemConfigService = systemConfigService;
     }
 
     @Override
@@ -237,9 +241,9 @@ public class ArchiveServiceImpl implements ArchiveService {
             throw new BusinessException("文件不能为空");
         }
 
-        long maxSize = 50 * 1024 * 1024;
+        long maxSize = getMaxUploadSizeBytes();
         if (file.getSize() > maxSize) {
-            throw new BusinessException("文件大小不能超过50MB");
+            throw new BusinessException("文件大小不能超过" + getMaxUploadSizeMB() + "MB");
         }
 
         String fileName = file.getOriginalFilename();
@@ -248,7 +252,7 @@ public class ArchiveServiceImpl implements ArchiveService {
         }
 
         String extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
-        List<String> allowedExtensions = List.of("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "bmp", "txt");
+        List<String> allowedExtensions = getAllowedFileExtensions();
         if (!allowedExtensions.contains(extension)) {
             throw new BusinessException("不支持的文件格式");
         }
@@ -259,7 +263,12 @@ public class ArchiveServiceImpl implements ArchiveService {
         String prefix = "AH-" + dateStr + "-";
 
         long count = archiveRecordRepository.count() + 1;
-        return prefix + String.format("%04d", count);
+        String archiveNo = prefix + String.format("%04d", count);
+        while (archiveRecordRepository.findByArchiveNo(archiveNo) != null) {
+            count++;
+            archiveNo = prefix + String.format("%04d", count);
+        }
+        return archiveNo;
     }
 
     private ArchiveCategoryResponse convertToCategoryResponse(ArchiveCategory category) {
@@ -290,5 +299,38 @@ public class ArchiveServiceImpl implements ArchiveService {
         }
 
         return response;
+    }
+
+    private int getMaxUploadSizeMB() {
+        String val = systemConfigService.getConfigValue("file.upload.max_size_mb");
+        if (val != null) {
+            try { return Integer.parseInt(val); } catch (NumberFormatException ignored) {}
+        }
+        return 50;
+    }
+
+    private long getMaxUploadSizeBytes() {
+        return (long) getMaxUploadSizeMB() * 1024 * 1024;
+    }
+
+    private List<String> getAllowedFileExtensions() {
+        String val = systemConfigService.getConfigValue("file.upload.allowed_types");
+        if (val != null && !val.isEmpty()) {
+            List<String> extensions = new ArrayList<>();
+            for (String type : val.split(",")) {
+                switch (type.trim().toUpperCase()) {
+                    case "WORD":  extensions.addAll(List.of("doc", "docx")); break;
+                    case "EXCEL": extensions.addAll(List.of("xls", "xlsx")); break;
+                    case "PDF":   extensions.add("pdf"); break;
+                    case "PPT":   extensions.addAll(List.of("ppt", "pptx")); break;
+                    case "TXT":   extensions.add("txt"); break;
+                    case "ZIP":   extensions.addAll(List.of("zip", "rar", "7z")); break;
+                    case "IMAGE": extensions.addAll(List.of("jpg", "jpeg", "png", "gif", "bmp")); break;
+                    default:      extensions.add(type.trim().toLowerCase()); break;
+                }
+            }
+            return extensions;
+        }
+        return List.of("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "bmp", "txt");
     }
 }

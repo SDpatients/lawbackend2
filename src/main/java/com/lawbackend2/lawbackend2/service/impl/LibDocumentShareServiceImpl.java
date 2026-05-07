@@ -104,7 +104,10 @@ public class LibDocumentShareServiceImpl implements LibDocumentShareService {
             }
         }
 
-        shareRepository.incrementAccessCount(share.getId());
+        int updated = shareRepository.incrementAccessCountSafe(share.getId());
+        if (updated == 0 && share.getMaxAccessCount() > 0) {
+            throw new BusinessException("分享链接访问次数已达上限，请稍后再试或联系分享者");
+        }
 
         return documentService.getDocumentById(share.getDocumentId(), userId);
     }
@@ -136,7 +139,10 @@ public class LibDocumentShareServiceImpl implements LibDocumentShareService {
             throw new BusinessException("该分享链接不支持下载");
         }
 
-        shareRepository.incrementAccessCount(share.getId());
+        int updated = shareRepository.incrementAccessCountSafe(share.getId());
+        if (updated == 0 && share.getMaxAccessCount() > 0) {
+            throw new BusinessException("分享链接访问次数已达上限，请稍后再试或联系分享者");
+        }
         documentService.downloadDocument(share.getDocumentId(), response, userId);
     }
 

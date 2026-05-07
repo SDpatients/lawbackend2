@@ -71,6 +71,20 @@ public enum CaseStatus {
     }
 
     /**
+     * 是否可以归档（只有已结案状态可以归档）
+     */
+    public boolean canArchive() {
+        return this == COMPLETED;
+    }
+
+    /**
+     * 是否可以撤销归档（只有已归档状态可以撤销归档）
+     */
+    public boolean canUnarchive() {
+        return this == ARCHIVED;
+    }
+
+    /**
      * 根据状态编码获取枚举
      */
     public static CaseStatus fromString(String status) {

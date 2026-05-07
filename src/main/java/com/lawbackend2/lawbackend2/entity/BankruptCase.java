@@ -44,6 +44,9 @@ public class BankruptCase extends BaseEntity {
     @Column(name = "case_progress", length = 50)
     private String caseProgress;
 
+    @Column(name = "case_type", length = 20)
+    private String caseType = "LIQUIDATION";
+
     @Column(name = "debt_claim_deadline")
     private LocalDateTime debtClaimDeadline;
 

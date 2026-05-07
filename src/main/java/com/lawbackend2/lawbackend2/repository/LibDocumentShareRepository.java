@@ -21,6 +21,10 @@ public interface LibDocumentShareRepository extends JpaRepository<LibDocumentSha
     List<LibDocumentShare> findByCreateUserId(Long userId);
 
     @Modifying
+    @Query("UPDATE LibDocumentShare s SET s.accessCount = s.accessCount + 1 WHERE s.id = :id AND (s.maxAccessCount = 0 OR s.accessCount < s.maxAccessCount)")
+    int incrementAccessCountSafe(@Param("id") Long id);
+
+    @Modifying
     @Query("UPDATE LibDocumentShare s SET s.accessCount = s.accessCount + 1 WHERE s.id = :id")
     void incrementAccessCount(@Param("id") Long id);
 

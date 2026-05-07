@@ -183,7 +183,9 @@ public class WorkLogServiceImpl implements WorkLogService {
     @Override
     public void deleteWorkLog(Long logId) {
         WorkLog workLog = getWorkLogDetail(logId);
-        workLogRepository.delete(workLog);
+        workLog.setIsDeleted(true);
+        workLog.setStatus("DELETED");
+        workLogRepository.save(workLog);
     }
 
     @Override
@@ -252,6 +254,8 @@ public class WorkLogServiceImpl implements WorkLogService {
             }
         }
         
-        workLogRepository.delete(workLog);
+        workLog.setIsDeleted(true);
+        workLog.setStatus("DELETED");
+        workLogRepository.save(workLog);
     }
 }

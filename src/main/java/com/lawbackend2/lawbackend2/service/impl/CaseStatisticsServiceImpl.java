@@ -132,23 +132,23 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
             if (userId != null) {
                 String realName = userRepository.findRealNameById(userId).orElse(null);
 
-                Long pendingCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "PENDING");
+                Long pendingCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, CaseStatus.PENDING.name());
                 if (realName != null) {
-                    pendingCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "PENDING");
+                    pendingCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, CaseStatus.PENDING.name());
                 }
                 response.setPendingCases(pendingCases != null ? pendingCases : 0L);
 
-                Long inProgressCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "IN_PROGRESS");
+                Long ongoingCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, CaseStatus.ONGOING.name());
                 if (realName != null) {
-                    inProgressCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "IN_PROGRESS");
+                    ongoingCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, CaseStatus.ONGOING.name());
                 }
-                response.setInProgressCases(inProgressCases != null ? inProgressCases : 0L);
+                response.setOngoingCases(ongoingCases != null ? ongoingCases : 0L);
 
-                Long approvedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "APPROVED");
+                Long awaitingCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, CaseStatus.AWAITING.name());
                 if (realName != null) {
-                    approvedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "APPROVED");
+                    awaitingCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, CaseStatus.AWAITING.name());
                 }
-                response.setApprovedCases(approvedCases != null ? approvedCases : 0L);
+                response.setAwaitingCases(awaitingCases != null ? awaitingCases : 0L);
 
                 Long completedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, CaseStatus.COMPLETED.name());
                 if (realName != null && !realName.isEmpty()) {
@@ -156,43 +156,25 @@ public class CaseStatisticsServiceImpl implements CaseStatisticsService {
                 }
                 response.setCompletedCases(completedCases != null ? completedCases : 0L);
 
-                Long closedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "CLOSED");
+                Long archivedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, CaseStatus.ARCHIVED.name());
                 if (realName != null) {
-                    closedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "CLOSED");
-                }
-                response.setClosedCases(closedCases != null ? closedCases : 0L);
-
-                Long terminatedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "TERMINATED");
-                if (realName != null) {
-                    terminatedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "TERMINATED");
-                }
-                response.setTerminatedCases(terminatedCases != null ? terminatedCases : 0L);
-
-                Long archivedCases = caseRepository.countByCreateUserIdAndCaseStatus(userId, "ARCHIVED");
-                if (realName != null) {
-                    archivedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, "ARCHIVED");
+                    archivedCases += caseRepository.countByUndertakingPersonnelAndCaseStatus(realName, CaseStatus.ARCHIVED.name());
                 }
                 response.setArchivedCases(archivedCases != null ? archivedCases : 0L);
             } else {
-                Long pendingCases = caseRepository.countByCaseStatus("PENDING");
+                Long pendingCases = caseRepository.countByCaseStatus(CaseStatus.PENDING.name());
                 response.setPendingCases(pendingCases != null ? pendingCases : 0L);
 
-                Long inProgressCases = caseRepository.countByCaseStatus("IN_PROGRESS");
-                response.setInProgressCases(inProgressCases != null ? inProgressCases : 0L);
+                Long ongoingCases = caseRepository.countByCaseStatus(CaseStatus.ONGOING.name());
+                response.setOngoingCases(ongoingCases != null ? ongoingCases : 0L);
 
-                Long approvedCases = caseRepository.countByCaseStatus("APPROVED");
-                response.setApprovedCases(approvedCases != null ? approvedCases : 0L);
+                Long awaitingCases = caseRepository.countByCaseStatus(CaseStatus.AWAITING.name());
+                response.setAwaitingCases(awaitingCases != null ? awaitingCases : 0L);
 
                 Long completedCases = caseRepository.countByCaseStatus(CaseStatus.COMPLETED.name());
                 response.setCompletedCases(completedCases != null ? completedCases : 0L);
 
-                Long closedCases = caseRepository.countByCaseStatus("CLOSED");
-                response.setClosedCases(closedCases != null ? closedCases : 0L);
-
-                Long terminatedCases = caseRepository.countByCaseStatus("TERMINATED");
-                response.setTerminatedCases(terminatedCases != null ? terminatedCases : 0L);
-
-                Long archivedCases = caseRepository.countByCaseStatus("ARCHIVED");
+                Long archivedCases = caseRepository.countByCaseStatus(CaseStatus.ARCHIVED.name());
                 response.setArchivedCases(archivedCases != null ? archivedCases : 0L);
             }
 

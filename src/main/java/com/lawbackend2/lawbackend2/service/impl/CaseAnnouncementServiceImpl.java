@@ -58,14 +58,32 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
     public CaseAnnouncement createAnnouncement(CaseAnnouncementCreateRequest request, Long userId) {
         logger.info("创建案件公告，案件 ID: {}, 创建人 ID: {}", request.getCaseId(), userId);
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("用户不存在"));
+
         CaseAnnouncement announcement = new CaseAnnouncement();
         BeanUtils.copyProperties(request, announcement);
-        announcement.setStatus("DRAFT");
+        announcement.setStatus("PUBLISHED");
+        announcement.setPublisherId(userId);
+        announcement.setPublisherName(user.getRealName());
+        announcement.setPublishTime(LocalDateTime.now());
         announcement.setCreateUserId(userId);
         announcement.setUpdateUserId(userId);
 
         CaseAnnouncement saved = caseAnnouncementRepository.save(announcement);
         logger.info("案件公告创建成功，ID: {}", saved.getId());
+
+        String content = String.format("%s 发布了公告：%s", user.getRealName(), announcement.getTitle());
+        notificationService.sendNotificationToAdminAndSuperAdmin(
+                "公告发布通知",
+                content,
+                "CASE_ANNOUNCEMENT",
+                saved.getId(),
+                "CaseAnnouncement",
+                userId,
+                user.getRealName()
+        );
+
         return saved;
     }
 
@@ -75,6 +93,9 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         logger.info("创建案件公告（带文件），案件 ID: {}, 创建人 ID: {}, 文件数量：{}", 
                  request.getCaseId(), userId, request.getFiles().size());
 
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("用户不存在"));
+
         CaseAnnouncement announcement = new CaseAnnouncement();
         announcement.setCaseId(request.getCaseId());
         announcement.setCaseNumber(request.getCaseNumber());
@@ -82,7 +103,10 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         announcement.setTitle(request.getTitle());
         announcement.setContent(request.getContent());
         announcement.setAnnouncementType(request.getAnnouncementType());
-        announcement.setStatus("DRAFT");
+        announcement.setStatus("PUBLISHED");
+        announcement.setPublisherId(userId);
+        announcement.setPublisherName(user.getRealName());
+        announcement.setPublishTime(LocalDateTime.now());
         announcement.setCreateUserId(userId);
         announcement.setUpdateUserId(userId);
 
@@ -112,6 +136,17 @@ public class CaseAnnouncementServiceImpl implements CaseAnnouncementService {
         response.setAnnouncementType(saved.getAnnouncementType());
         response.setStatus(saved.getStatus());
         response.setFiles(uploadedFiles);
+
+        String content = String.format("%s 发布了公告：%s", user.getRealName(), announcement.getTitle());
+        notificationService.sendNotificationToAdminAndSuperAdmin(
+                "公告发布通知",
+                content,
+                "CASE_ANNOUNCEMENT",
+                saved.getId(),
+                "CaseAnnouncement",
+                userId,
+                user.getRealName()
+        );
 
         return response;
     }

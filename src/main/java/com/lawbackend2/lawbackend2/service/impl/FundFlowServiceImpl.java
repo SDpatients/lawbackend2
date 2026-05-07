@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -42,28 +43,47 @@ public class FundFlowServiceImpl implements FundFlowService {
     public Long createFundFlow(FundFlowCreateRequest request) {
         FundFlow fundFlow = new FundFlow();
         BeanUtils.copyProperties(request, fundFlow);
-        fundFlow.setOperatorId(1L);
+        fundFlow.setOperatorId(SecurityUtil.getCurrentUserId());
         fundFlow.setOperationTime(LocalDateTime.now());
         fundFlow.setStatus("ACTIVE");
         fundFlow.setCreateUserId(SecurityUtil.getCurrentUserId());
 
-        FundFlow saved = fundFlowRepository.save(fundFlow);
-        
-        // 根据fundAccountId或accountId更新对应资金账户的余额
-        Long accountIdToUse = saved.getFundAccountId();
-        if (accountIdToUse == null) {
-            accountIdToUse = saved.getAccountId();
+        Long fundAccountId = fundFlow.getFundAccountId();
+        if (fundAccountId != null) {
+            FundAccount account = fundAccountService.getFundAccountDetail(fundAccountId);
+            BigDecimal currentBalance = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
+
+            if (fundFlow.getBalanceBefore() == null) {
+                fundFlow.setBalanceBefore(currentBalance);
+            }
+
+            if (fundFlow.getAmount() != null) {
+                BigDecimal newBalance;
+                String flowType = fundFlow.getFlowType();
+                if ("INCOME".equalsIgnoreCase(flowType) || "收入".equals(flowType)) {
+                    newBalance = fundFlow.getBalanceBefore().add(fundFlow.getAmount());
+                } else if ("EXPENSE".equalsIgnoreCase(flowType) || "支出".equals(flowType)) {
+                    newBalance = fundFlow.getBalanceBefore().subtract(fundFlow.getAmount());
+                } else {
+                    newBalance = fundFlow.getBalanceAfter() != null ? fundFlow.getBalanceAfter() : currentBalance;
+                }
+                fundFlow.setBalanceAfter(newBalance);
+            }
         }
-        if (accountIdToUse != null && saved.getBalanceAfter() != null) {
+
+        FundFlow saved = fundFlowRepository.save(fundFlow);
+
+        if (fundAccountId != null && saved.getBalanceAfter() != null) {
             FundAccountBalanceRequest balanceRequest = new FundAccountBalanceRequest();
             balanceRequest.setCurrentBalance(saved.getBalanceAfter());
-            fundAccountService.updateFundAccountBalance(accountIdToUse, balanceRequest, SecurityUtil.getCurrentUserId());
+            fundAccountService.updateFundAccountBalance(fundAccountId, balanceRequest, SecurityUtil.getCurrentUserId());
         }
-        
+
         return saved.getId();
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PageResult<FundFlowResponse> getFundFlowList(Integer pageNum, Integer pageSize, Long caseId, Long fundAccountId, String flowType, String status) {
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "transactionDate"));
         Page<FundFlow> page = fundFlowRepository.findByConditions(caseId, fundAccountId, flowType, status, pageable);
@@ -92,6 +112,7 @@ public class FundFlowServiceImpl implements FundFlowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public FundFlow getFundFlowDetail(Long flowId) {
         return fundFlowRepository.findById(flowId)
                 .orElseThrow(() -> new BusinessException("资金流水不存在"));
@@ -100,21 +121,61 @@ public class FundFlowServiceImpl implements FundFlowService {
     @Override
     public void updateFundFlow(Long flowId, FundFlowUpdateRequest request) {
         FundFlow fundFlow = getFundFlowDetail(flowId);
+
+        Long oldFundAccountId = fundFlow.getFundAccountId();
+        BigDecimal oldAmount = fundFlow.getAmount();
+        String oldFlowType = fundFlow.getFlowType();
+
         BeanUtils.copyProperties(request, fundFlow, "id", "status");
         fundFlow.setUpdateUserId(SecurityUtil.getCurrentUserId());
-        
-        FundFlow saved = fundFlowRepository.save(fundFlow);
-        
-        // 根据fundAccountId或accountId更新对应资金账户的余额
-        Long accountIdToUse = saved.getFundAccountId();
-        if (accountIdToUse == null) {
-            accountIdToUse = saved.getAccountId();
+
+        Long newFundAccountId = fundFlow.getFundAccountId();
+
+        if (oldFundAccountId != null && oldAmount != null) {
+            try {
+                FundAccount oldAccount = fundAccountService.getFundAccountDetail(oldFundAccountId);
+                BigDecimal oldAccountBalance = oldAccount.getCurrentBalance() != null ? oldAccount.getCurrentBalance() : BigDecimal.ZERO;
+                BigDecimal reverseAmount;
+                if ("INCOME".equalsIgnoreCase(oldFlowType) || "收入".equals(oldFlowType)) {
+                    reverseAmount = oldAccountBalance.subtract(oldAmount);
+                } else if ("EXPENSE".equalsIgnoreCase(oldFlowType) || "支出".equals(oldFlowType)) {
+                    reverseAmount = oldAccountBalance.add(oldAmount);
+                } else {
+                    reverseAmount = oldAccountBalance;
+                }
+                FundAccountBalanceRequest reverseRequest = new FundAccountBalanceRequest();
+                reverseRequest.setCurrentBalance(reverseAmount);
+                fundAccountService.updateFundAccountBalance(oldFundAccountId, reverseRequest, SecurityUtil.getCurrentUserId());
+            } catch (Exception e) {
+                // ignore
+            }
         }
-        if (accountIdToUse != null && saved.getBalanceAfter() != null) {
-            FundAccountBalanceRequest balanceRequest = new FundAccountBalanceRequest();
-            balanceRequest.setCurrentBalance(saved.getBalanceAfter());
-            fundAccountService.updateFundAccountBalance(accountIdToUse, balanceRequest, SecurityUtil.getCurrentUserId());
+
+        if (newFundAccountId != null && fundFlow.getAmount() != null) {
+            FundAccount newAccount = fundAccountService.getFundAccountDetail(newFundAccountId);
+            BigDecimal newAccountBalance = newAccount.getCurrentBalance() != null ? newAccount.getCurrentBalance() : BigDecimal.ZERO;
+
+            if (oldFundAccountId == null) {
+                fundFlow.setBalanceBefore(newAccountBalance);
+            }
+
+            BigDecimal newBalance;
+            String newFlowType = fundFlow.getFlowType();
+            if ("INCOME".equalsIgnoreCase(newFlowType) || "收入".equals(newFlowType)) {
+                newBalance = newAccountBalance.add(fundFlow.getAmount());
+            } else if ("EXPENSE".equalsIgnoreCase(newFlowType) || "支出".equals(newFlowType)) {
+                newBalance = newAccountBalance.subtract(fundFlow.getAmount());
+            } else {
+                newBalance = fundFlow.getBalanceAfter() != null ? fundFlow.getBalanceAfter() : newAccountBalance;
+            }
+            fundFlow.setBalanceAfter(newBalance);
+
+            FundAccountBalanceRequest applyRequest = new FundAccountBalanceRequest();
+            applyRequest.setCurrentBalance(newBalance);
+            fundAccountService.updateFundAccountBalance(newFundAccountId, applyRequest, SecurityUtil.getCurrentUserId());
         }
+
+        fundFlowRepository.save(fundFlow);
     }
 
     @Override
@@ -128,6 +189,29 @@ public class FundFlowServiceImpl implements FundFlowService {
     @Override
     public void deleteFundFlow(Long flowId) {
         FundFlow fundFlow = getFundFlowDetail(flowId);
+
+        Long fundAccountId = fundFlow.getFundAccountId();
+        if (fundAccountId != null && fundFlow.getAmount() != null) {
+            try {
+                FundAccount account = fundAccountService.getFundAccountDetail(fundAccountId);
+                BigDecimal currentBalance = account.getCurrentBalance() != null ? account.getCurrentBalance() : BigDecimal.ZERO;
+                BigDecimal reversedBalance;
+                String flowType = fundFlow.getFlowType();
+                if ("INCOME".equalsIgnoreCase(flowType) || "收入".equals(flowType)) {
+                    reversedBalance = currentBalance.subtract(fundFlow.getAmount());
+                } else if ("EXPENSE".equalsIgnoreCase(flowType) || "支出".equals(flowType)) {
+                    reversedBalance = currentBalance.add(fundFlow.getAmount());
+                } else {
+                    reversedBalance = currentBalance;
+                }
+                FundAccountBalanceRequest balanceRequest = new FundAccountBalanceRequest();
+                balanceRequest.setCurrentBalance(reversedBalance);
+                fundAccountService.updateFundAccountBalance(fundAccountId, balanceRequest, SecurityUtil.getCurrentUserId());
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+
         fundFlow.setUpdateUserId(SecurityUtil.getCurrentUserId());
         fundFlowRepository.delete(fundFlow);
     }

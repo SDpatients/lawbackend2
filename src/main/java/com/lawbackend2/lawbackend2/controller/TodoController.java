@@ -10,6 +10,7 @@ import com.lawbackend2.lawbackend2.dto.response.ApiResponse;
 import com.lawbackend2.lawbackend2.entity.Todo;
 import com.lawbackend2.lawbackend2.service.BankruptCaseService;
 import com.lawbackend2.lawbackend2.service.TodoService;
+import com.lawbackend2.lawbackend2.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -79,87 +80,96 @@ public class TodoController {
         return ResponseEntity.ok(ApiResponse.success(createdTodo));
     }
 
-    @GetMapping("/{todoId}")
-    @Operation(summary = "获取待办事项详情", description = "根据待办事项ID获取详情")
-    public ResponseEntity<ApiResponse<Todo>> getTodoById(
-            @Parameter(description = "待办事项ID") @PathVariable Long todoId) {
-        Todo todo = todoService.getTodoById(todoId);
-        return ResponseEntity.ok(ApiResponse.success(todo));
-    }
-
     @GetMapping("/list")
-    @Operation(summary = "获取用户待办列表", description = "分页获取用户的待办事项列表，支持时间范围查询")
+    @Operation(summary = "获取当前用户待办列表", description = "分页获取当前用户的待办事项列表，支持时间范围查询")
     public ResponseEntity<ApiResponse<Page<Todo>>> getUserTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "开始时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @Parameter(description = "结束时间") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
+        Long userId = SecurityUtil.getCurrentUserId();
         Pageable pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<Todo> todos = todoService.getUserTodos(userId, startTime, endTime, pageable);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 
     @GetMapping("/search")
-    @Operation(summary = "搜索待办事项", description = "根据条件搜索用户待办事项")
+    @Operation(summary = "搜索当前用户待办事项", description = "根据条件搜索当前用户待办事项")
     public ResponseEntity<ApiResponse<Page<Todo>>> searchTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
             @Parameter(description = "待办类型") @RequestParam(required = false) String type,
             @Parameter(description = "待办状态") @RequestParam(required = false) String status,
             @Parameter(description = "优先级") @RequestParam(required = false) String priority,
             @Parameter(description = "页码") @RequestParam(defaultValue = "0") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize) {
+        Long userId = SecurityUtil.getCurrentUserId();
         Pageable pageable = PageRequest.of(pageNum, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<Todo> todos = todoService.searchTodos(userId, type, status, priority, pageable);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 
     @GetMapping("/pending")
-    @Operation(summary = "获取待处理待办事项", description = "获取用户的所有待处理待办事项")
-    public ResponseEntity<ApiResponse<List<Todo>>> getPendingTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    @Operation(summary = "获取当前用户待处理待办事项", description = "获取当前用户的所有待处理待办事项")
+    public ResponseEntity<ApiResponse<List<Todo>>> getPendingTodos() {
+        Long userId = SecurityUtil.getCurrentUserId();
         List<Todo> todos = todoService.getPendingTodos(userId);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 
-    @GetMapping("/COMPLETED")
-    @Operation(summary = "获取已完成待办事项", description = "获取用户的所有已完成待办事项")
-    public ResponseEntity<ApiResponse<List<Todo>>> getCompletedTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    @GetMapping("/completed")
+    @Operation(summary = "获取当前用户已完成待办事项", description = "获取当前用户的所有已完成待办事项")
+    public ResponseEntity<ApiResponse<List<Todo>>> getCompletedTodos() {
+        Long userId = SecurityUtil.getCurrentUserId();
         List<Todo> todos = todoService.getCompletedTodos(userId);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 
     @GetMapping("/overdue")
-    @Operation(summary = "获取过期待办事项", description = "获取用户的所有过期待办事项")
-    public ResponseEntity<ApiResponse<List<Todo>>> getOverdueTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    @Operation(summary = "获取当前用户过期待办事项", description = "获取当前用户的所有过期待办事项")
+    public ResponseEntity<ApiResponse<List<Todo>>> getOverdueTodos() {
+        Long userId = SecurityUtil.getCurrentUserId();
         List<Todo> todos = todoService.getOverdueTodos(userId);
         return ResponseEntity.ok(ApiResponse.success(todos));
     }
 
     @GetMapping("/count/pending")
-    @Operation(summary = "获取待处理待办数量", description = "统计用户的待处理待办事项数量")
-    public ResponseEntity<ApiResponse<Long>> countPendingTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    @Operation(summary = "获取当前用户待处理待办数量", description = "统计当前用户的待处理待办事项数量")
+    public ResponseEntity<ApiResponse<Long>> countPendingTodos() {
+        Long userId = SecurityUtil.getCurrentUserId();
         Long count = todoService.countPendingTodos(userId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
 
     @GetMapping("/count/completed")
-    @Operation(summary = "获取已完成待办数量", description = "统计用户的已完成待办事项数量")
-    public ResponseEntity<ApiResponse<Long>> countCompletedTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    @Operation(summary = "获取当前用户已完成待办数量", description = "统计当前用户的已完成待办事项数量")
+    public ResponseEntity<ApiResponse<Long>> countCompletedTodos() {
+        Long userId = SecurityUtil.getCurrentUserId();
         Long count = todoService.countCompletedTodos(userId);
         return ResponseEntity.ok(ApiResponse.success(count));
     }
 
     @GetMapping("/count/overdue")
-    @Operation(summary = "获取过期待办数量", description = "统计用户的过期待办事项数量")
-    public ResponseEntity<ApiResponse<Long>> countOverdueTodos(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
+    @Operation(summary = "获取当前用户过期待办数量", description = "统计当前用户的过期待办事项数量")
+    public ResponseEntity<ApiResponse<Long>> countOverdueTodos() {
+        Long userId = SecurityUtil.getCurrentUserId();
         Long count = todoService.countOverdueTodos(userId);
         return ResponseEntity.ok(ApiResponse.success(count));
+    }
+
+    @GetMapping("/my-stats")
+    @Operation(summary = "获取当前用户的待办统计数据", description = "返回当前登录用户的待办事项统计数据：进行中、已完成、已逾期数量")
+    public ResponseEntity<ApiResponse<MyTodoStatisticsResponse>> getMyTodoStatistics() {
+        Long userId = SecurityUtil.getCurrentUserId();
+        log.info("获取当前用户的待办统计数据, userId: {}", userId);
+        MyTodoStatisticsResponse response = todoService.getMyTodoStatistics(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{todoId}")
+    @Operation(summary = "获取待办事项详情", description = "根据待办事项ID获取详情")
+    public ResponseEntity<ApiResponse<Todo>> getTodoById(
+            @Parameter(description = "待办事项ID") @PathVariable Long todoId) {
+        Todo todo = todoService.getTodoById(todoId);
+        return ResponseEntity.ok(ApiResponse.success(todo));
     }
 
     @PutMapping("/{todoId}/complete")
@@ -212,14 +222,5 @@ public class TodoController {
             @Parameter(description = "待办事项ID列表") @RequestBody List<Long> todoIds) {
         todoService.batchDeleteTodos(todoIds);
         return ResponseEntity.ok(ApiResponse.success(null));
-    }
-
-    @GetMapping("/my-stats")
-    @Operation(summary = "获取当前用户的待办统计数据", description = "返回当前登录用户的待办事项统计数据：进行中、已完成、已逾期数量")
-    public ResponseEntity<ApiResponse<MyTodoStatisticsResponse>> getMyTodoStatistics(
-            @Parameter(description = "用户ID") @RequestParam Long userId) {
-        log.info("获取当前用户的待办统计数据, userId: {}", userId);
-        MyTodoStatisticsResponse response = todoService.getMyTodoStatistics(userId);
-        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

@@ -8,8 +8,12 @@ import com.lawbackend2.lawbackend2.dto.response.LibFolderResponse;
 import com.lawbackend2.lawbackend2.entity.LibDocumentFolder;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.exception.BusinessException;
+import com.lawbackend2.lawbackend2.repository.LibDocumentFavoriteRepository;
 import com.lawbackend2.lawbackend2.repository.LibDocumentFolderRepository;
+import com.lawbackend2.lawbackend2.repository.LibDocumentPermissionRelRepository;
 import com.lawbackend2.lawbackend2.repository.LibDocumentRepository;
+import com.lawbackend2.lawbackend2.repository.LibDocumentShareRepository;
+import com.lawbackend2.lawbackend2.repository.LibDocumentVersionRepository;
 import com.lawbackend2.lawbackend2.repository.LibFolderPermissionRepository;
 import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.service.LibDocumentFolderService;
@@ -36,6 +40,10 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
 
     private final LibDocumentFolderRepository folderRepository;
     private final LibDocumentRepository documentRepository;
+    private final LibDocumentVersionRepository versionRepository;
+    private final LibDocumentShareRepository shareRepository;
+    private final LibDocumentFavoriteRepository favoriteRepository;
+    private final LibDocumentPermissionRelRepository permissionRelRepository;
     private final LibFolderPermissionRepository folderPermissionRepository;
     private final LibDocumentOperationLogService operationLogService;
     private final UserRepository userRepository;
@@ -192,14 +200,40 @@ public class LibDocumentFolderServiceImpl implements LibDocumentFolderService {
         // 获取文件夹内所有文档
         List<com.lawbackend2.lawbackend2.entity.LibDocument> documents = documentRepository.findByFolderIdOrderByCreateTimeDesc(folderId);
         for (com.lawbackend2.lawbackend2.entity.LibDocument document : documents) {
-            // 删除物理文件
+            Long docId = document.getId();
+
+            // 删除当前版本物理文件
             String filePath = document.getFilePath();
             if (filePath != null) {
                 File file = new File(filePath);
                 if (file.exists()) {
-                    file.delete();
+                    boolean deleted = file.delete();
+                    if (!deleted) {
+                        log.warn("删除文档物理文件失败，文件可能被占用或权限不足 - 文档ID: {}, 路径: {}", docId, filePath);
+                    }
                 }
             }
+
+            // 删除该文档所有历史版本的物理文件
+            List<com.lawbackend2.lawbackend2.entity.LibDocumentVersion> versions = versionRepository.findByDocumentIdOrderByVersionNumberDesc(docId);
+            for (com.lawbackend2.lawbackend2.entity.LibDocumentVersion version : versions) {
+                String versionFilePath = version.getFilePath();
+                if (versionFilePath != null) {
+                    File versionFile = new File(versionFilePath);
+                    if (versionFile.exists()) {
+                        boolean deleted = versionFile.delete();
+                        if (!deleted) {
+                            log.warn("删除版本物理文件失败，文件可能被占用或权限不足 - 版本ID: {}, 路径: {}", version.getId(), versionFilePath);
+                        }
+                    }
+                }
+            }
+
+            // 级联删除关联数据
+            versionRepository.deleteByDocumentId(docId);
+            shareRepository.deleteByDocumentId(docId);
+            favoriteRepository.deleteByDocumentId(docId);
+            permissionRelRepository.deleteByDocumentId(docId);
         }
         // 删除文档记录
         documentRepository.deleteByFolderId(folderId);

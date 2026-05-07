@@ -79,12 +79,15 @@ public class ClaimRegistrationCreateRequest {
 
     private String evidenceAttachments;
 
+    @JsonDeserialize(using = com.lawbackend2.lawbackend2.dto.request.LocalDateTimeDeserializer.class)
     private LocalDateTime registrationDate;
 
+    @JsonDeserialize(using = com.lawbackend2.lawbackend2.dto.request.LocalDateTimeDeserializer.class)
     private LocalDateTime registrationDeadline;
 
     private String materialReceiver;
 
+    @JsonDeserialize(using = com.lawbackend2.lawbackend2.dto.request.LocalDateTimeDeserializer.class)
     private LocalDateTime materialReceiveDate;
 
     private String materialCompleteness;

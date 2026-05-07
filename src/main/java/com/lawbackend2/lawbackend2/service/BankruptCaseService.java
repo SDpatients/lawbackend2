@@ -44,9 +44,9 @@ public interface BankruptCaseService {
 
     Long countByCaseNumberLike(String caseNumber);
 
-    List<BankruptCase> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber);
+    List<BankruptCase> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String keyword, String caseProgress);
 
-    Long getUserCaseCount(Long userId, String caseStatus, String caseNumber);
+    Long getUserCaseCount(Long userId, String caseStatus, String keyword, String caseProgress);
 
     List<BankruptCase> getCasesByReviewStatus(String reviewStatus, Integer pageNum, Integer pageSize, String keyword);
 
@@ -63,4 +63,8 @@ public interface BankruptCaseService {
     void deleteCase(Long caseId);
 
     com.lawbackend2.lawbackend2.dto.response.CaseRelatedDataResponse getCaseRelatedData(Long caseId);
+
+    void archiveCase(Long caseId, Long userId);
+
+    void unarchiveCase(Long caseId, Long userId);
 }

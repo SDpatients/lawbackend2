@@ -68,7 +68,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     try {
                         isBlacklisted = tokenBlacklistService.isTokenBlacklisted(token);
                     } catch (Exception e) {
-                        log.warn("检查Token黑名单时出错（Redis可能未启动），继续处理 - URI: {}, 错误: {}", requestURI, e.getMessage());
+                        log.error("检查Token黑名单时出错，为安全起见拒绝请求 - URI: {}, 错误: {}", requestURI, e.getMessage());
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        return;
                     }
                     
                     if (!isBlacklisted) {

@@ -225,16 +225,16 @@ public class TodoServiceImpl implements TodoService {
         if (startTime == null && endTime == null) {
             return todoRepository.findByUserId(userId, pageable);
         }
-        // 如果只有开始时间为null，则查询截止时间从开始时间到最大的记录
+        // 如果只有开始时间为null，则查询创建时间在结束时间之前的记录
         if (startTime == null) {
-            return todoRepository.findByUserIdAndDeadlineBefore(userId, endTime, pageable);
+            return todoRepository.findByUserIdAndCreateTimeBetween(userId, LocalDateTime.MIN, endTime, pageable);
         }
-        // 如果只有结束时间为null，则查询截止时间从开始时间之后的所有记录
+        // 如果只有结束时间为null，则查询创建时间在开始时间之后的记录
         if (endTime == null) {
-            return todoRepository.findByUserIdAndDeadlineAfter(userId, startTime, pageable);
+            return todoRepository.findByUserIdAndCreateTimeBetween(userId, startTime, LocalDateTime.MAX, pageable);
         }
-        // 两个时间都有值，查询时间范围内的记录
-        return todoRepository.findByUserIdAndDeadlineBetween(userId, startTime, endTime, pageable);
+        // 两个时间都有值，查询创建时间在时间范围内的记录
+        return todoRepository.findByUserIdAndCreateTimeBetween(userId, startTime, endTime, pageable);
     }
 
     @Override
@@ -269,7 +269,7 @@ public class TodoServiceImpl implements TodoService {
 
     @Override
     public List<Todo> getOverdueTodos(Long userId) {
-        return todoRepository.findByUserIdAndDeadlineBefore(userId, LocalDateTime.now());
+        return todoRepository.findByUserIdAndStatusAndDeadlineBefore(userId, "PENDING", LocalDateTime.now());
     }
 
     @Override
@@ -284,7 +284,7 @@ public class TodoServiceImpl implements TodoService {
 
     @Override
     public Long countOverdueTodos(Long userId) {
-        return todoRepository.countByUserIdAndDeadlineBefore(userId, LocalDateTime.now());
+        return todoRepository.countOverdueByUserId(userId);
     }
 
     @Override
@@ -335,7 +335,15 @@ public class TodoServiceImpl implements TodoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void batchDeleteTodos(List<Long> todoIds) {
+        if (todoIds == null || todoIds.isEmpty()) {
+            log.warn("批量删除待办事项, 传入的ID列表为空");
+            return;
+        }
         List<Todo> todos = todoRepository.findAllById(todoIds);
+        if (todos.isEmpty()) {
+            log.warn("批量删除待办事项, 未找到匹配的待办记录, IDs: {}", todoIds);
+            return;
+        }
         todoRepository.deleteAll(todos);
         log.info("批量删除待办事项, 共 {} 条", todos.size());
     }
@@ -347,6 +355,8 @@ public class TodoServiceImpl implements TodoService {
         todo.setStatus(status);
         if ("COMPLETED".equals(status)) {
             todo.setCompletedTime(LocalDateTime.now());
+        } else {
+            todo.setCompletedTime(null);
         }
         return todoRepository.save(todo);
     }
@@ -367,17 +377,15 @@ public class TodoServiceImpl implements TodoService {
         com.lawbackend2.lawbackend2.dto.MyTodoStatisticsResponse response = 
             new com.lawbackend2.lawbackend2.dto.MyTodoStatisticsResponse();
 
-        // 进行中数量（未完成的）
-        Long inProgressCount = todoRepository.countPendingByUserId(userId);
-        response.setInProgressTodos(inProgressCount);
+        Long overdueCount = todoRepository.countOverdueByUserId(userId);
+        response.setOverdueTodos(overdueCount);
 
-        // 已完成数量
         Long completedCount = todoRepository.countCompletedByUserId(userId);
         response.setCompletedTodos(completedCount);
 
-        // 已逾期数量
-        Long overdueCount = todoRepository.countOverdueByUserId(userId);
-        response.setOverdueTodos(overdueCount);
+        Long totalCount = todoRepository.countByUserId(userId);
+        Long inProgressCount = totalCount - completedCount - overdueCount;
+        response.setInProgressTodos(Math.max(inProgressCount, 0L));
 
         log.info("当前用户的待办统计数据: 进行中={}, 已完成={}, 已逾期={}", 
             response.getInProgressTodos(), response.getCompletedTodos(), response.getOverdueTodos());

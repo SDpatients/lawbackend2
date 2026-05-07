@@ -3,6 +3,7 @@ package com.lawbackend2.lawbackend2.service.impl;
 import com.lawbackend2.lawbackend2.dto.*;
 import com.lawbackend2.lawbackend2.dto.response.UserCaseListResponse;
 import com.lawbackend2.lawbackend2.entity.BankruptCase;
+import com.lawbackend2.lawbackend2.entity.CaseNodeInstance;
 import com.lawbackend2.lawbackend2.entity.Role;
 import com.lawbackend2.lawbackend2.entity.User;
 import com.lawbackend2.lawbackend2.entity.WorkTeam;
@@ -74,8 +75,9 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     private final ExpenseReimbursementRepository expenseReimbursementRepository;
     private final ClaimRegistrationRepository claimRegistrationRepository;
     private final ClaimReviewRepository claimReviewRepository;
+    private final com.lawbackend2.lawbackend2.service.CaseNodeInstanceService caseNodeInstanceService;
 
-    public BankruptCaseServiceImpl(BankruptCaseRepository bankruptCaseRepository, 
+    public BankruptCaseServiceImpl(BankruptCaseRepository bankruptCaseRepository,
                                  WorkTeamRepository workTeamRepository,
                                  WorkTeamMemberRepository workTeamMemberRepository,
                                  WorkTeamPermissionRepository workTeamPermissionRepository,
@@ -115,7 +117,8 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
                                  BankAccountTransactionRepository bankAccountTransactionRepository,
                                  ExpenseReimbursementRepository expenseReimbursementRepository,
                                  ClaimRegistrationRepository claimRegistrationRepository,
-                                 ClaimReviewRepository claimReviewRepository) {
+                                 ClaimReviewRepository claimReviewRepository,
+                                 com.lawbackend2.lawbackend2.service.CaseNodeInstanceService caseNodeInstanceService) {
         this.bankruptCaseRepository = bankruptCaseRepository;
         this.workTeamRepository = workTeamRepository;
         this.workTeamMemberRepository = workTeamMemberRepository;
@@ -157,11 +160,16 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         this.expenseReimbursementRepository = expenseReimbursementRepository;
         this.claimRegistrationRepository = claimRegistrationRepository;
         this.claimReviewRepository = claimReviewRepository;
+        this.caseNodeInstanceService = caseNodeInstanceService;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BankruptCase createCase(CaseCreateRequest request, Long userId) {
+        log.info("========== [DEBUG] 开始创建案件 ==========");
+        log.info("[DEBUG] 请求参数 - 案号: {}, 案件名称: {}, 案件类型: {}", request.getCaseNumber(), request.getCaseName(), request.getCaseType());
+        log.info("[DEBUG] 受理日期: {}", request.getAcceptanceDate());
+
         if (bankruptCaseRepository.findByCaseNumber(request.getCaseNumber()).isPresent()) {
             throw new BusinessException("案号已存在");
         }
@@ -179,11 +187,30 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
 
         BankruptCase savedCase = bankruptCaseRepository.save(bankruptCase);
-        
+        log.info("[DEBUG] 案件保存成功, caseId: {}, 案件类型: {}, 受理日期: {}", savedCase.getId(), savedCase.getCaseType(), savedCase.getAcceptanceDate());
+
         caseTaskService.createTasksForCase(savedCase.getId());
-        
+
+        // 根据案件类型自动生成法定节点实例
+        log.info("[DEBUG] 检查案件类型是否非空: caseType='{}', 是否为null: {}, 是否为空字符串: {}",
+                savedCase.getCaseType(), savedCase.getCaseType() == null,
+                savedCase.getCaseType() == null ? "N/A" : savedCase.getCaseType().isEmpty());
+
+        if (savedCase.getCaseType() != null && !savedCase.getCaseType().isEmpty()) {
+            log.info("[DEBUG] 准备调用创建节点服务, caseId: {}, caseType: {}", savedCase.getId(), savedCase.getCaseType());
+            List<CaseNodeInstance> createdNodes = caseNodeInstanceService.createNodesForCase(
+                    savedCase.getId(),
+                    savedCase.getCaseType(),
+                    savedCase.getAcceptanceDate() != null ? savedCase.getAcceptanceDate() : java.time.LocalDate.now()
+            );
+            log.info("[DEBUG] 节点创建完成, 共创建了 {} 个节点", createdNodes != null ? createdNodes.size() : 0);
+        } else {
+            log.warn("[DEBUG] 案件类型为空, 跳过节点自动生成! 这可能是问题的原因!");
+        }
+
         createInitialWorkTeam(savedCase.getId(), request.getMainResponsiblePerson(), request.getUndertakingPersonnel(), userId);
 
+        log.info("========== [DEBUG] 案件创建完成 ==========");
         return savedCase;
     }
 
@@ -270,6 +297,9 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         }
         if (request.getCaseProgress() != null) {
             bankruptCase.setCaseProgress(request.getCaseProgress());
+        }
+        if (request.getCaseType() != null) {
+            bankruptCase.setCaseType(request.getCaseType());
         }
         if (request.getMainResponsiblePerson() != null) {
             bankruptCase.setMainResponsiblePerson(request.getMainResponsiblePerson());
@@ -491,6 +521,54 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void archiveCase(Long caseId, Long userId) {
+        log.info("案件归档, caseId: {}, userId: {}", caseId, userId);
+
+        BankruptCase bankruptCase = getCaseById(caseId);
+        CaseStatus currentStatus = CaseStatus.fromString(bankruptCase.getCaseStatus());
+
+        if (currentStatus == null) {
+            throw new BusinessException("案件当前状态异常，无法归档");
+        }
+
+        if (!currentStatus.canArchive()) {
+            throw new BusinessException("只有已结案的案件才能归档");
+        }
+
+        bankruptCase.setCaseStatus(CaseStatus.ARCHIVED.name());
+        bankruptCase.setArchivingDate(java.time.LocalDate.now());
+        bankruptCase.setUpdateUserId(userId);
+        bankruptCaseRepository.save(bankruptCase);
+
+        log.info("案件归档成功, caseId: {}", caseId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void unarchiveCase(Long caseId, Long userId) {
+        log.info("撤销案件归档, caseId: {}, userId: {}", caseId, userId);
+
+        BankruptCase bankruptCase = getCaseById(caseId);
+        CaseStatus currentStatus = CaseStatus.fromString(bankruptCase.getCaseStatus());
+
+        if (currentStatus == null) {
+            throw new BusinessException("案件当前状态异常，无法撤销归档");
+        }
+
+        if (!currentStatus.canUnarchive()) {
+            throw new BusinessException("只有已归档的案件才能撤销归档");
+        }
+
+        bankruptCase.setCaseStatus(CaseStatus.COMPLETED.name());
+        bankruptCase.setArchivingDate(null);
+        bankruptCase.setUpdateUserId(userId);
+        bankruptCaseRepository.save(bankruptCase);
+
+        log.info("案件撤销归档成功, caseId: {}", caseId);
+    }
+
+    @Override
     public List<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> getCaseSimpleList(Long userId, Integer page, Integer size, String caseNumber) {
         // 检查用户是否为 ADMIN 角色
         boolean isAdmin = isUserAdmin(userId);
@@ -601,17 +679,14 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     }
 
     @Override
-    public List<BankruptCase> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String caseNumber) {
-        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+    public List<BankruptCase> getUserCaseList(Long userId, Integer pageNum, Integer pageSize, String caseStatus, String keyword, String caseProgress) {
         List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
         
-        // 2. 查询用户创建的所有案件ID
         List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
         List<Long> createdCaseIds = createdCases.stream()
                 .map(BankruptCase::getId)
                 .collect(Collectors.toList());
         
-        // 3. 合并并去重所有案件ID
         Set<Long> allCaseIdsSet = participatedCaseIds.stream()
                 .collect(Collectors.toSet());
         allCaseIdsSet.addAll(createdCaseIds);
@@ -622,21 +697,31 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             return List.of();
         }
         
-        // 4. 根据案件ID列表和其他条件查询案件详情，支持分页
         Pageable pageable = PageRequest.of(pageNum - 1, pageSize, Sort.by(Sort.Direction.DESC, "createTime"));
         Page<BankruptCase> page;
-        
-        if (caseStatus != null && caseNumber != null && !caseNumber.isEmpty()) {
-            page = bankruptCaseRepository.findByIdInAndCaseStatusAndCaseNumberLike(allCaseIds, caseStatus, caseNumber, pageable);
-        } else if (caseStatus != null) {
+
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        boolean hasCaseStatus = caseStatus != null;
+        boolean hasCaseProgress = caseProgress != null;
+
+        if (hasKeyword && hasCaseStatus && hasCaseProgress) {
+            page = bankruptCaseRepository.findByIdInAndKeywordAndCaseStatusAndCaseProgress(allCaseIds, keyword.trim(), caseStatus, caseProgress, pageable);
+        } else if (hasKeyword && hasCaseStatus) {
+            page = bankruptCaseRepository.findByIdInAndKeywordAndCaseStatus(allCaseIds, keyword.trim(), caseStatus, pageable);
+        } else if (hasKeyword && hasCaseProgress) {
+            page = bankruptCaseRepository.findByIdInAndKeywordAndCaseProgress(allCaseIds, keyword.trim(), caseProgress, pageable);
+        } else if (hasCaseStatus && hasCaseProgress) {
+            page = bankruptCaseRepository.findByIdInAndCaseStatusAndCaseProgress(allCaseIds, caseStatus, caseProgress, pageable);
+        } else if (hasKeyword) {
+            page = bankruptCaseRepository.findByIdInAndKeyword(allCaseIds, keyword.trim(), pageable);
+        } else if (hasCaseStatus) {
             page = bankruptCaseRepository.findByIdInAndCaseStatus(allCaseIds, caseStatus, pageable);
-        } else if (caseNumber != null && !caseNumber.isEmpty()) {
-            page = bankruptCaseRepository.findByIdInAndCaseNumberLike(allCaseIds, caseNumber, pageable);
+        } else if (hasCaseProgress) {
+            page = bankruptCaseRepository.findByIdInAndCaseProgress(allCaseIds, caseProgress, pageable);
         } else {
             page = bankruptCaseRepository.findByIdIn(allCaseIds, pageable);
         }
         
-        // 5. 批量查询创建者信息并设置 creatorName
         List<BankruptCase> caseList = page.getContent();
         if (!caseList.isEmpty()) {
             List<Long> creatorIds = caseList.stream()
@@ -658,22 +743,18 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             }
         }
         
-        // 6. 直接返回BankruptCase对象列表，包含案件所有信息
         return caseList;
     }
 
     @Override
-    public Long getUserCaseCount(Long userId, String caseStatus, String caseNumber) {
-        // 1. 查询用户参与的所有案件ID（通过工作组成员关系）
+    public Long getUserCaseCount(Long userId, String caseStatus, String keyword, String caseProgress) {
         List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
         
-        // 2. 查询用户创建的所有案件ID
         List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
         List<Long> createdCaseIds = createdCases.stream()
                 .map(BankruptCase::getId)
                 .collect(Collectors.toList());
         
-        // 3. 合并并去重所有案件ID
         Set<Long> allCaseIdsSet = participatedCaseIds.stream()
                 .collect(Collectors.toSet());
         allCaseIdsSet.addAll(createdCaseIds);
@@ -683,14 +764,25 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         if (allCaseIds.isEmpty()) {
             return 0L;
         }
-        
-        // 4. 根据案件ID列表和其他条件查询案件数量
-        if (caseStatus != null && caseNumber != null && !caseNumber.isEmpty()) {
-            return bankruptCaseRepository.countByIdInAndCaseStatusAndCaseNumberLike(allCaseIds, caseStatus, caseNumber);
-        } else if (caseStatus != null) {
+
+        boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
+        boolean hasCaseStatus = caseStatus != null;
+        boolean hasCaseProgress = caseProgress != null;
+
+        if (hasKeyword && hasCaseStatus && hasCaseProgress) {
+            return bankruptCaseRepository.countByIdInAndKeywordAndCaseStatusAndCaseProgress(allCaseIds, keyword.trim(), caseStatus, caseProgress);
+        } else if (hasKeyword && hasCaseStatus) {
+            return bankruptCaseRepository.countByIdInAndKeywordAndCaseStatus(allCaseIds, keyword.trim(), caseStatus);
+        } else if (hasKeyword && hasCaseProgress) {
+            return bankruptCaseRepository.countByIdInAndKeywordAndCaseProgress(allCaseIds, keyword.trim(), caseProgress);
+        } else if (hasCaseStatus && hasCaseProgress) {
+            return bankruptCaseRepository.countByIdInAndCaseStatusAndCaseProgress(allCaseIds, caseStatus, caseProgress);
+        } else if (hasKeyword) {
+            return bankruptCaseRepository.countByIdInAndKeyword(allCaseIds, keyword.trim());
+        } else if (hasCaseStatus) {
             return bankruptCaseRepository.countByIdInAndCaseStatus(allCaseIds, caseStatus);
-        } else if (caseNumber != null && !caseNumber.isEmpty()) {
-            return bankruptCaseRepository.countByIdInAndCaseNumberLike(allCaseIds, caseNumber);
+        } else if (hasCaseProgress) {
+            return bankruptCaseRepository.countByIdInAndCaseProgress(allCaseIds, caseProgress);
         } else {
             return bankruptCaseRepository.countByIdIn(allCaseIds);
         }
@@ -751,42 +843,49 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
     public com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse getMyCaseStatistics(Long userId) {
         log.info("查询当前用户的案件统计数据, userId: {}", userId);
 
-        com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse response = 
+        com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse response =
             new com.lawbackend2.lawbackend2.dto.MyCaseStatisticsResponse();
 
-        // 查询所有案件数量
         Long totalCount = bankruptCaseRepository.countByCreateUserId(userId);
         response.setTotalCases(totalCount);
 
-        // 查询进行中案件数量
         List<Object[]> statusGroup = bankruptCaseRepository.countByUserIdAndStatusGroup(userId);
-        long inProgressCount = 0;
+        long pendingCount = 0;
+        long ongoingCount = 0;
+        long awaitingCount = 0;
         long completedCount = 0;
-        
+        long archivedCount = 0;
+
         for (Object[] row : statusGroup) {
             String status = (String) row[0];
             Long count = (Long) row[1];
-            
+
             CaseStatus caseStatus = CaseStatus.fromString(status);
             if (caseStatus != null) {
-                // 进行中的状态
-                if (caseStatus.isInProgress()) {
-                    inProgressCount += count;
-                }
-                
-                // 已结案的状态
-                if (caseStatus.isFinished()) {
+                if (caseStatus == CaseStatus.PENDING) {
+                    pendingCount += count;
+                } else if (caseStatus == CaseStatus.ONGOING) {
+                    ongoingCount += count;
+                } else if (caseStatus == CaseStatus.AWAITING) {
+                    awaitingCount += count;
+                } else if (caseStatus == CaseStatus.COMPLETED) {
                     completedCount += count;
+                } else if (caseStatus == CaseStatus.ARCHIVED) {
+                    archivedCount += count;
                 }
             }
         }
-        
-        response.setInProgressCases(inProgressCount);
-        response.setCompletedCases(completedCount);
 
-        log.info("当前用户的案件统计数据: 总数={}, 进行中={}, 已结案={}", 
-            response.getTotalCases(), response.getInProgressCases(), response.getCompletedCases());
-        
+        response.setPendingCases(pendingCount);
+        response.setOngoingCases(ongoingCount);
+        response.setAwaitingCases(awaitingCount);
+        response.setCompletedCases(completedCount);
+        response.setArchivedCases(archivedCount);
+
+        log.info("当前用户的案件统计数据: 总数={}, 待处理={}, 进行中={}, 报结中={}, 已结案={}, 已归档={}",
+            response.getTotalCases(), response.getPendingCases(), response.getOngoingCases(),
+            response.getAwaitingCases(), response.getCompletedCases(), response.getArchivedCases());
+
         return response;
     }
 
@@ -946,6 +1045,7 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
         creditorInfoRepository.deleteByCaseId(caseId);
         caseTaskSubmissionRepository.deleteByCaseId(caseId);
         caseTaskRepository.deleteByCaseId(caseId);
+        caseNodeInstanceService.deleteNodesByCaseId(caseId);
         workLogRepository.deleteByCaseId(caseId);
         bankAccountTransactionRepository.deleteByCaseId(caseId);
         bankAccountRepository.deleteByCaseId(caseId);

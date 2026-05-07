@@ -20,7 +20,8 @@ public interface LibDocumentFavoriteRepository extends JpaRepository<LibDocument
 
     boolean existsByDocumentIdAndUserId(Long documentId, Long userId);
 
-    Page<LibDocumentFavorite> findByUserIdOrderByCreateTimeDesc(Long userId, Pageable pageable);
+    @Query("SELECT f FROM LibDocumentFavorite f LEFT JOIN FETCH LibDocument d ON f.documentId = d.id WHERE f.userId = :userId ORDER BY f.createTime DESC")
+    Page<LibDocumentFavorite> findByUserIdOrderByCreateTimeDesc(@Param("userId") Long userId, Pageable pageable);
 
     List<LibDocumentFavorite> findByUserIdAndFolderName(Long userId, String folderName);
 

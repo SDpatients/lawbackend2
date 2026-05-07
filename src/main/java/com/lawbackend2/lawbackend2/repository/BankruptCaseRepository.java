@@ -154,32 +154,76 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
                                              @Param("caseStatus") String caseStatus, 
                                              Pageable pageable);
 
-    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseNumber LIKE %:caseNumber%")
-    Page<BankruptCase> findByIdInAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
-                                                 @Param("caseNumber") String caseNumber, 
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Page<BankruptCase> findByIdInAndKeyword(@Param("caseIds") List<Long> caseIds,
+                                            @Param("keyword") String keyword,
+                                            Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Page<BankruptCase> findByIdInAndKeywordAndCaseStatus(@Param("caseIds") List<Long> caseIds,
+                                                         @Param("keyword") String keyword,
+                                                         @Param("caseStatus") String caseStatus,
+                                                         Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseProgress = :caseProgress AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Page<BankruptCase> findByIdInAndKeywordAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                                           @Param("keyword") String keyword,
+                                                           @Param("caseProgress") String caseProgress,
+                                                           Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseProgress = :caseProgress AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Page<BankruptCase> findByIdInAndKeywordAndCaseStatusAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                                                        @Param("keyword") String keyword,
+                                                                        @Param("caseStatus") String caseStatus,
+                                                                        @Param("caseProgress") String caseProgress,
+                                                                        Pageable pageable);
+
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseProgress = :caseProgress")
+    Page<BankruptCase> findByIdInAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                                 @Param("caseProgress") String caseProgress,
                                                  Pageable pageable);
 
-    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseNumber LIKE %:caseNumber%")
-    Page<BankruptCase> findByIdInAndCaseStatusAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
-                                                              @Param("caseStatus") String caseStatus, 
-                                                              @Param("caseNumber") String caseNumber, 
+    @Query("SELECT c FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseProgress = :caseProgress")
+    Page<BankruptCase> findByIdInAndCaseStatusAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                                              @Param("caseStatus") String caseStatus,
+                                                              @Param("caseProgress") String caseProgress,
                                                               Pageable pageable);
 
     @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds")
     Long countByIdIn(@Param("caseIds") List<Long> caseIds);
 
     @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus")
-    Long countByIdInAndCaseStatus(@Param("caseIds") List<Long> caseIds, 
+    Long countByIdInAndCaseStatus(@Param("caseIds") List<Long> caseIds,
                                 @Param("caseStatus") String caseStatus);
 
-    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseNumber LIKE %:caseNumber%")
-    Long countByIdInAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
-                                    @Param("caseNumber") String caseNumber);
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Long countByIdInAndKeyword(@Param("caseIds") List<Long> caseIds,
+                               @Param("keyword") String keyword);
 
-    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseNumber LIKE %:caseNumber%")
-    Long countByIdInAndCaseStatusAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, 
-                                                 @Param("caseStatus") String caseStatus, 
-                                                 @Param("caseNumber") String caseNumber);
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Long countByIdInAndKeywordAndCaseStatus(@Param("caseIds") List<Long> caseIds,
+                                            @Param("keyword") String keyword,
+                                            @Param("caseStatus") String caseStatus);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseProgress = :caseProgress AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Long countByIdInAndKeywordAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                              @Param("keyword") String keyword,
+                                              @Param("caseProgress") String caseProgress);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseProgress = :caseProgress AND (c.caseNumber LIKE %:keyword% OR c.caseName LIKE %:keyword%)")
+    Long countByIdInAndKeywordAndCaseStatusAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                                           @Param("keyword") String keyword,
+                                                           @Param("caseStatus") String caseStatus,
+                                                           @Param("caseProgress") String caseProgress);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseProgress = :caseProgress")
+    Long countByIdInAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                    @Param("caseProgress") String caseProgress);
+
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus = :caseStatus AND c.caseProgress = :caseProgress")
+    Long countByIdInAndCaseStatusAndCaseProgress(@Param("caseIds") List<Long> caseIds,
+                                                 @Param("caseStatus") String caseStatus,
+                                                 @Param("caseProgress") String caseProgress);
 
     @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.createTime BETWEEN :startDate AND :endDate")
     Long countByCreateTimeBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);

@@ -32,7 +32,7 @@ public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     List<Todo> findByUserIdAndStatusOrderByDeadlineAsc(Long userId, String status);
 
-    List<Todo> findByUserIdAndDeadlineBefore(Long userId, LocalDateTime deadline);
+    List<Todo> findByUserIdAndStatusAndDeadlineBefore(Long userId, String status, LocalDateTime deadline);
 
     List<Todo> findByUserIdAndStatusOrderByCompletedTimeDesc(Long userId, String status);
 

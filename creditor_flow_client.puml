@@ -1,0 +1,45 @@
+@startuml
+skinparam ActivityBackgroundColor #F8F9FA
+skinparam ActivityBorderColor #343A40
+skinparam ActivityDiamondBackgroundColor #FFF3CD
+skinparam ActivityDiamondBorderColor #856404
+skinparam ArrowColor #495057
+skinparam NoteBorderColor #6C757D
+skinparam NoteBackgroundColor #E9ECEF
+skinparam wrapWidth 200
+
+title 债权管理全流程（客户版）
+
+start
+:债权人提交申报;
+
+if (管理人审核?) then (通过)
+  :登记债权信息;
+else (驳回)
+  :申报被驳回;
+  stop
+endif
+
+:进入债权审查;
+
+if (审查结果?) then (审查通过)
+  :审查完成;
+else (审查驳回)
+  :债权被驳回;
+  stop
+endif
+
+:进入债权确认;
+
+if (是否有异议?) then (无异议)
+else (有异议)
+  :提出异议;
+  if (异议处理方式?) then (协商成功)
+  else (法院裁定)
+  endif
+endif
+
+:债权最终确认;
+stop
+
+@enduml

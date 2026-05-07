@@ -76,9 +76,16 @@ public class BankruptCaseController {
     public Result<PageResult<BankruptCase>> getCaseList(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
-            @Parameter(description = "案件进度") @RequestParam(required = false) String caseProgress,
-            @Parameter(description = "关键词（支持案号、案件名称、受理法院、指定机构、主要负责人等多字段模糊搜索）") @RequestParam(required = false) String keyword) {
+            @Parameter(description = "案件状态（PENDING/ONGOING/AWAITING/COMPLETED/ARCHIVED）") @RequestParam(required = false) String caseStatus,
+            @Parameter(description = "案件进度（FIRST/SECOND/THIRD/FOURTH/FIFTH/SIXTH/SEVENTH）") @RequestParam(required = false) String caseProgress,
+            @Parameter(description = "关键词（支持案号、案件名称模糊搜索）") @RequestParam(required = false) String keyword) {
+
+        if (caseStatus != null && com.lawbackend2.lawbackend2.enums.CaseStatus.fromString(caseStatus) == null) {
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("无效的案件状态值: " + caseStatus);
+        }
+        if (caseProgress != null && com.lawbackend2.lawbackend2.enums.CaseProgress.fromString(caseProgress) == null) {
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("无效的案件进度值: " + caseProgress);
+        }
 
         Long userId = getCurrentUserId();
         List<String> userPermissions = permissionService.getUserPermissions(userId);
@@ -90,14 +97,14 @@ public class BankruptCaseController {
             list = bankruptCaseService.getCaseList(pageNum, pageSize, caseStatus, caseProgress, keyword);
             total = bankruptCaseService.getCaseCount(caseStatus, caseProgress, keyword);
         } else if (userPermissions.contains("case:query:own")) {
-            list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, keyword);
-            total = bankruptCaseService.getUserCaseCount(userId, caseStatus, keyword);
+            list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, keyword, caseProgress);
+            total = bankruptCaseService.getUserCaseCount(userId, caseStatus, keyword, caseProgress);
         } else {
             list = List.of();
             total = 0L;
         }
 
-        return Result.success(PageResult.of(total, list));
+        return Result.success(PageResult.of(total, list, pageNum, pageSize));
     }
 
     @Operation(summary = "更新案件信息")
@@ -213,6 +220,32 @@ public class BankruptCaseController {
         return Result.success();
     }
 
+    @Operation(summary = "案件归档（已结案→已归档）")
+    @PostMapping("/{caseId}/archive")
+    @AuditLog(module = "case", moduleName = "案件管理", operationType = "UPDATE", operationName = "案件归档")
+    public Result<Void> archiveCase(
+            @Parameter(description = "案件ID") @PathVariable Long caseId) {
+
+        Long userId = getCurrentUserId();
+        casePermissionUtil.checkCaseAccessPermission(caseId);
+        bankruptCaseService.archiveCase(caseId, userId);
+        log.info("案件归档成功, caseId: {}, userId: {}", caseId, userId);
+        return Result.success();
+    }
+
+    @Operation(summary = "撤销案件归档（已归档→已结案）")
+    @PostMapping("/{caseId}/unarchive")
+    @AuditLog(module = "case", moduleName = "案件管理", operationType = "UPDATE", operationName = "撤销案件归档")
+    public Result<Void> unarchiveCase(
+            @Parameter(description = "案件ID") @PathVariable Long caseId) {
+
+        Long userId = getCurrentUserId();
+        casePermissionUtil.checkCaseAccessPermission(caseId);
+        bankruptCaseService.unarchiveCase(caseId, userId);
+        log.info("案件撤销归档成功, caseId: {}, userId: {}", caseId, userId);
+        return Result.success();
+    }
+
     @Operation(summary = "查询案件审核状态")
     @GetMapping("/{caseId}/review-status")
     public Result<BankruptCase> getReviewStatus(@Parameter(description = "案件ID") @PathVariable Long caseId) {
@@ -251,23 +284,39 @@ public class BankruptCaseController {
             @Parameter(description = "用户 ID") @PathVariable Long userId,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "案件状态") @RequestParam(required = false) String caseStatus,
-            @Parameter(description = "案号") @RequestParam(required = false) String caseNumber) {
+            @Parameter(description = "案件状态（PENDING/ONGOING/AWAITING/COMPLETED/ARCHIVED）") @RequestParam(required = false) String caseStatus,
+            @Parameter(description = "案件进度（FIRST/SECOND/THIRD/FOURTH/FIFTH/SIXTH/SEVENTH）") @RequestParam(required = false) String caseProgress,
+            @Parameter(description = "关键词（支持案号、案件名称模糊搜索）") @RequestParam(required = false) String keyword) {
 
-        List<BankruptCase> list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, caseNumber);
-        Long total = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
+        if (caseStatus != null && com.lawbackend2.lawbackend2.enums.CaseStatus.fromString(caseStatus) == null) {
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("无效的案件状态值: " + caseStatus);
+        }
+        if (caseProgress != null && com.lawbackend2.lawbackend2.enums.CaseProgress.fromString(caseProgress) == null) {
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("无效的案件进度值: " + caseProgress);
+        }
 
-        return Result.success(PageResult.of(total, list));
+        List<BankruptCase> list = bankruptCaseService.getUserCaseList(userId, pageNum, pageSize, caseStatus, keyword, caseProgress);
+        Long total = bankruptCaseService.getUserCaseCount(userId, caseStatus, keyword, caseProgress);
+
+        return Result.success(PageResult.of(total, list, pageNum, pageSize));
     }
 
     @Operation(summary = "根据用户 ID 查询案件数量")
     @GetMapping("/user/{userId}/count")
     public Result<Long> getUserCaseCount(
             @Parameter(description = "用户 ID") @PathVariable Long userId,
-            @Parameter(description = "案件状态 (可选)") @RequestParam(required = false) String caseStatus,
-            @Parameter(description = "案号 (可选，支持模糊查询)") @RequestParam(required = false) String caseNumber) {
+            @Parameter(description = "案件状态 (PENDING/ONGOING/AWAITING/COMPLETED/ARCHIVED)") @RequestParam(required = false) String caseStatus,
+            @Parameter(description = "案件进度 (FIRST/SECOND/THIRD/FOURTH/FIFTH/SIXTH/SEVENTH)") @RequestParam(required = false) String caseProgress,
+            @Parameter(description = "关键词（支持案号、案件名称模糊搜索）") @RequestParam(required = false) String keyword) {
 
-        Long count = bankruptCaseService.getUserCaseCount(userId, caseStatus, caseNumber);
+        if (caseStatus != null && com.lawbackend2.lawbackend2.enums.CaseStatus.fromString(caseStatus) == null) {
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("无效的案件状态值: " + caseStatus);
+        }
+        if (caseProgress != null && com.lawbackend2.lawbackend2.enums.CaseProgress.fromString(caseProgress) == null) {
+            throw new com.lawbackend2.lawbackend2.exception.BusinessException("无效的案件进度值: " + caseProgress);
+        }
+
+        Long count = bankruptCaseService.getUserCaseCount(userId, caseStatus, keyword, caseProgress);
         return Result.success(count);
     }
 

@@ -18,4 +18,15 @@ public enum CaseProgress {
     public String getDescription() {
         return description;
     }
+
+    public static CaseProgress fromString(String progress) {
+        if (progress == null) {
+            return null;
+        }
+        try {
+            return CaseProgress.valueOf(progress);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
 }

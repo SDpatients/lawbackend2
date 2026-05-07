@@ -93,13 +93,13 @@ public class ApprovalServiceImpl implements ApprovalService {
             existingApproval.setUpdateUserId(userId);
             existingApproval.setUpdateTime(LocalDateTime.now());
             
-            // 如果 approvalType 以 TASK_开头，则重新查询相关任务、提交记录和文件信息
             if (request.getApprovalType() != null && request.getApprovalType().startsWith("TASK_")) {
                 String taskCode = request.getApprovalType();
                 enrichApprovalWithTaskInfo(existingApproval, request.getCaseId(), taskCode, request.getApprovalAttachment());
             } else if ("CASE_SUBMIT".equals(request.getApprovalType())) {
-                // 如果 approvalType 为 CASE_SUBMIT，则查询该案件的所有 CASE_SUBMIT 类型的文件
                 enrichApprovalWithCaseSubmitFiles(existingApproval, request.getCaseId(), request.getApprovalAttachment());
+                bankruptCase.setCaseStatus(CaseStatus.AWAITING.name());
+                bankruptCaseRepository.save(bankruptCase);
             }
             
             Approval saved = approvalRepository.save(existingApproval);
@@ -449,12 +449,14 @@ public class ApprovalServiceImpl implements ApprovalService {
                     .orElseThrow(() -> new BusinessException("案件不存在"));
             
             if ("PASS".equals(request.getApprovalResult())) {
-                // 审批通过：案件状态改为 COMPLETED，并设置结案日期为当天
-                bankruptCase.setCaseStatus(CaseStatus.COMPLETED.name());
-                bankruptCase.setClosingDate(java.time.LocalDate.now());
+                if ("CASE_SUBMIT".equals(approval.getApprovalType())) {
+                    bankruptCase.setCaseStatus(CaseStatus.COMPLETED.name());
+                    bankruptCase.setClosingDate(java.time.LocalDate.now());
+                }
             } else if ("FAIL".equals(request.getApprovalResult())) {
-                // 审批不通过：案件状态改为 ONGOING
-                bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
+                if ("CASE_SUBMIT".equals(approval.getApprovalType())) {
+                    bankruptCase.setCaseStatus(CaseStatus.ONGOING.name());
+                }
             }
             
             bankruptCaseRepository.save(bankruptCase);

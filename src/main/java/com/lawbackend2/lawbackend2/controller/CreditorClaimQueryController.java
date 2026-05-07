@@ -46,9 +46,21 @@ public class CreditorClaimQueryController {
                     "- pageNum: 当前页码\n" +
                     "- pageSize: 每页大小\n\n" +
                     "**list 数组字段说明：**\n" +
+                    "- creditorId: 债权人 ID\n" +
+                    "- caseId: 案件 ID\n" +
                     "- creditorName: 债权人名称\n" +
                     "- creditorType: 债权人类型\n" +
                     "- creditorStatus: 债权人状态（CONFIRMED-确认债权人、KNOWN-已知债权人）\n" +
+                    "- contactPhone: 联系电话\n" +
+                    "- contactEmail: 联系邮箱\n" +
+                    "- address: 地址\n" +
+                    "- idNumber: 身份证号\n" +
+                    "- legalRepresentative: 法定代表人\n" +
+                    "- registeredCapital: 注册资本\n" +
+                    "- caseNumber: 案件案号\n" +
+                    "- caseName: 案件名称\n" +
+                    "- createTime: 创建时间\n" +
+                    "- updateTime: 更新时间\n" +
                     "- claimType: 债权类型\n" +
                     "- accountName: 账户名称\n" +
                     "- creditorBankAccount: 银行账号\n" +
@@ -126,9 +138,21 @@ public class CreditorClaimQueryController {
                                             "    \"total\": 25,\n" +
                                             "    \"list\": [\n" +
                                             "      {\n" +
+                                            "        \"creditorId\": 1,\n" +
+                                            "        \"caseId\": 123,\n" +
                                             "        \"creditorName\": \"某某有限公司\",\n" +
                                             "        \"creditorType\": \"企业\",\n" +
                                             "        \"creditorStatus\": \"CONFIRMED\",\n" +
+                                            "        \"contactPhone\": \"010-12345678\",\n" +
+                                            "        \"contactEmail\": \"example@company.com\",\n" +
+                                            "        \"address\": \"北京市朝阳区xxx路xxx号\",\n" +
+                                            "        \"idNumber\": \"91110000XXXXXXXXXX\",\n" +
+                                            "        \"legalRepresentative\": \"李四\",\n" +
+                                            "        \"registeredCapital\": 5000000.00,\n" +
+                                            "        \"caseNumber\": \"(2023)京01破申1号\",\n" +
+                                            "        \"caseName\": \"某某有限公司破产清算案\",\n" +
+                                            "        \"createTime\": \"2024-01-15T10:30:00\",\n" +
+                                            "        \"updateTime\": \"2024-03-20T14:20:00\",\n" +
                                             "        \"claimType\": \"借款债权\",\n" +
                                             "        \"accountName\": \"某某有限公司\",\n" +
                                             "        \"creditorBankAccount\": \"1234567890123456789\",\n" +
@@ -147,9 +171,21 @@ public class CreditorClaimQueryController {
                                             "        \"reductionAmount\": 200000.00\n" +
                                             "      },\n" +
                                             "      {\n" +
+                                            "        \"creditorId\": 2,\n" +
+                                            "        \"caseId\": 123,\n" +
                                             "        \"creditorName\": \"张三\",\n" +
                                             "        \"creditorType\": \"个人\",\n" +
                                             "        \"creditorStatus\": \"KNOWN\",\n" +
+                                            "        \"contactPhone\": \"13800138000\",\n" +
+                                            "        \"contactEmail\": \"zhangsan@example.com\",\n" +
+                                            "        \"address\": \"北京市海淀区xxx路xxx号\",\n" +
+                                            "        \"idNumber\": \"110101199001011234\",\n" +
+                                            "        \"legalRepresentative\": null,\n" +
+                                            "        \"registeredCapital\": null,\n" +
+                                            "        \"caseNumber\": \"(2023)京01破申1号\",\n" +
+                                            "        \"caseName\": \"某某有限公司破产清算案\",\n" +
+                                            "        \"createTime\": \"2024-02-10T09:00:00\",\n" +
+                                            "        \"updateTime\": \"2024-04-05T16:30:00\",\n" +
                                             "        \"claimType\": \"担保债权\",\n" +
                                             "        \"accountName\": \"张三\",\n" +
                                             "        \"creditorBankAccount\": \"9876543210987654321\",\n" +

@@ -37,6 +37,8 @@ public class CaseCreateRequest {
 
     private String caseProgress = "FIRST";
 
+    private String caseType = "LIQUIDATION";
+
     private LocalDate debtClaimDeadline;
 
     private LocalDate filingDate;

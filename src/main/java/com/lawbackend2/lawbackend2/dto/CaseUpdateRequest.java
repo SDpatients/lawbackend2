@@ -16,6 +16,8 @@ public class CaseUpdateRequest {
 
     private String caseProgress;
 
+    private String caseType;
+
     private String mainResponsiblePerson;
 
     private String designatedInstitution;

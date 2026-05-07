@@ -21,6 +21,7 @@ import com.lawbackend2.lawbackend2.repository.UserRepository;
 import com.lawbackend2.lawbackend2.repository.UserRoleRepository;
 import com.lawbackend2.lawbackend2.service.PermissionService;
 import com.lawbackend2.lawbackend2.service.SmsService;
+import com.lawbackend2.lawbackend2.service.SystemConfigService;
 import com.lawbackend2.lawbackend2.service.TokenBlacklistService;
 import com.lawbackend2.lawbackend2.service.UserRoleService;
 import com.lawbackend2.lawbackend2.service.UserService;
@@ -78,16 +79,35 @@ public class UserServiceImpl implements UserService {
     private TokenBlacklistService tokenBlacklistService;
 
     @Autowired
+    private SystemConfigService systemConfigService;
+
+    @Autowired
     private PermissionService permissionService;
 
     @Autowired
     private UserRoleService userRoleService;
 
     @Value("${login.max-fail-count:5}")
-    private int maxFailCount;
+    private int defaultMaxFailCount;
 
     @Value("${login.lock-minutes:30}")
-    private int lockMinutes;
+    private int defaultLockMinutes;
+
+    private int getMaxFailCount() {
+        String val = systemConfigService.getConfigValue("security.login.max_attempts");
+        if (val != null) {
+            try { return Integer.parseInt(val); } catch (NumberFormatException ignored) {}
+        }
+        return defaultMaxFailCount;
+    }
+
+    private int getLockMinutes() {
+        String val = systemConfigService.getConfigValue("security.login.lock_duration");
+        if (val != null) {
+            try { return Integer.parseInt(val); } catch (NumberFormatException ignored) {}
+        }
+        return defaultLockMinutes;
+    }
 
     private static final String SMS_TYPE_REGISTER = "2";
     private static final String SMS_TYPE_LOGIN = "1";
@@ -154,7 +174,7 @@ public class UserServiceImpl implements UserService {
 
         boolean isLocked = checkAccountLocked(username, ipAddress);
         if (isLocked) {
-            throw new BusinessException(401, "账号已被锁定，请" + lockMinutes + "分钟后再试");
+            throw new BusinessException(401, "账号已被锁定，请" + getLockMinutes() + "分钟后再试");
         }
 
         boolean passwordValid = passwordEncoder.matches(password, user.getPassword());
@@ -196,11 +216,22 @@ public class UserServiceImpl implements UserService {
         Optional<Token> tokenOpt = tokenRepository.findByTokenValue(token);
         if (tokenOpt.isPresent()) {
             Token tokenEntity = tokenOpt.get();
+            Long userId = tokenEntity.getUserId();
+
             tokenEntity.setStatus("INACTIVE");
             tokenEntity.setRevokeTime(LocalDateTime.now());
             tokenRepository.save(tokenEntity);
             tokenBlacklistService.addToBlacklist(token);
-            log.info("用户登出成功 - 用户ID: {}", tokenEntity.getUserId());
+
+            List<Token> activeTokens = tokenRepository.findActiveTokensByUserId(userId, LocalDateTime.now());
+            for (Token activeToken : activeTokens) {
+                activeToken.setStatus("INACTIVE");
+                activeToken.setRevokeTime(LocalDateTime.now());
+                tokenRepository.save(activeToken);
+                tokenBlacklistService.addToBlacklist(activeToken.getTokenValue());
+            }
+
+            log.info("用户登出成功 - 用户ID: {}", userId);
         }
     }
 
@@ -209,6 +240,10 @@ public class UserServiceImpl implements UserService {
     public UserLoginResponse refreshToken(String token) {
         if (!jwtTokenUtil.validateToken(token)) {
             throw new BusinessException(401, "Token无效或已过期");
+        }
+
+        if (!jwtTokenUtil.isRefreshToken(token)) {
+            throw new BusinessException(400, "令牌类型错误，需要刷新令牌");
         }
 
         Long userId = jwtTokenUtil.getUserIdFromToken(token);
@@ -303,7 +338,7 @@ public class UserServiceImpl implements UserService {
                 .realName(user.getRealName())
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
-                .permissions(Arrays.asList("user:read", "user:write"))
+                .permissions(userPermissions)
                 .build();
     }
 
@@ -518,7 +553,7 @@ public class UserServiceImpl implements UserService {
     }
 
     private boolean checkAccountLocked(String username, String ipAddress) {
-        return loginFailRepository.isAccountLocked(username, ipAddress, maxFailCount, LocalDateTime.now());
+        return loginFailRepository.isAccountLocked(username, ipAddress, getMaxFailCount(), LocalDateTime.now());
     }
 
     private void resetLoginFailures(String username, String ipAddress) {

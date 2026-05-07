@@ -166,13 +166,12 @@ public class WorkTeamServiceImpl implements WorkTeamService {
                 WorkTeamDetailResponse detailResponse = getWorkTeamDetailWithMembers(team.getId());
                 detailResponses.add(detailResponse);
             } catch (BusinessException e) {
-                // 跳过没有权限查看的团队
                 continue;
             }
         }
 
         PageResult<WorkTeamDetailResponse> result = new PageResult<>();
-        result.setTotal(page.getTotalElements());
+        result.setTotal((long) detailResponses.size());
         result.setList(detailResponses);
         result.setPageNum(pageNum);
         result.setPageSize(pageSize);
@@ -206,6 +205,11 @@ public class WorkTeamServiceImpl implements WorkTeamService {
         if (!workTeamRepository.existsById(teamId)) {
             throw new BusinessException("工作团队不存在");
         }
+        List<WorkTeamMember> members = workTeamMemberRepository.findByTeamId(teamId);
+        for (WorkTeamMember member : members) {
+            workTeamPermissionRepository.deleteByTeamMemberId(member.getId());
+        }
+        workTeamMemberRepository.deleteAll(members);
         workTeamRepository.deleteById(teamId);
     }
 
@@ -426,6 +430,7 @@ public class WorkTeamServiceImpl implements WorkTeamService {
         
         checkEditPermission(member.getTeamId());
         
+        workTeamPermissionRepository.deleteByTeamMemberId(memberId);
         workTeamMemberRepository.delete(member);
     }
 

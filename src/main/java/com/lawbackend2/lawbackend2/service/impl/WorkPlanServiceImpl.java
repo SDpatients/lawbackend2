@@ -139,10 +139,28 @@ public class WorkPlanServiceImpl implements WorkPlanService {
     @Override
     public void updateWorkPlan(Long planId, WorkPlanUpdateRequest request, Long userId) {
         WorkPlan workPlan = getWorkPlanDetail(planId, userId);
-        workPlan.setPlanContent(request.getPlanContent());
-        workPlan.setStartDate(request.getStartDate());
-        workPlan.setEndDate(request.getEndDate());
-        workPlan.setResponsibleUserId(request.getResponsibleUserId());
+        if (request.getPlanContent() != null) {
+            workPlan.setPlanContent(request.getPlanContent());
+        }
+        if (request.getStartDate() != null) {
+            workPlan.setStartDate(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            workPlan.setEndDate(request.getEndDate());
+        }
+        if (request.getResponsibleUserId() != null) {
+            workPlan.setResponsibleUserId(request.getResponsibleUserId());
+        }
+        if (request.getPlanType() != null) {
+            workPlan.setPlanType(request.getPlanType());
+        }
+        if (request.getCaseId() != null) {
+            workPlan.setCaseId(request.getCaseId());
+        }
+        if (request.getExecutionStatus() != null) {
+            workPlan.setExecutionStatus(request.getExecutionStatus());
+        }
+        workPlan.setUpdateUserId(userId);
         workPlanRepository.save(workPlan);
     }
 
@@ -156,10 +174,11 @@ public class WorkPlanServiceImpl implements WorkPlanService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteWorkPlan(Long planId) {
-        if (!workPlanRepository.existsById(planId)) {
-            throw new BusinessException("工作计划不存在");
-        }
-        workPlanRepository.deleteById(planId);
+        WorkPlan workPlan = workPlanRepository.findById(planId)
+                .orElseThrow(() -> new BusinessException("工作计划不存在"));
+        workPlan.setIsDeleted(true);
+        workPlan.setStatus("DELETED");
+        workPlanRepository.save(workPlan);
     }
 
     @Override

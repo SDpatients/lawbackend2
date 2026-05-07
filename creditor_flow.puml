@@ -1,0 +1,89 @@
+@startuml
+skinparam ActivityBackgroundColor #F8F9FA
+skinparam ActivityBorderColor #343A40
+skinparam ActivityDiamondBackgroundColor #FFF3CD
+skinparam ActivityDiamondBorderColor #856404
+skinparam ArrowColor #495057
+skinparam NoteBorderColor #6C757D
+skinparam NoteBackgroundColor #E9ECEF
+skinparam wrapWidth 200
+
+title 债权申报 -> 登记 -> 审查 -> 确认 全流程状态图
+
+|CreditorClaim|
+start
+:PENDING
+待审核;
+if (审核?) then (通过)
+else (驳回)
+  :REJECTED
+  已驳回;
+  stop
+endif
+
+|ClaimRegistration|
+:PENDING
+待登记;
+:REGISTERED
+已登记;
+
+|ClaimReview|
+:REVIEWING
+审查中;
+note right
+  自动创建 ClaimReview
+  状态 = IN_PROGRESS
+end note
+
+if (审查结果?) then (完成)
+  :REVIEW_COMPLETED
+  审查完成;
+  note right
+    更新 ClaimReview
+    状态 = COMPLETED
+  end note
+else (驳回)
+  :REJECTED
+  已驳回;
+  note right
+    级联操作：
+    1. ClaimRegistration -> REJECTED
+    2. 删除关联 ClaimConfirmation
+  end note
+  stop
+endif
+
+|ClaimConfirmation|
+:CONFIRMING
+确认中;
+note right
+  自动创建 ClaimConfirmation
+  状态 = IN_PROGRESS
+end note
+
+:CONFIRMED
+已确认;
+note right
+  级联操作：
+  1. ClaimConfirmation -> COMPLETED
+  2. CreditorInfo -> CONFIRMED
+end note
+
+if (是否有异议?) then (有异议)
+  :OBJECTION
+  异议中;
+  if (异议处理方式?) then (协商成功)
+  else (法院裁定)
+    note right
+      依据 = COURT
+    end note
+  endif
+  :CONFIRMED
+  已确认;
+endif
+
+:最终确认
+确定金额与依据;
+stop
+
+@enduml

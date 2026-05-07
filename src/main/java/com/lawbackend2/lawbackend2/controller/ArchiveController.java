@@ -8,6 +8,7 @@ import com.lawbackend2.lawbackend2.dto.ArchiveCategoryResponse;
 import com.lawbackend2.lawbackend2.dto.ArchiveRecordResponse;
 import com.lawbackend2.lawbackend2.dto.ArchiveUpdateRequest;
 import com.lawbackend2.lawbackend2.dto.ArchiveUploadRequest;
+import com.lawbackend2.lawbackend2.exception.BusinessException;
 import com.lawbackend2.lawbackend2.service.ArchiveService;
 import com.lawbackend2.lawbackend2.util.PermissionChecker;
 import com.lawbackend2.lawbackend2.util.SecurityUtil;
@@ -158,17 +159,17 @@ public class ArchiveController {
     }
 
     @Operation(summary = "下载归档文件", description = "下载归档文件")
-    @GetMapping("/file/{fileId}/download")
+    @GetMapping("/file/{recordId}/download")
     @DataPermission(moduleType = "archive", permissionType = "view")
     public void downloadArchiveFile(
-            @Parameter(description = "文件ID") @PathVariable Long fileId,
+            @Parameter(description = "归档记录ID") @PathVariable Long recordId,
             HttpServletResponse response) throws IOException {
 
-        var fileRecord = archiveService.getArchiveRecord(fileId);
+        var fileRecord = archiveService.getArchiveRecord(recordId);
         java.io.File file = new java.io.File(fileRecord.getFile().getFilePath());
 
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在");
+            throw new BusinessException("文件不存在");
         }
 
         Resource resource = new org.springframework.core.io.FileSystemResource(file);
@@ -187,16 +188,16 @@ public class ArchiveController {
     }
 
     @Operation(summary = "预览归档文件", description = "预览归档文件")
-    @GetMapping("/file/{fileId}/preview")
+    @GetMapping("/file/{recordId}/preview")
     @DataPermission(moduleType = "archive", permissionType = "view")
     public ResponseEntity<Resource> previewArchiveFile(
-            @Parameter(description = "文件ID") @PathVariable Long fileId) throws IOException {
+            @Parameter(description = "归档记录ID") @PathVariable Long recordId) throws IOException {
 
-        var fileRecord = archiveService.getArchiveRecord(fileId);
+        var fileRecord = archiveService.getArchiveRecord(recordId);
         java.io.File file = new java.io.File(fileRecord.getFile().getFilePath());
 
         if (!file.exists()) {
-            throw new RuntimeException("文件不存在");
+            throw new BusinessException("文件不存在");
         }
 
         Resource resource = new org.springframework.core.io.FileSystemResource(file);
