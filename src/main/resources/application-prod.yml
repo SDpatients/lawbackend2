@@ -63,6 +63,7 @@ app:
   timezone: ${APP_TIMEZONE:Asia/Shanghai}
   file:
     upload-path: ${FILE_UPLOAD_PATH:/data/law-upload}
+    download-url: ${APP_FILE_DOWNLOAD_URL:http://localhost:8080/api/v1/file/download/}
     max-size: ${FILE_MAX_SIZE:52428800}
     allowed-types: ${FILE_ALLOWED_TYPES:jpg,jpeg,png,gif,bmp,pdf,doc,docx,xls,xlsx,ppt,pptx,txt,zip,rar}
     video:
@@ -98,6 +99,8 @@ app:
     allowed-headers: ${CORS_ALLOWED_HEADERS:*}
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
     max-age: ${CORS_MAX_AGE:3600}
+  server:
+    url: ${APP_SERVER_URL:http://localhost:8080}
 
 jwt:
   secret: ${JWT_SECRET:lawbackend2-secret-key-for-jwt-token-generation-and-verification-must-be-at-least-256-bits}
@@ -132,12 +135,6 @@ springdoc:
     path: /swagger-ui
     enabled: true
     packages-to-scan: com.lawbackend2.lawbackend2.controller
-
-app:
-  server:
-    url: ${APP_SERVER_URL:http://localhost:8080}
-  file:
-    download-url: ${APP_FILE_DOWNLOAD_URL:http://localhost:8080/api/v1/file/download/}
 
 onlyoffice:
   server-url: ${ONLYOFFICE_SERVER_URL:http://localhost:8081}

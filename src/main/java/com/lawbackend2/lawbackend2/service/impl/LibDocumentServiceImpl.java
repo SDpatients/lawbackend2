@@ -281,21 +281,36 @@ public class LibDocumentServiceImpl implements LibDocumentService {
 
     @Override
     public LibDocumentListResponse getDocumentList(LibDocumentQueryRequest request, Long userId) {
-        Pageable pageable = PageRequest.of(request.getPage() - 1, request.getSize(), Sort.by(Sort.Direction.DESC, "createTime"));
+        Sort.Direction direction = "asc".equalsIgnoreCase(request.getSortOrder()) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(request.getPage() - 1, request.getSize(), Sort.by(direction, request.getSortBy()));
         Page<LibDocument> documentPage = documentRepository.findAll((root, query, cb) -> {
             var predicates = new java.util.ArrayList<javax.persistence.criteria.Predicate>();
-            
-            // 添加文件夹过滤条件
+
             if (request.getFolderId() != null) {
                 predicates.add(cb.equal(root.get("folderId"), request.getFolderId()));
             }
-            
-            // 添加权限过滤条件：公开文档或自己创建的文档
+
+            if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
+                predicates.add(cb.like(root.get("documentName"), "%" + request.getKeyword() + "%"));
+            }
+
+            if (request.getDocumentType() != null && !request.getDocumentType().trim().isEmpty()) {
+                predicates.add(cb.equal(root.get("documentType"), request.getDocumentType()));
+            }
+
+            if (request.getStatus() != null && !request.getStatus().trim().isEmpty()) {
+                predicates.add(cb.equal(root.get("status"), request.getStatus()));
+            }
+
+            if (request.getIsPublic() != null) {
+                predicates.add(cb.equal(root.get("isPublic"), request.getIsPublic()));
+            }
+
             predicates.add(cb.or(
                     cb.equal(root.get("isPublic"), true),
                     cb.equal(root.get("createUserId"), userId)
             ));
-            
+
             return cb.and(predicates.toArray(new javax.persistence.criteria.Predicate[0]));
         }, pageable);
 

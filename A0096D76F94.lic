@@ -1,0 +1,12 @@
+{
+  "licenseId" : "LAW-2026-002",
+  "customerName" : "浙江浦源律师事务所",
+  "machineCode" : "A0096D76F9145D68F553314575903B6C",
+  "modules" : [ "case", "fund", "document", "creditor", "approval", "report", "ai", "chat" ],
+  "maxUsers" : 50,
+  "expireDate" : [ 9999, 12, 31, 23, 59, 59 ],
+  "createTime" : [ 2026, 5, 7, 10, 39, 17, 712719600 ],
+  "signature" : "qZw1MrpYnm11dM33kJ6pfw55yalFhpxykJYgZDLfei47gU1awoVNCuDsMg3g+6yKPhGRFCdkp1E0QxnnIa1k8BlpYysy82kKSdR84zsyG+iLZ4CIaI9w44qCzOeHXkVNb1caE4XcV58OqdvXCrwGtmuTDsxf03dNVS95eRer14T6NxXFMvCMPzU3c8RjdAqswBe/spWVff7PSF88NYlG1dI+4NVWMiUg+DBzfhzvSs9rcJhACGE5d/wJcu+WffWnhgXOEvMHQq0nJRdAiBGHxY/4nJP5b6rITwA7C+gN7GqlDNz8HxBdioVSh1lXoDIuBDFiex6O7Ur7VkZfFy6UNQ==",
+  "expired" : false,
+  "remainingDays" : 2912316
+}
