@@ -285,6 +285,9 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
         if (request.getRemarks() != null) {
             review.setRemarks(request.getRemarks());
         }
+        if (request.getReviewRound() != null) {
+            review.setReviewRound(request.getReviewRound());
+        }
 
         return claimReviewRepository.save(review);
     }
@@ -343,11 +346,9 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
         ClaimReview review = getReviewById(reviewId);
         Long claimRegistrationId = review.getClaimRegistrationId();
         
-        // 设置审查结论为驳回
         review.setReviewConclusion("REJECTED");
         review.setReviewStatus("REJECTED");
         
-        // 保存驳回理由到备注字段
         String remarks = review.getRemarks();
         String newRemarks = "驳回理由: " + rejectReason;
         if (remarks != null && !remarks.trim().isEmpty()) {
@@ -358,14 +359,12 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
         review.setUpdateUserId(userId);
         claimReviewRepository.save(review);
         
-        // 级联处理相关的债权确认记录
         List<ClaimConfirmation> confirmations = claimConfirmationRepository.findByClaimRegistrationId(claimRegistrationId);
         for (ClaimConfirmation confirmation : confirmations) {
             claimConfirmationRepository.delete(confirmation);
             log.info("级联处理审查驳回 - 删除确认记录, confirmationId: {}, claimRegistrationId: {}", confirmation.getId(), claimRegistrationId);
         }
         
-        // 更新债权申报状态为驳回
         ClaimRegistration claimRegistration = claimRegistrationRepository.findById(claimRegistrationId).orElse(null);
         if (claimRegistration != null && !"REJECTED".equals(claimRegistration.getRegistrationStatus())) {
             claimRegistration.setRegistrationStatus("REJECTED");
@@ -374,7 +373,6 @@ public class ClaimReviewServiceImpl implements ClaimReviewService {
             log.info("更新债权申报状态为驳回, claimId: {}", claimRegistrationId);
         }
         
-        // 发送通知
         User user = userRepository.findById(userId).orElse(null);
         String realName = user != null ? user.getRealName() : "未知用户";
         String content = String.format("%s 驳回了债权审查：%s\n驳回理由：%s", realName, review.getCreditorName(), rejectReason);

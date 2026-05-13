@@ -38,19 +38,14 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long>,
     @Query("DELETE FROM BankAccount ba WHERE ba.caseId = :caseId")
     void deleteByCaseId(@Param("caseId") Long caseId);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.response.BankAccountResponse(" +
-           "ba.id, ba.status, ba.createTime, ba.updateTime, " +
-           "ba.createUserId, ba.updateUserId, ba.accountName, ba.bankName, " +
-           "ba.accountNumber, ba.accountType, ba.currency, ba.currentBalance, " +
-           "ba.openingDate, ba.closingDate, ba.caseId, bc.caseNumber, bc.caseName) " +
-           "FROM BankAccount ba " +
+    @Query("SELECT ba FROM BankAccount ba " +
            "LEFT JOIN BankruptCase bc ON ba.caseId = bc.id " +
            "WHERE (:accountType IS NULL OR ba.accountType = :accountType) " +
            "AND (:status IS NULL OR ba.status = :status) " +
            "AND (:accountName IS NULL OR ba.accountName LIKE %:accountName%) " +
            "AND (:caseId IS NULL OR ba.caseId = :caseId) " +
            "AND (:isAdmin = true OR ba.createUserId = :userId OR (ba.caseId IS NOT NULL AND ba.caseId IN :accessibleCaseIds))")
-    Page<BankAccountResponse> findBankAccountsWithCaseInfo(@Param("accountType") String accountType,
+    Page<BankAccount> findBankAccountsWithCaseInfo(@Param("accountType") String accountType,
                                                             @Param("status") String status,
                                                             @Param("accountName") String accountName,
                                                             @Param("caseId") Long caseId,

@@ -622,28 +622,23 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
 
     @Override
     public Long getCaseSimpleCount(Long userId, String caseNumber) {
-        // 检查用户是否为 ADMIN 角色
         boolean isAdmin = isUserAdmin(userId);
         
         if (isAdmin) {
-            // ADMIN 用户可以查看所有案件
             if (caseNumber != null && !caseNumber.isEmpty()) {
                 return bankruptCaseRepository.countByCaseNumberLike(caseNumber);
             } else {
-                return bankruptCaseRepository.count();
+                return bankruptCaseRepository.countByCaseStatusNot("ARCHIVED");
             }
         }
         
-        // 非 ADMIN 用户，查询用户参与的所有案件 ID（通过工作组成员关系）
         List<Long> participatedCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
         
-        // 查询用户创建的所有案件 ID
         List<BankruptCase> createdCases = bankruptCaseRepository.findByCreateUserId(userId, Pageable.unpaged()).getContent();
         List<Long> createdCaseIds = createdCases.stream()
                 .map(BankruptCase::getId)
                 .collect(Collectors.toList());
         
-        // 合并并去重所有案件 ID
         Set<Long> allCaseIdsSet = participatedCaseIds.stream()
                 .collect(Collectors.toSet());
         allCaseIdsSet.addAll(createdCaseIds);
@@ -654,7 +649,6 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             return 0L;
         }
         
-        // 根据案件 ID 列表和案号条件查询案件简单信息总数
         Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> result;
         
         if (caseNumber != null && !caseNumber.isEmpty()) {
@@ -1204,5 +1198,62 @@ public class BankruptCaseServiceImpl implements BankruptCaseService {
             log.error("检查用户角色失败，userId: {}, error: {}", userId, e.getMessage(), e);
             return false;
         }
+    }
+
+    @Override
+    public List<com.lawbackend2.lawbackend2.dto.response.CaseAccessibleUserResponse> getAccessibleUsers(Long caseId) {
+        log.info("查询案件访问用户列表, caseId: {}", caseId);
+        
+        List<com.lawbackend2.lawbackend2.dto.response.CaseAccessibleUserResponse> accessibleUsers = new ArrayList<>();
+        
+        BankruptCase bankruptCase = getCaseById(caseId);
+        
+        if (bankruptCase.getCreateUserId() != null) {
+            User creator = userRepository.findById(bankruptCase.getCreateUserId()).orElse(null);
+            if (creator != null && !creator.getIsDeleted()) {
+                accessibleUsers.add(com.lawbackend2.lawbackend2.dto.response.CaseAccessibleUserResponse.builder()
+                    .userId(creator.getId())
+                    .username(creator.getUsername())
+                    .realName(creator.getRealName())
+                    .email(creator.getEmail())
+                    .phone(creator.getPhone())
+                    .accessType("CREATOR")
+                    .accessRole("案件创建者")
+                    .accessTime(bankruptCase.getCreateTime())
+                    .build());
+            }
+        }
+        
+        List<WorkTeamMember> teamMembers = workTeamMemberRepository.findByCaseId(caseId);
+        
+        if (!teamMembers.isEmpty()) {
+            List<Long> userIds = teamMembers.stream()
+                .map(WorkTeamMember::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+            
+            List<User> users = userRepository.findAllById(userIds);
+            Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+            
+            for (WorkTeamMember member : teamMembers) {
+                User user = userMap.get(member.getUserId());
+                if (user != null && !user.getIsDeleted()) {
+                    accessibleUsers.add(com.lawbackend2.lawbackend2.dto.response.CaseAccessibleUserResponse.builder()
+                        .userId(user.getId())
+                        .username(user.getUsername())
+                        .realName(user.getRealName())
+                        .email(user.getEmail())
+                        .phone(user.getPhone())
+                        .accessType("TEAM_MEMBER")
+                        .accessRole(member.getTeamRole())
+                        .accessTime(member.getCreateTime())
+                        .build());
+                }
+            }
+        }
+        
+        log.info("查询到案件访问用户列表, caseId: {}, userCount: {}", caseId, accessibleUsers.size());
+        return accessibleUsers;
     }
 }

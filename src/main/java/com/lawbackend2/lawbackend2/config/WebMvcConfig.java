@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.config;
 
+import com.lawbackend2.lawbackend2.interceptor.UserActivityInterceptor;
 import com.lawbackend2.lawbackend2.license.interceptor.LicenseCheckInterceptor;
 import com.lawbackend2.lawbackend2.resolver.CurrentUserIdArgumentResolver;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Autowired
     private LicenseCheckInterceptor licenseCheckInterceptor;
 
+    @Autowired
+    private UserActivityInterceptor userActivityInterceptor;
+
     // 显式配置MultipartResolver，确保文件上传请求能够正确解析
     @Bean
     public MultipartResolver multipartResolver() {
@@ -32,7 +36,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 注册许可证检查拦截器
+        registry.addInterceptor(userActivityInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/api-docs/**",
+                        "/v3/api-docs/**",
+                        "/webjars/**",
+                        "/swagger-resources/**",
+                        "/error"
+                );
+
         registry.addInterceptor(licenseCheckInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns(

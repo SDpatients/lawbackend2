@@ -5,7 +5,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -58,8 +57,4 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
 
     @Query("SELECT DATE(al.createTime) as date, COUNT(al) as cnt FROM AuditLog al WHERE al.createTime BETWEEN :startTime AND :endTime GROUP BY DATE(al.createTime) ORDER BY DATE(al.createTime)")
     List<Object[]> countGroupByDate(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
-
-    @Modifying
-    @Query("DELETE FROM AuditLog al WHERE al.createTime < :threshold")
-    void deleteByCreateTimeBefore(@Param("threshold") LocalDateTime threshold);
 }

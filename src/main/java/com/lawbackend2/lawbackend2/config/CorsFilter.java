@@ -9,6 +9,10 @@ import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -27,14 +31,14 @@ public class CorsFilter implements Filter {
         HttpServletRequest request = (HttpServletRequest) req;
 
         AppProperties.CorsConfig corsConfig = appProperties.getCors();
-        
+
         String origin = request.getHeader("Origin");
-        String allowedOrigins = corsConfig.getAllowedOrigins();
-        if ("*".equals(allowedOrigins)) {
-            response.setHeader("Access-Control-Allow-Origin", origin != null ? origin : "*");
-        } else {
-            response.setHeader("Access-Control-Allow-Origin", allowedOrigins);
+        String allowedOrigin = resolveAllowedOrigin(origin, corsConfig.getAllowedOrigins());
+
+        if (allowedOrigin != null) {
+            response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
         }
+
         response.setHeader("Access-Control-Allow-Methods", corsConfig.getAllowedMethods());
         response.setHeader("Access-Control-Allow-Headers", corsConfig.getAllowedHeaders());
         response.setHeader("Access-Control-Allow-Credentials", String.valueOf(corsConfig.isAllowCredentials()));
@@ -45,7 +49,37 @@ public class CorsFilter implements Filter {
             return;
         }
 
+        if (origin != null && allowedOrigin == null) {
+            log.warn("CORS请求被拒绝 - Origin: {} 不在白名单中, 白名单: {}", origin, corsConfig.getAllowedOrigins());
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
         chain.doFilter(req, res);
+    }
+
+    private String resolveAllowedOrigin(String origin, String allowedOriginsConfig) {
+        if (origin == null || origin.isEmpty()) {
+            return null;
+        }
+
+        if ("*".equals(allowedOriginsConfig.trim())) {
+            return origin;
+        }
+
+        Set<String> allowedOriginSet = parseOriginList(allowedOriginsConfig);
+        if (allowedOriginSet.contains(origin)) {
+            return origin;
+        }
+
+        return null;
+    }
+
+    private Set<String> parseOriginList(String allowedOrigins) {
+        if (allowedOrigins == null || allowedOrigins.trim().isEmpty()) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(Arrays.asList(allowedOrigins.trim().split("\\s*,\\s*")));
     }
 
     @Override

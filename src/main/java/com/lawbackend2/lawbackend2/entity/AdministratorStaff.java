@@ -20,13 +20,15 @@ public class AdministratorStaff extends BaseEntity {
     @Column(name = "staff_type", length = 50)
     private String staffType;
 
-    @Column(name = "id_number", length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "id_number", length = 255)
     private String idNumber;
 
     @Column(name = "lawyer_license_number", length = 50)
     private String lawyerLicenseNumber;
 
-    @Column(name = "contact_phone", length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "contact_phone", length = 255)
     private String contactPhone;
 
     @Column(name = "email", length = 100)

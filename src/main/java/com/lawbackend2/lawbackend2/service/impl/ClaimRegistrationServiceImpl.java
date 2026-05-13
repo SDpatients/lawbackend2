@@ -13,6 +13,7 @@ import com.lawbackend2.lawbackend2.listener.ClaimRegistrationExcelImportDTO;
 import com.lawbackend2.lawbackend2.listener.ClaimRegistrationExcelListener;
 import com.lawbackend2.lawbackend2.listener.DeclaredClaimsRegisterExcelImportDTO;
 import com.lawbackend2.lawbackend2.listener.DeclaredClaimsRegisterExcelListener;
+import com.lawbackend2.lawbackend2.repository.BankruptCaseRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimConfirmationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimRegistrationRepository;
 import com.lawbackend2.lawbackend2.repository.ClaimReviewRepository;
@@ -58,6 +59,7 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final CreditorInfoRepository creditorInfoRepository;
+    private final BankruptCaseRepository bankruptCaseRepository;
 
     @Autowired
     public ClaimRegistrationServiceImpl(ClaimRegistrationRepository claimRegistrationRepository,
@@ -65,13 +67,15 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
                                       ClaimConfirmationRepository claimConfirmationRepository,
                                       UserRepository userRepository,
                                       NotificationService notificationService,
-                                      CreditorInfoRepository creditorInfoRepository) {
+                                      CreditorInfoRepository creditorInfoRepository,
+                                      BankruptCaseRepository bankruptCaseRepository) {
         this.claimRegistrationRepository = claimRegistrationRepository;
         this.claimReviewRepository = claimReviewRepository;
         this.claimConfirmationRepository = claimConfirmationRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.creditorInfoRepository = creditorInfoRepository;
+        this.bankruptCaseRepository = bankruptCaseRepository;
     }
 
     @Override
@@ -85,6 +89,10 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
 
         ClaimRegistration claimRegistration = new ClaimRegistration();
         BeanUtils.copyProperties(request, claimRegistration);
+
+        if (claimRegistration.getCaseName() == null || claimRegistration.getCaseName().trim().isEmpty()) {
+            resolveCaseName(claimRegistration, request.getCaseId());
+        }
 
         claimRegistration.setCreateUserId(userId);
         claimRegistration.setUpdateUserId(userId);
@@ -159,6 +167,18 @@ public class ClaimRegistrationServiceImpl implements ClaimRegistrationService {
         CreditorInfo savedCreditor = creditorInfoRepository.save(creditorInfo);
         logger.info("自动创建债权人成功, creditorId: {}, caseId: {}, creditorName: {}",
                 savedCreditor.getId(), caseId, creditorName);
+    }
+
+    private void resolveCaseName(ClaimRegistration claimRegistration, Long caseId) {
+        if (caseId == null) {
+            return;
+        }
+        bankruptCaseRepository.findById(caseId).ifPresent(bankruptCase -> {
+            if (bankruptCase.getCaseName() != null && !bankruptCase.getCaseName().trim().isEmpty()) {
+                claimRegistration.setCaseName(bankruptCase.getCaseName());
+                logger.info("自动解析案件名称成功, caseId: {}, caseName: {}", caseId, bankruptCase.getCaseName());
+            }
+        });
     }
 
     @Override

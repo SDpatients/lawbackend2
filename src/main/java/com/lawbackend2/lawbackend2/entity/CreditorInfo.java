@@ -25,7 +25,8 @@ public class CreditorInfo extends BaseEntity {
     @Column(name = "creditor_type", length = 50)
     private String creditorType;
 
-    @Column(name = "contact_phone", length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "contact_phone", length = 255)
     private String contactPhone;
 
     @Column(name = "contact_email", length = 100)
@@ -34,7 +35,8 @@ public class CreditorInfo extends BaseEntity {
     @Column(name = "address", length = 500)
     private String address;
 
-    @Column(name = "id_number", length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "id_number", length = 255)
     private String idNumber;
 
     @Column(name = "legal_representative", length = 100)

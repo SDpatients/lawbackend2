@@ -36,4 +36,25 @@ public interface BackupRecordRepository extends JpaRepository<BackupRecord, Long
     long countByStatusAndNotDeleted(@Param("status") String status);
 
     boolean existsByStatus(String status);
+
+    @Query("SELECT br FROM BackupRecord br WHERE br.isDeleted = false " +
+           "AND (:status IS NULL OR br.status = :status) " +
+           "AND (:backupType IS NULL OR br.backupType = :backupType) " +
+           "AND (:startDate IS NULL OR br.startTime >= :startDate) " +
+           "AND (:endDate IS NULL OR br.startTime <= :endDate) " +
+           "ORDER BY br.startTime DESC")
+    Page<BackupRecord> findAllWithFilters(@Param("status") String status,
+                                          @Param("backupType") String backupType,
+                                          @Param("startDate") LocalDateTime startDate,
+                                          @Param("endDate") LocalDateTime endDate,
+                                          Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(br.fileSize), 0) FROM BackupRecord br WHERE br.isDeleted = false AND br.status = 'SUCCESS'")
+    long sumSuccessFileSize();
+
+    @Query("SELECT br FROM BackupRecord br WHERE br.isDeleted = false AND br.status = 'SUCCESS' ORDER BY br.startTime DESC")
+    List<BackupRecord> findLatestSuccessBackup();
+
+    @Query("SELECT COUNT(br) FROM BackupRecord br WHERE br.isDeleted = false")
+    long countAllNotDeleted();
 }

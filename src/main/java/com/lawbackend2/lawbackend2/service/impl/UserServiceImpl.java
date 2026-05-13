@@ -1,5 +1,7 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
+import com.lawbackend2.lawbackend2.util.PasswordValidator;
+import com.lawbackend2.lawbackend2.util.Sm4Encryptor;
 import com.lawbackend2.lawbackend2.dto.request.*;
 import com.lawbackend2.lawbackend2.dto.response.RefreshTokenResponse;
 import com.lawbackend2.lawbackend2.dto.response.UserInfoResponse;
@@ -87,6 +89,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserRoleService userRoleService;
 
+    @Autowired
+    private Sm4Encryptor sm4Encryptor;
+
     @Value("${login.max-fail-count:5}")
     private int defaultMaxFailCount;
 
@@ -115,11 +120,14 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserLoginResponse register(UserRegisterRequest request) {
+        PasswordValidator.validate(request.getPassword());
+
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BusinessException(400, "用户名已存在");
         }
 
-        if (userRepository.existsByMobile(request.getMobile())) {
+        String encryptedMobile = sm4Encryptor.encrypt(request.getMobile());
+        if (userRepository.existsByMobile(encryptedMobile)) {
             throw new BusinessException(400, "手机号已注册");
         }
 
@@ -352,8 +360,11 @@ public class UserServiceImpl implements UserService {
 
         User user = userOpt.get();
 
-        if (mobile != null && !mobile.equals(user.getMobile()) && userRepository.existsByMobile(mobile)) {
-            throw new BusinessException(400, "手机号已被使用");
+        if (mobile != null && !mobile.equals(user.getMobile())) {
+            String encryptedMobile = sm4Encryptor.encrypt(mobile);
+            if (userRepository.existsByMobile(encryptedMobile)) {
+                throw new BusinessException(400, "手机号已被使用");
+            }
         }
 
         if (email != null && !email.equals(user.getEmail()) && userRepository.existsByEmail(email)) {
@@ -380,6 +391,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void changePassword(Long userId, String oldPassword, String newPassword) {
+        PasswordValidator.validate(newPassword);
+
         Optional<User> userOpt = userRepository.findById(userId);
         if (!userOpt.isPresent()) {
             throw new BusinessException(404, "用户不存在");
@@ -406,14 +419,16 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void forgotPassword(String mobile, String smsCode, String newPassword) {
-        // 验证短信验证码
+        PasswordValidator.validate(newPassword);
+
         boolean smsValid = smsService.verifySmsCode(mobile, smsCode, "3");
         if (!smsValid) {
             throw new BusinessException(400, "短信验证码错误或已过期");
         }
 
         // 查找用户
-        Optional<User> userOpt = userRepository.findByMobile(mobile);
+        String encryptedMobile = sm4Encryptor.encrypt(mobile);
+        Optional<User> userOpt = userRepository.findByMobile(encryptedMobile);
         if (!userOpt.isPresent()) {
             throw new BusinessException(404, "该手机号未注册");
         }
@@ -567,12 +582,17 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse createUser(UserCreateRequest request) {
+        PasswordValidator.validate(request.getPassword());
+
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new BusinessException(400, "用户名已存在");
         }
 
-        if (userRepository.existsByMobile(request.getMobile())) {
-            throw new BusinessException(400, "手机号已注册");
+        if (request.getMobile() != null) {
+            String encryptedMobile = sm4Encryptor.encrypt(request.getMobile());
+            if (userRepository.existsByMobile(encryptedMobile)) {
+                throw new BusinessException(400, "手机号已注册");
+            }
         }
 
         if (request.getEmail() != null && userRepository.existsByEmail(request.getEmail())) {
@@ -702,7 +722,8 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getMobile() != null && !request.getMobile().equals(user.getMobile())) {
-            if (userRepository.existsByMobile(request.getMobile())) {
+            String encryptedMobile = sm4Encryptor.encrypt(request.getMobile());
+            if (userRepository.existsByMobile(encryptedMobile)) {
                 throw new BusinessException(400, "手机号已被使用");
             }
             user.setMobile(request.getMobile());
@@ -716,6 +737,7 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getPassword() != null) {
+            PasswordValidator.validate(request.getPassword());
             String encodedPassword = passwordEncoder.encode(request.getPassword());
             user.setPassword(encodedPassword);
             user.setPwdErrorCount(0);
@@ -761,7 +783,8 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getMobile() != null && !request.getMobile().equals(user.getMobile())) {
-            if (userRepository.existsByMobile(request.getMobile())) {
+            String encryptedMobile = sm4Encryptor.encrypt(request.getMobile());
+            if (userRepository.existsByMobile(encryptedMobile)) {
                 throw new BusinessException(400, "手机号已被使用");
             }
             user.setMobile(request.getMobile());
@@ -775,6 +798,7 @@ public class UserServiceImpl implements UserService {
         }
 
         if (request.getPassword() != null) {
+            PasswordValidator.validate(request.getPassword());
             String encodedPassword = passwordEncoder.encode(request.getPassword());
             user.setPassword(encodedPassword);
             user.setPwdErrorCount(0);
@@ -876,7 +900,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse getUserByMobile(String mobile) {
-        Optional<User> userOpt = userRepository.findByMobile(mobile);
+        String encryptedMobile = sm4Encryptor.encrypt(mobile);
+        Optional<User> userOpt = userRepository.findByMobile(encryptedMobile);
         if (!userOpt.isPresent()) {
             throw new BusinessException(404, "用户不存在");
         }
@@ -926,8 +951,11 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(404, "用户不存在");
         }
 
-        if (!mobile.equals(user.getMobile()) && userRepository.existsByMobile(mobile)) {
-            throw new BusinessException(400, "手机号已被使用");
+        if (!mobile.equals(user.getMobile())) {
+            String encryptedMobile = sm4Encryptor.encrypt(mobile);
+            if (userRepository.existsByMobile(encryptedMobile)) {
+                throw new BusinessException(400, "手机号已被使用");
+            }
         }
 
         if (smsCode != null && !smsCode.isEmpty()) {

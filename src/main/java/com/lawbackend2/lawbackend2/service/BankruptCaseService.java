@@ -67,4 +67,6 @@ public interface BankruptCaseService {
     void archiveCase(Long caseId, Long userId);
 
     void unarchiveCase(Long caseId, Long userId);
+
+    List<com.lawbackend2.lawbackend2.dto.response.CaseAccessibleUserResponse> getAccessibleUsers(Long caseId);
 }

@@ -30,7 +30,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     @Query("SELECT u FROM User u WHERE u.status = :status AND u.isDeleted = false")
     List<User> findByStatus(@Param("status") String status);
 
-    @Query("SELECT u FROM User u WHERE u.username LIKE %:keyword% OR u.realName LIKE %:keyword% OR u.mobile LIKE %:keyword%")
+    @Query("SELECT u FROM User u WHERE (u.username LIKE %:keyword% OR u.realName LIKE %:keyword%) AND u.isDeleted = false")
     Page<User> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     @Query("SELECT u FROM User u WHERE u.isDeleted = false ORDER BY u.createTime DESC")

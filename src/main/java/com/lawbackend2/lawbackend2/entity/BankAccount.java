@@ -25,7 +25,8 @@ public class BankAccount extends BaseEntity {
     @Column(name = "bank_name", nullable = false, length = 100)
     private String bankName;
 
-    @Column(name = "account_number", nullable = false, unique = true, length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "account_number", nullable = false, unique = true, length = 255)
     private String accountNumber;
 
     @Column(name = "account_type", nullable = false, length = 50)

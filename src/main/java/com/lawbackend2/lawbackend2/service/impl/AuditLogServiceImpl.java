@@ -59,20 +59,6 @@ public class AuditLogServiceImpl implements AuditLogService {
     }
 
     @Override
-    @Transactional
-    public void deleteById(Long id) {
-        auditLogRepository.deleteById(id);
-    }
-
-    @Override
-    @Transactional
-    public void cleanOldLogs(int retentionDays) {
-        LocalDateTime threshold = LocalDateTime.now().minusDays(retentionDays);
-        auditLogRepository.deleteByCreateTimeBefore(threshold);
-        log.info("已清理 {} 天前的审计日志", retentionDays);
-    }
-
-    @Override
     public long countByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
         return auditLogRepository.countByCreateTimeBetween(startTime, endTime);
     }

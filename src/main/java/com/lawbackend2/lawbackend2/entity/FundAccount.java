@@ -62,7 +62,8 @@ public class FundAccount extends BaseEntity {
     @Column(name = "bank_name", length = 100)
     private String bankName;
 
-    @Column(name = "bank_account", length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "bank_account", length = 255)
     private String bankAccount;
 
     @Column(name = "opening_date")

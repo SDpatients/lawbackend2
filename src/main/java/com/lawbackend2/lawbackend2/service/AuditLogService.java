@@ -21,10 +21,6 @@ public interface AuditLogService {
 
     Page<AuditLog> getByBusiness(String businessType, Long businessId, Pageable pageable);
 
-    void deleteById(Long id);
-
-    void cleanOldLogs(int retentionDays);
-
     long countByTimeRange(LocalDateTime startTime, LocalDateTime endTime);
 
     Map<String, Long> countGroupByModule(LocalDateTime startTime, LocalDateTime endTime);

@@ -188,7 +188,7 @@ public class RecentCaseSearchServiceImpl implements RecentCaseSearchService {
 
         String key = getKey(userId);
         try {
-            redisTemplate.opsForZSet().remove(key, caseId);
+            redisTemplate.opsForZSet().remove(key, caseId.toString());
             log.debug("移除用户最近查询记录, userId: {}, caseId: {}", userId, caseId);
         } catch (Exception e) {
             log.error("移除最近查询记录失败, userId: {}, caseId: {}, error: {}", userId, caseId, e.getMessage());

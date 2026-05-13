@@ -142,7 +142,7 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
             }
 
             if (idNumber != null && !idNumber.trim().isEmpty()) {
-                predicates.add(cb.like(root.get("idNumber"), "%" + idNumber + "%"));
+                predicates.add(cb.equal(root.get("idNumber"), idNumber));
             }
 
             if (legalRepresentative != null && !legalRepresentative.trim().isEmpty()) {
@@ -178,7 +178,7 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
             }
 
             if (idNumber != null && !idNumber.trim().isEmpty()) {
-                predicates.add(cb.like(root.get("idNumber"), "%" + idNumber + "%"));
+                predicates.add(cb.equal(root.get("idNumber"), idNumber));
             }
 
             if (legalRepresentative != null && !legalRepresentative.trim().isEmpty()) {
@@ -227,7 +227,7 @@ public class CreditorInfoServiceImpl implements CreditorInfoService {
             }
 
             if (idNumber != null && !idNumber.trim().isEmpty()) {
-                predicates.add(cb.like(root.get("idNumber"), "%" + idNumber + "%"));
+                predicates.add(cb.equal(root.get("idNumber"), idNumber));
             }
 
             if (legalRepresentative != null && !legalRepresentative.trim().isEmpty()) {

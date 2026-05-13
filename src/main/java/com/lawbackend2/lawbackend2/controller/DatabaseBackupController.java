@@ -1,9 +1,11 @@
 package com.lawbackend2.lawbackend2.controller;
 
 import com.lawbackend2.lawbackend2.annotation.AuditLog;
-import com.lawbackend2.lawbackend2.common.PageRequest;
 import com.lawbackend2.lawbackend2.common.PageResult;
 import com.lawbackend2.lawbackend2.common.Result;
+import com.lawbackend2.lawbackend2.config.BackupProperties;
+import com.lawbackend2.lawbackend2.dto.request.BackupQueryRequest;
+import com.lawbackend2.lawbackend2.dto.response.BackupStatisticsResponse;
 import com.lawbackend2.lawbackend2.entity.BackupRecord;
 import com.lawbackend2.lawbackend2.repository.BackupRecordRepository;
 import com.lawbackend2.lawbackend2.service.DatabaseBackupService;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -36,22 +39,27 @@ public class DatabaseBackupController {
 
     private final DatabaseBackupService databaseBackupService;
     private final BackupRecordRepository backupRecordRepository;
+    private final BackupProperties backupProperties;
 
     @GetMapping("/list")
-    @Operation(summary = "查询备份记录列表", description = "分页查询备份记录列表")
+    @Operation(summary = "查询备份记录列表", description = "分页查询备份记录列表，支持按状态、类型、时间范围筛选")
     @PreAuthorize("hasAuthority('system:backup:list')")
-    public Result<PageResult<BackupRecord>> list(PageRequest pageRequest) {
-        Page<BackupRecord> page = backupRecordRepository.findAllNotDeleted(
+    public Result<PageResult<BackupRecord>> list(BackupQueryRequest queryRequest) {
+        Page<BackupRecord> page = backupRecordRepository.findAllWithFilters(
+                queryRequest.getStatus(),
+                queryRequest.getBackupType(),
+                queryRequest.getStartDate(),
+                queryRequest.getEndDate(),
                 org.springframework.data.domain.PageRequest.of(
-                        pageRequest.getPage() - 1,
-                        pageRequest.getSize()
+                        queryRequest.getPage() - 1,
+                        queryRequest.getSize()
                 )
         );
         PageResult<BackupRecord> result = new PageResult<>();
         result.setList(page.getContent());
         result.setTotal(page.getTotalElements());
-        result.setPage(pageRequest.getPage());
-        result.setSize(pageRequest.getSize());
+        result.setPage(queryRequest.getPage());
+        result.setSize(queryRequest.getSize());
         return Result.success(result);
     }
 
@@ -181,5 +189,47 @@ public class DatabaseBackupController {
             log.error("清理过期备份失败", e);
             return Result.error("清理失败: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/statistics")
+    @Operation(summary = "获取备份统计信息", description = "获取备份的汇总统计数据")
+    @PreAuthorize("hasAuthority('system:backup:list')")
+    public Result<BackupStatisticsResponse> statistics() {
+        long successCount = databaseBackupService.getSuccessCount();
+        long failedCount = databaseBackupService.getFailedCount();
+        long runningCount = databaseBackupService.getRunningCount();
+        long totalFileSize = databaseBackupService.getTotalFileSize();
+
+        Optional<BackupRecord> latestBackup = databaseBackupService.getLatestBackup();
+        Optional<BackupRecord> latestSuccess = databaseBackupService.getLatestSuccessBackup();
+
+        String totalFileSizeDisplay;
+        if (totalFileSize < 1024) {
+            totalFileSizeDisplay = totalFileSize + " B";
+        } else if (totalFileSize < 1024 * 1024) {
+            totalFileSizeDisplay = String.format("%.2f KB", totalFileSize / 1024.0);
+        } else if (totalFileSize < 1024 * 1024 * 1024) {
+            totalFileSizeDisplay = String.format("%.2f MB", totalFileSize / (1024.0 * 1024));
+        } else {
+            totalFileSizeDisplay = String.format("%.2f GB", totalFileSize / (1024.0 * 1024 * 1024));
+        }
+
+        BackupStatisticsResponse response = BackupStatisticsResponse.builder()
+                .totalCount(successCount + failedCount + runningCount)
+                .successCount(successCount)
+                .failedCount(failedCount)
+                .runningCount(runningCount)
+                .totalFileSize(totalFileSize)
+                .totalFileSizeDisplay(totalFileSizeDisplay)
+                .lastBackupTime(latestBackup.map(BackupRecord::getStartTime).orElse(null))
+                .lastSuccessBackupTime(latestSuccess.map(BackupRecord::getStartTime).orElse(null))
+                .lastSuccessFileName(latestSuccess.map(BackupRecord::getFileName).orElse(null))
+                .backupPath(backupProperties.getPath())
+                .retentionDays(backupProperties.getRetentionDays())
+                .backupEnabled(backupProperties.isEnabled())
+                .cronExpression(backupProperties.getCron())
+                .build();
+
+        return Result.success(response);
     }
 }

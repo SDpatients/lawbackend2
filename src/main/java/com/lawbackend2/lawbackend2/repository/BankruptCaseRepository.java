@@ -116,10 +116,10 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
     @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByCaseNumber(@Param("caseNumber") String caseNumber, Pageable pageable);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.id IN :caseIds")
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus <> 'ARCHIVED'")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByIdIn(@Param("caseIds") List<Long> caseIds, Pageable pageable);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.id IN :caseIds AND (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.id IN :caseIds AND c.caseStatus <> 'ARCHIVED' AND (:caseNumber IS NULL OR :caseNumber = '' OR c.caseNumber LIKE %:caseNumber%)")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findSimpleInfoByIdInAndCaseNumberLike(@Param("caseIds") List<Long> caseIds, @Param("caseNumber") String caseNumber, Pageable pageable);
 
     @Query("SELECT c FROM BankruptCase c WHERE c.createUserId = :createUserId")
@@ -297,14 +297,16 @@ public interface BankruptCaseRepository extends JpaRepository<BankruptCase, Long
     @Query("SELECT c.caseProgress, COUNT(c) FROM BankruptCase c WHERE c.createUserId = :userId GROUP BY c.caseProgress")
     List<Object[]> countByUserIdAndCaseProgressGroup(@Param("userId") Long userId);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c")
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.caseStatus <> 'ARCHIVED'")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findAllSimpleInfo(Pageable pageable);
 
-    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.caseNumber LIKE %:caseNumber%")
+    @Query("SELECT new com.lawbackend2.lawbackend2.dto.CaseSimpleInfo(c.id, c.caseNumber, c.caseName, c.reviewStatus, c.reviewOpinion) FROM BankruptCase c WHERE c.caseStatus <> 'ARCHIVED' AND c.caseNumber LIKE %:caseNumber%")
     Page<com.lawbackend2.lawbackend2.dto.CaseSimpleInfo> findAllByCaseNumberLike(@Param("caseNumber") String caseNumber, Pageable pageable);
 
-    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.caseNumber LIKE %:caseNumber%")
+    @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.caseStatus <> 'ARCHIVED' AND c.caseNumber LIKE %:caseNumber%")
     Long countByCaseNumberLike(@Param("caseNumber") String caseNumber);
+
+    Long countByCaseStatusNot(@Param("caseStatus") String caseStatus);
 
     @Query("SELECT COUNT(c) FROM BankruptCase c WHERE c.undertakingPersonnel = :realName")
     Long countByUndertakingPersonnel(@Param("realName") String realName);

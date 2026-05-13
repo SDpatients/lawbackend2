@@ -1,5 +1,6 @@
 package com.lawbackend2.lawbackend2.security;
 
+import com.lawbackend2.lawbackend2.config.AppProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -15,11 +16,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 import org.springframework.web.multipart.support.MultipartFilter;
 import org.springframework.http.HttpMethod;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Configuration
@@ -32,6 +35,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @Autowired
+    private AppProperties appProperties;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -87,15 +93,27 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        AppProperties.CorsConfig corsConfig = appProperties.getCors();
+        Set<String> allowedOrigins = parseOriginList(corsConfig.getAllowedOrigins());
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setAllowCredentials(true);
-        configuration.setMaxAge(3600L);
+        configuration.setAllowedOriginPatterns(allowedOrigins.isEmpty()
+                ? Collections.singletonList("*") 
+                : new java.util.ArrayList<>(allowedOrigins));
+        configuration.setAllowedMethods(Arrays.asList(corsConfig.getAllowedMethods().split(",")));
+        configuration.setAllowedHeaders(Arrays.asList(corsConfig.getAllowedHeaders().split(",")));
+        configuration.setAllowCredentials(corsConfig.isAllowCredentials());
+        configuration.setMaxAge(corsConfig.getMaxAge());
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
+    }
+
+    private Set<String> parseOriginList(String allowedOrigins) {
+        if (allowedOrigins == null || allowedOrigins.trim().isEmpty() || "*".equals(allowedOrigins.trim())) {
+            return Collections.emptySet();
+        }
+        return new HashSet<>(Arrays.asList(allowedOrigins.trim().split("\\s*,\\s*")));
     }
 
     @Bean

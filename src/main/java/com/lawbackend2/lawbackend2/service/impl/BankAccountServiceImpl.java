@@ -1,5 +1,7 @@
 package com.lawbackend2.lawbackend2.service.impl;
 
+import com.lawbackend2.lawbackend2.util.PasswordUtil;
+import com.lawbackend2.lawbackend2.util.Sm4Encryptor;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountCreateRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountPasswordRequest;
 import com.lawbackend2.lawbackend2.dto.request.BankAccountStatusRequest;
@@ -37,16 +39,18 @@ public class BankAccountServiceImpl implements BankAccountService {
 
     private final BankAccountRepository bankAccountRepository;
     private final BankAccountTransactionRepository transactionRepository;
-    private final com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil;
+    private final PasswordUtil passwordUtil;
+    private final Sm4Encryptor sm4Encryptor;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
     private final WorkTeamMemberRepository workTeamMemberRepository;
 
     @Autowired
-    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, BankAccountTransactionRepository transactionRepository, com.lawbackend2.lawbackend2.util.PasswordUtil passwordUtil, UserRoleRepository userRoleRepository, RoleRepository roleRepository, WorkTeamMemberRepository workTeamMemberRepository) {
+    public BankAccountServiceImpl(BankAccountRepository bankAccountRepository, BankAccountTransactionRepository transactionRepository, PasswordUtil passwordUtil, Sm4Encryptor sm4Encryptor, UserRoleRepository userRoleRepository, RoleRepository roleRepository, WorkTeamMemberRepository workTeamMemberRepository) {
         this.bankAccountRepository = bankAccountRepository;
         this.transactionRepository = transactionRepository;
         this.passwordUtil = passwordUtil;
+        this.sm4Encryptor = sm4Encryptor;
         this.userRoleRepository = userRoleRepository;
         this.roleRepository = roleRepository;
         this.workTeamMemberRepository = workTeamMemberRepository;
@@ -54,7 +58,8 @@ public class BankAccountServiceImpl implements BankAccountService {
 
     @Override
     public Long createBankAccount(BankAccountCreateRequest request, Long userId) {
-        java.util.Optional<BankAccount> existingAccount = bankAccountRepository.findByAccountNumber(request.getAccountNumber());
+        String encryptedAccountNumber = sm4Encryptor.encrypt(request.getAccountNumber());
+        java.util.Optional<BankAccount> existingAccount = bankAccountRepository.findByAccountNumber(encryptedAccountNumber);
         
         if (existingAccount.isPresent()) {
             throw new BusinessException("银行账号已存在");
@@ -83,12 +88,30 @@ public class BankAccountServiceImpl implements BankAccountService {
             accessibleCaseIds = workTeamMemberRepository.findCaseIdsByUserId(userId);
         }
         
-        Page<BankAccountResponse> page = bankAccountRepository.findBankAccountsWithCaseInfo(
+        Page<BankAccount> page = bankAccountRepository.findBankAccountsWithCaseInfo(
             accountType, status, accountName, caseId, accessibleCaseIds, isAdmin, userId, pageable);
 
         PageResult<BankAccountResponse> result = new PageResult<>();
         result.setTotal(page.getTotalElements());
-        result.setList(page.getContent());
+        result.setList(page.getContent().stream().map(ba -> {
+            BankAccountResponse response = new BankAccountResponse();
+            response.setId(ba.getId());
+            response.setStatus(ba.getStatus());
+            response.setCreateTime(ba.getCreateTime());
+            response.setUpdateTime(ba.getUpdateTime());
+            response.setCreateUserId(ba.getCreateUserId());
+            response.setUpdateUserId(ba.getUpdateUserId());
+            response.setAccountName(ba.getAccountName());
+            response.setBankName(ba.getBankName());
+            response.setAccountNumber(ba.getAccountNumber());
+            response.setAccountType(ba.getAccountType());
+            response.setCurrency(ba.getCurrency());
+            response.setCurrentBalance(ba.getCurrentBalance());
+            response.setOpeningDate(ba.getOpeningDate());
+            response.setClosingDate(ba.getClosingDate());
+            response.setCaseId(ba.getCaseId());
+            return response;
+        }).collect(Collectors.toList()));
         return result;
     }
 

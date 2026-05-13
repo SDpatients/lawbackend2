@@ -7,11 +7,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -27,12 +29,12 @@ public class DatabaseBackupService {
 
     private final BackupProperties backupProperties;
     private final BackupRecordRepository backupRecordRepository;
+    private final TransactionTemplate transactionTemplate;
 
     private final AtomicBoolean isBackupRunning = new AtomicBoolean(false);
 
     private static final DateTimeFormatter FILE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
-    @Transactional
     public BackupRecord executeBackup(String backupType) {
         if (!isBackupRunning.compareAndSet(false, true)) {
             log.warn("备份任务正在执行中，跳过本次请求");
@@ -47,10 +49,7 @@ public class DatabaseBackupService {
                 .build();
 
         try {
-            record = backupRecordRepository.save(record);
-            record.setStatus(BackupRecord.STATUS_RUNNING);
-            record.setStartTime(LocalDateTime.now());
-            record = backupRecordRepository.save(record);
+            record = saveRunningRecord(record);
 
             log.info("开始执行数据库备份，类型: {}, 数据库: {}", record.getBackupType(), backupProperties.getDatabase());
 
@@ -80,7 +79,8 @@ public class DatabaseBackupService {
             if (exitCode != 0) {
                 String errorMsg = errorBuilder.toString();
                 log.error("mysqldump 执行失败，退出码: {}, 错误: {}", exitCode, errorMsg);
-                throw new RuntimeException("mysqldump 执行失败: " + errorMsg);
+                record = saveFailedRecord(record, "mysqldump 执行失败: " + errorMsg, record.getStartTime());
+                return record;
             }
 
             long fileSize = Files.size(sqlFilePath);
@@ -99,12 +99,7 @@ public class DatabaseBackupService {
                 log.info("文件压缩完成: {}, 压缩后大小: {} bytes", compressedPath, fileSize);
             }
 
-            record.setFileName(finalFileName);
-            record.setFilePath(finalFilePath.toAbsolutePath().toString());
-            record.setFileSize(fileSize);
-            record.setStatus(BackupRecord.STATUS_SUCCESS);
-            record.setEndTime(LocalDateTime.now());
-            record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+            record = saveSuccessRecord(record, finalFilePath, finalFileName, fileSize);
 
             log.info("数据库备份完成，耗时: {} ms", record.getDuration());
 
@@ -112,17 +107,45 @@ public class DatabaseBackupService {
 
         } catch (Exception e) {
             log.error("数据库备份失败", e);
-            record.setStatus(BackupRecord.STATUS_FAILED);
-            record.setErrorMessage(e.getMessage());
-            record.setEndTime(LocalDateTime.now());
-            if (record.getStartTime() != null) {
-                record.setDuration(java.time.Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
-            }
+            record = saveFailedRecord(record, e.getMessage(), record.getStartTime());
         } finally {
             isBackupRunning.set(false);
         }
 
-        return backupRecordRepository.save(record);
+        return record;
+    }
+
+    private BackupRecord saveRunningRecord(BackupRecord record) {
+        String placeholder = "backup_pending";
+        record.setFileName(placeholder);
+        record.setFilePath(placeholder);
+        record.setStatus(BackupRecord.STATUS_RUNNING);
+        record.setStartTime(LocalDateTime.now());
+        return transactionTemplate.execute(status -> backupRecordRepository.save(record));
+    }
+
+    private BackupRecord saveSuccessRecord(BackupRecord record, Path filePath, String fileName, long fileSize) {
+        return transactionTemplate.execute(status -> {
+            record.setFileName(fileName);
+            record.setFilePath(filePath.toAbsolutePath().toString());
+            record.setFileSize(fileSize);
+            record.setStatus(BackupRecord.STATUS_SUCCESS);
+            record.setEndTime(LocalDateTime.now());
+            record.setDuration(Duration.between(record.getStartTime(), record.getEndTime()).toMillis());
+            return backupRecordRepository.save(record);
+        });
+    }
+
+    private BackupRecord saveFailedRecord(BackupRecord record, String errorMessage, LocalDateTime startTime) {
+        return transactionTemplate.execute(status -> {
+            record.setStatus(BackupRecord.STATUS_FAILED);
+            record.setErrorMessage(errorMessage);
+            record.setEndTime(LocalDateTime.now());
+            if (startTime != null) {
+                record.setDuration(Duration.between(startTime, record.getEndTime()).toMillis());
+            }
+            return backupRecordRepository.save(record);
+        });
     }
 
     private ProcessBuilder buildMysqldumpCommand(Path outputPath) {
@@ -246,5 +269,25 @@ public class DatabaseBackupService {
     public boolean isCompressed(Long id) {
         Optional<BackupRecord> optionalRecord = backupRecordRepository.findById(id);
         return optionalRecord.map(r -> r.getFileName().endsWith(".gz")).orElse(false);
+    }
+
+    public long getSuccessCount() {
+        return backupRecordRepository.countByStatusAndNotDeleted(BackupRecord.STATUS_SUCCESS);
+    }
+
+    public long getFailedCount() {
+        return backupRecordRepository.countByStatusAndNotDeleted(BackupRecord.STATUS_FAILED);
+    }
+
+    public long getRunningCount() {
+        return backupRecordRepository.countByStatusAndNotDeleted(BackupRecord.STATUS_RUNNING);
+    }
+
+    public long getTotalCount() {
+        return backupRecordRepository.countAllNotDeleted();
+    }
+
+    public long getTotalFileSize() {
+        return backupRecordRepository.sumSuccessFileSize();
     }
 }

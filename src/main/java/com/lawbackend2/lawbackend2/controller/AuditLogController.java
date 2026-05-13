@@ -116,24 +116,6 @@ public class AuditLogController {
         return Result.success(result);
     }
 
-    @DeleteMapping("/{id}")
-    @Operation(summary = "删除审计日志", description = "删除指定的审计日志")
-    @PreAuthorize("hasAuthority('system:audit:delete')")
-    public Result<Void> delete(
-            @Parameter(description = "审计日志ID") @PathVariable Long id) {
-        auditLogService.deleteById(id);
-        return Result.success(null);
-    }
-
-    @DeleteMapping("/clean")
-    @Operation(summary = "清理过期日志", description = "清理指定天数之前的审计日志")
-    @PreAuthorize("hasAuthority('system:audit:delete')")
-    public Result<Void> cleanOldLogs(
-            @Parameter(description = "保留天数") @RequestParam(defaultValue = "90") int retentionDays) {
-        auditLogService.cleanOldLogs(retentionDays);
-        return Result.success(null);
-    }
-
     @GetMapping("/statistics/module")
     @Operation(summary = "按模块统计", description = "按模块统计操作数量")
     @PreAuthorize("hasAuthority('system:audit:list')")

@@ -119,7 +119,7 @@ public class AppProperties {
 
     @Data
     public static class CorsConfig {
-        private String allowedOrigins = "*";
+        private String allowedOrigins = "http://localhost:3000,http://localhost:5173,http://localhost:8080,http://localhost:5779,http://localhost:5780,http://192.168.0.151:5779,http://192.168.0.151:5780,http://192.168.1.92:5779,http://192.168.1.92:5780";
         private String allowedMethods = "GET,POST,PUT,DELETE,OPTIONS";
         private String allowedHeaders = "*";
         private boolean allowCredentials = true;

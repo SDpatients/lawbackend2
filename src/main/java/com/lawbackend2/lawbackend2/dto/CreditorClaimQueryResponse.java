@@ -1,5 +1,9 @@
 package com.lawbackend2.lawbackend2.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.lawbackend2.lawbackend2.annotation.Mask;
+import com.lawbackend2.lawbackend2.annotation.MaskType;
+import com.lawbackend2.lawbackend2.util.MaskSerializer;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -17,12 +21,16 @@ public class CreditorClaimQueryResponse {
 
     private String creditorStatus;
 
+    @Mask(MaskType.PHONE)
+    @JsonSerialize(using = MaskSerializer.class)
     private String contactPhone;
 
     private String contactEmail;
 
     private String address;
 
+    @Mask(MaskType.ID_CARD)
+    @JsonSerialize(using = MaskSerializer.class)
     private String idNumber;
 
     private String legalRepresentative;
@@ -41,6 +49,8 @@ public class CreditorClaimQueryResponse {
 
     private String accountName;
 
+    @Mask(MaskType.BANK_ACCOUNT)
+    @JsonSerialize(using = MaskSerializer.class)
     private String creditorBankAccount;
 
     private String bankName;

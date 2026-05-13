@@ -22,6 +22,7 @@ import com.lawbackend2.lawbackend2.service.LibDocumentService;
 import javax.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -58,6 +59,19 @@ public class LibDocumentServiceImpl implements LibDocumentService {
     private final LibDocumentOperationLogService operationLogService;
     private final UserRepository userRepository;
     private final TransactionTemplate transactionTemplate;
+    private final CacheManager cacheManager;
+
+    private void clearLibDashboardCache() {
+        try {
+            org.springframework.cache.Cache cache = cacheManager.getCache("libDashboard");
+            if (cache != null) {
+                cache.evict("statistics");
+                log.debug("已清除 libDashboard 缓存");
+            }
+        } catch (Exception e) {
+            log.warn("清除 libDashboard 缓存失败：{}", e.getMessage());
+        }
+    }
 
     private String getUsernameById(Long userId) {
         if (userId == null) {
@@ -580,6 +594,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "libDashboard", allEntries = true)
     public void incrementViewCount(Long id) {
         documentRepository.incrementViewCount(id);
     }
@@ -589,6 +604,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
             transactionTemplate.executeWithoutResult(status -> {
                 documentRepository.incrementViewCount(id);
             });
+            clearLibDashboardCache();
         } catch (Exception e) {
             log.error("增加浏览次数失败：{}", e.getMessage());
         }
@@ -599,6 +615,7 @@ public class LibDocumentServiceImpl implements LibDocumentService {
             transactionTemplate.executeWithoutResult(status -> {
                 documentRepository.incrementViewCount(id);
             });
+            clearLibDashboardCache();
         } catch (Exception e) {
             log.error("增加浏览次数失败：{}", e.getMessage());
         }

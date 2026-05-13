@@ -42,10 +42,12 @@ public class ClaimRegistration extends BaseEntity {
     @Column(name = "agent_name", length = 100)
     private String agentName;
 
-    @Column(name = "agent_phone", length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "agent_phone", length = 255)
     private String agentPhone;
 
-    @Column(name = "agent_id_card", length = 50)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "agent_id_card", length = 255)
     private String agentIdCard;
 
     @Column(name = "agent_address", length = 500)
@@ -54,7 +56,8 @@ public class ClaimRegistration extends BaseEntity {
     @Column(name = "account_name", length = 255)
     private String accountName;
 
-    @Column(name = "creditor_bank_account", length = 100)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "creditor_bank_account", length = 500)
     private String creditorBankAccount;
 
     @Column(name = "bank_name", length = 255)

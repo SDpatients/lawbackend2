@@ -439,6 +439,16 @@ public class BankruptCaseController {
         return Result.success();
     }
 
+    @Operation(summary = "查询案件的所有访问用户")
+    @GetMapping("/{caseId}/accessible-users")
+    public Result<List<com.lawbackend2.lawbackend2.dto.response.CaseAccessibleUserResponse>> getCaseAccessibleUsers(
+            @Parameter(description = "案件ID") @PathVariable Long caseId) {
+        casePermissionUtil.checkCaseAccessPermission(caseId);
+        List<com.lawbackend2.lawbackend2.dto.response.CaseAccessibleUserResponse> users = 
+            bankruptCaseService.getAccessibleUsers(caseId);
+        return Result.success(users);
+    }
+
     private Long getCurrentUserId() {
         return SecurityUtil.getCurrentUserId();
     }

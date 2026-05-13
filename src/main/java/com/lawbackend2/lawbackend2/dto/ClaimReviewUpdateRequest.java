@@ -80,4 +80,6 @@ public class ClaimReviewUpdateRequest {
     private String reviewStatus;
 
     private String remarks;
+
+    private Integer reviewRound;
 }

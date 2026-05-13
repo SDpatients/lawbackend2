@@ -32,13 +32,15 @@ public class User {
     @Column(name = "real_name", nullable = false, length = 50)
     private String realName;
 
-    @Column(name = "mobile", unique = true, length = 20)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "mobile", unique = true, length = 255)
     private String mobile;
 
     @Column(name = "email", unique = true, length = 100)
     private String email;
 
-    @Column(name = "phone", length = 20)
+    @Convert(converter = com.lawbackend2.lawbackend2.util.EncryptedStringConverter.class)
+    @Column(name = "phone", length = 255)
     private String phone;
 
     @Column(name = "is_valid", length = 1)
