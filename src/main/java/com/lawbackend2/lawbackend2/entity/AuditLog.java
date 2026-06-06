@@ -98,6 +98,28 @@ public class AuditLog {
     @Builder.Default
     private LocalDateTime createTime = LocalDateTime.now();
 
+    @Column(name = "hash_value", length = 128)
+    private String hashValue;
+
+    @Column(name = "previous_hash", length = 128)
+    private String previousHash;
+
+    @Column(name = "digital_signature", length = 256)
+    private String digitalSignature;
+
+    @Column(name = "integrity_status", length = 20)
+    @Builder.Default
+    private String integrityStatus = INTEGRITY_VERIFIED;
+
+    @Column(name = "signed_by", length = 100)
+    private String signedBy;
+
+    @Column(name = "signed_time")
+    private LocalDateTime signedTime;
+
+    @Column(name = "chain_sequence")
+    private Long chainSequence;
+
     public static final String TYPE_CREATE = "CREATE";
     public static final String TYPE_UPDATE = "UPDATE";
     public static final String TYPE_DELETE = "DELETE";
@@ -111,4 +133,8 @@ public class AuditLog {
 
     public static final String STATUS_SUCCESS = "SUCCESS";
     public static final String STATUS_FAIL = "FAIL";
+
+    public static final String INTEGRITY_VERIFIED = "VERIFIED";
+    public static final String INTEGRITY_TAMPERED = "TAMPERED";
+    public static final String INTEGRITY_PENDING = "PENDING";
 }

@@ -23,6 +23,9 @@ public class MeetingVideoTag {
     @Column(name = "status", columnDefinition = "varchar(20) default 'pending'")
     private String status;
 
+    @Column(name = "file_id")
+    private Long fileId;
+
     @Column(name = "create_time", updatable = false, columnDefinition = "datetime default CURRENT_TIMESTAMP")
     private LocalDateTime createTime;
 

@@ -15,4 +15,6 @@ public class AiChatRequest {
     private String content;
 
     private Long userId;
+
+    private Long sessionId;
 }

@@ -17,35 +17,30 @@ public class MeetingVideoTagController {
     @Autowired
     private MeetingVideoTagService meetingVideoTagService;
 
-    // 创建视频标签
     @PostMapping
     public ResponseEntity<MeetingVideoTag> createVideoTag(@RequestBody MeetingVideoTag videoTag) {
         MeetingVideoTag createdVideoTag = meetingVideoTagService.createVideoTag(videoTag);
         return new ResponseEntity<>(createdVideoTag, HttpStatus.CREATED);
     }
 
-    // 根据ID获取视频标签
     @GetMapping("/{id}")
     public ResponseEntity<MeetingVideoTag> getVideoTagById(@PathVariable Long id) {
         Optional<MeetingVideoTag> videoTag = meetingVideoTagService.getVideoTagById(id);
         return videoTag.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // 根据会议ID获取视频标签列表
     @GetMapping("/meeting/{meetingId}")
     public ResponseEntity<List<MeetingVideoTag>> getVideoTagsByMeetingId(@PathVariable Long meetingId) {
         List<MeetingVideoTag> videoTags = meetingVideoTagService.getVideoTagsByMeetingId(meetingId);
         return ResponseEntity.ok(videoTags);
     }
 
-    // 根据状态获取视频标签列表
     @GetMapping("/status/{status}")
     public ResponseEntity<List<MeetingVideoTag>> getVideoTagsByStatus(@PathVariable String status) {
         List<MeetingVideoTag> videoTags = meetingVideoTagService.getVideoTagsByStatus(status);
         return ResponseEntity.ok(videoTags);
     }
 
-    // 根据会议ID和状态获取视频标签列表
     @GetMapping("/meeting/{meetingId}/status/{status}")
     public ResponseEntity<List<MeetingVideoTag>> getVideoTagsByMeetingIdAndStatus(
             @PathVariable Long meetingId, @PathVariable String status) {
@@ -53,21 +48,31 @@ public class MeetingVideoTagController {
         return ResponseEntity.ok(videoTags);
     }
 
-    // 更新视频标签
+    @GetMapping("/file/{fileId}")
+    public ResponseEntity<List<MeetingVideoTag>> getVideoTagsByFileId(@PathVariable Long fileId) {
+        List<MeetingVideoTag> videoTags = meetingVideoTagService.getVideoTagsByFileId(fileId);
+        return ResponseEntity.ok(videoTags);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<MeetingVideoTag> updateVideoTag(@PathVariable Long id, @RequestBody MeetingVideoTag videoTagDetails) {
         MeetingVideoTag updatedVideoTag = meetingVideoTagService.updateVideoTag(id, videoTagDetails);
         return updatedVideoTag != null ? ResponseEntity.ok(updatedVideoTag) : ResponseEntity.notFound().build();
     }
 
-    // 删除视频标签（软删除）
+    @PutMapping("/{id}/bind-file")
+    public ResponseEntity<MeetingVideoTag> bindFileToTag(
+            @PathVariable Long id, @RequestParam Long fileId) {
+        MeetingVideoTag updatedVideoTag = meetingVideoTagService.bindFileToTag(id, fileId);
+        return updatedVideoTag != null ? ResponseEntity.ok(updatedVideoTag) : ResponseEntity.notFound().build();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteVideoTag(@PathVariable Long id) {
         boolean deleted = meetingVideoTagService.deleteVideoTag(id);
         return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
     }
 
-    // 更新视频标签状态
     @PutMapping("/{id}/status")
     public ResponseEntity<MeetingVideoTag> updateVideoTagStatus(
             @PathVariable Long id, @RequestParam String status, @RequestParam Long userId) {

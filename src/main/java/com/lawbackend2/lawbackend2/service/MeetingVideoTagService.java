@@ -43,6 +43,11 @@ public class MeetingVideoTagService {
         return meetingVideoTagRepository.findByMeetingIdAndStatusAndIsDeletedFalse(meetingId, status);
     }
 
+    // 根据文件ID获取视频标签
+    public List<MeetingVideoTag> getVideoTagsByFileId(Long fileId) {
+        return meetingVideoTagRepository.findByFileIdAndIsDeletedFalse(fileId);
+    }
+
     // 更新视频标签
     public MeetingVideoTag updateVideoTag(Long id, MeetingVideoTag videoTagDetails) {
         Optional<MeetingVideoTag> optionalVideoTag = meetingVideoTagRepository.findById(id);
@@ -50,7 +55,20 @@ public class MeetingVideoTagService {
             MeetingVideoTag videoTag = optionalVideoTag.get();
             videoTag.setVideoTitle(videoTagDetails.getVideoTitle());
             videoTag.setStatus(videoTagDetails.getStatus());
+            videoTag.setFileId(videoTagDetails.getFileId());
             videoTag.setUpdateUserId(videoTagDetails.getUpdateUserId());
+            return meetingVideoTagRepository.save(videoTag);
+        }
+        return null;
+    }
+
+    // 绑定文件到视频标签
+    public MeetingVideoTag bindFileToTag(Long tagId, Long fileId) {
+        Optional<MeetingVideoTag> optionalVideoTag = meetingVideoTagRepository.findById(tagId);
+        if (optionalVideoTag.isPresent()) {
+            MeetingVideoTag videoTag = optionalVideoTag.get();
+            videoTag.setFileId(fileId);
+            videoTag.setStatus("generated");
             return meetingVideoTagRepository.save(videoTag);
         }
         return null;

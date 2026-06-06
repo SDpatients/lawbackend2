@@ -14,4 +14,6 @@ public interface MeetingVideoTagRepository extends JpaRepository<MeetingVideoTag
     List<MeetingVideoTag> findByStatusAndIsDeletedFalse(String status);
 
     List<MeetingVideoTag> findByMeetingIdAndStatusAndIsDeletedFalse(Long meetingId, String status);
+
+    List<MeetingVideoTag> findByFileIdAndIsDeletedFalse(Long fileId);
 }

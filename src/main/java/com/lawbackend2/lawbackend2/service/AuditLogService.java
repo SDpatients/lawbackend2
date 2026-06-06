@@ -14,8 +14,10 @@ public interface AuditLogService {
 
     AuditLog getById(Long id);
 
-    Page<AuditLog> search(Long userId, String module, String operationType, String status,
+    Page<AuditLog> search(Long userId, String module, String operationType, String status, String integrityStatus,
                           LocalDateTime startTime, LocalDateTime endTime, String keyword, Pageable pageable);
+
+    Page<AuditLog> advancedSearch(String userAccount, Long businessId, String ipAddress, String requestUrl, Pageable pageable);
 
     Page<AuditLog> getByUserId(Long userId, Pageable pageable);
 
@@ -38,4 +40,12 @@ public interface AuditLogService {
 
     void logFail(String module, String moduleName, String operationType, String operationName,
                  String businessType, Long businessId, String businessName, String errorMessage);
+
+    boolean verifyIntegrity(Long auditLogId);
+
+    List<AuditLog> verifyAllIntegrity();
+
+    Map<String, Object> getIntegrityReport();
+
+    Map<String, Object> migrateAndGenerateHashChain();
 }

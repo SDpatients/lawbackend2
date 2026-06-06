@@ -45,6 +45,7 @@ CREATE TABLE `tb_meeting_video_tag` (
   `meeting_id` bigint NOT NULL COMMENT '会议ID，关联会议表',
   `video_title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '视频标题',
   `status` varchar(20) COLLATE utf8mb4_bin DEFAULT 'pending' COMMENT '生成状态：generated=已生成，pending=待生成',
+  `file_id` bigint DEFAULT NULL COMMENT '关联的文件记录ID，对应tb_file_record表主键',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   `create_user_id` bigint DEFAULT NULL COMMENT '创建者ID',
@@ -52,7 +53,8 @@ CREATE TABLE `tb_meeting_video_tag` (
   `is_deleted` tinyint(1) DEFAULT '0' COMMENT '是否删除: 0-否, 1-是',
   PRIMARY KEY (`id`),
   KEY `idx_meeting_id` (`meeting_id`),
-  KEY `idx_status` (`status`)
+  KEY `idx_status` (`status`),
+  KEY `idx_file_id` (`file_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='债权人会议视频标签表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 

@@ -15,11 +15,26 @@ spring:
     allow-circular-references: true
   mvc:
     static-path-pattern: /**
-
   servlet:
     multipart:
       max-file-size: 500MB
       max-request-size: 500MB
+  mail:
+    host: smtp.example.com
+    port: 587
+    username: noreply@lawbackend.com
+    password: your-email-password
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
 
   datasource:
     url: jdbc:mysql://localhost:3306/law?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
@@ -157,9 +172,22 @@ onlyoffice:
 
 ai:
   gitee:
-    api-url: https://ai.gitee.com/v1/chat/completions
-    api-key: XC9P4NWOC5TLSJ0GC9DNZMATGNNKOLSBLYRIOF14
-    model: LegalOne-8B
+    api-url: https://api.deepseek.com/chat/completions
+    api-key: sk-d310801a03424e0091a6a90cd474cb88
+    model: deepseek-v4-flash
+
+audit:
+  hash-chain:
+    enabled: true
+    algorithm: SHA-256
+    private-key: lawbackend2-private-key-change-in-production
+  report:
+    weekly-cron: "0 0 18 ? * FRI"
+    daily-cron: "0 0 1 ? * *"
+  notification:
+    emails: manager@lawfirm.com,partner@lawfirm.com
+    enabled: true
+    subject-prefix: "🛡️ 法律案件管理系统审计报告"
 
 logging:
   level:
